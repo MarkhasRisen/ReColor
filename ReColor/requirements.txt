@@ -1,0 +1,16 @@
+# TensorFlow Real-Time Image Processing Requirements
+# ================================================
+
+# Core dependency - TensorFlow 2.x
+tensorflow>=2.10.0
+
+# Real-time processing dependencies
+opencv-python>=4.5.0
+
+# Optional dependencies for visualization and utilities
+matplotlib>=3.5.0
+numpy>=1.21.0
+
+# Development dependencies (optional)
+# jupyter>=1.0.0  # For notebook development
+# pillow>=8.0.0   # Additional image format support
