@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daltonization Test App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            color: #f5f7fa;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #58a6ff;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: #1f2933;
+            border: none;
+            color: #f5f7fa;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        
+        .tab.active {
+            background: #58a6ff;
+            color: #0d1117;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .card {
+            background: #1f2933;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .plate {
+            margin-bottom: 20px;
+        }
+        
+        .plate-title {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #8b949e;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .btn-correct {
+            background: #238636;
+            color: white;
+            flex: 1;
+        }
+        
+        .btn-incorrect {
+            background: #da3633;
+            color: white;
+            flex: 1;
+        }
+        
+        .btn-skip {
+            background: #6e7681;
+            color: white;
+            flex: 1;
+        }
+        
+        .btn-primary {
+            background: #58a6ff;
+            color: #0d1117;
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+        
+        .btn-primary:hover {
+            background: #79c0ff;
+        }
+        
+        .result {
+            background: #1f2933;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #58a6ff;
+        }
+        
+        .result-item {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        
+        .result-label {
+            color: #8b949e;
+            margin-right: 10px;
+        }
+        
+        .image-input {
+            width: 100%;
+            padding: 15px;
+            background: #1f2933;
+            border: 2px dashed #58a6ff;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .image-preview {
+            width: 100%;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #8b949e;
+        }
+        
+        .error {
+            background: #da3633;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+        
+        .selected {
+            opacity: 0.6;
+            position: relative;
+        }
+        
+        .selected::after {
+            content: '✓';
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Daltonization Test App</h1>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('calibration')">Calibration</button>
+            <button class="tab" onclick="switchTab('processing')">Image Processing</button>
+        </div>
+        
+        <!-- Calibration Tab -->
+        <div id="calibration" class="tab-content active">
+            <div class="card">
+                <h2>Ishihara Test</h2>
+                <p style="color: #8b949e; margin: 10px 0;">Select your response for each test plate:</p>
+                
+                <div id="plates"></div>
+                
+                <button class="btn-primary" onclick="submitCalibration()">Submit Calibration</button>
+                
+                <div id="calibration-result"></div>
+            </div>
+        </div>
+        
+        <!-- Processing Tab -->
+        <div id="processing" class="tab-content">
+            <div class="card">
+                <h2>Image Processing</h2>
+                <p style="color: #8b949e; margin: 10px 0;">Upload an image to apply color correction:</p>
+                
+                <input type="file" id="imageInput" accept="image/*" onchange="handleImageSelect(event)" style="display: none;">
+                <div class="image-input" onclick="document.getElementById('imageInput').click()">
+                    📷 Click to select an image
+                </div>
+                
+                <div id="processing-result"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE_URL = 'http://192.168.1.9:8000';
+        const plates = [
+            { id: 'p1', name: 'Protan Test 1' },
+            { id: 'p2', name: 'Protan Test 2' },
+            { id: 'p3', name: 'Protan Test 3' },
+            { id: 'd1', name: 'Deutan Test 1' },
+            { id: 'd2', name: 'Deutan Test 2' },
+            { id: 'd3', name: 'Deutan Test 3' },
+            { id: 't1', name: 'Tritan Test 1' },
+            { id: 't2', name: 'Tritan Test 2' },
+        ];
+        
+        const responses = {};
+        
+        // Initialize plates
+        function initializePlates() {
+            const container = document.getElementById('plates');
+            plates.forEach(plate => {
+                const div = document.createElement('div');
+                div.className = 'plate';
+                div.innerHTML = `
+                    <div class="plate-title">${plate.name}</div>
+                    <div class="button-group">
+                        <button class="btn-correct" onclick="selectResponse('${plate.id}', 'correct')">Correct</button>
+                        <button class="btn-incorrect" onclick="selectResponse('${plate.id}', 'incorrect')">Incorrect</button>
+                        <button class="btn-skip" onclick="selectResponse('${plate.id}', 'skipped')">Skip</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        function selectResponse(plateId, response) {
+            responses[plateId] = response;
+            
+            // Visual feedback
+            const plate = event.target.closest('.plate');
+            const buttons = plate.querySelectorAll('button');
+            buttons.forEach(btn => btn.classList.remove('selected'));
+            event.target.classList.add('selected');
+        }
+        
+        async function submitCalibration() {
+            const resultDiv = document.getElementById('calibration-result');
+            resultDiv.innerHTML = '<div class="loading">Processing...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/calibration/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: `web-test-${Date.now()}`,
+                        responses: responses
+                    })
+                });
+                
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `
+                    <div class="result">
+                        <h3>✅ Profile Created</h3>
+                        <div class="result-item">
+                            <span class="result-label">Deficiency:</span>
+                            <strong>${data.deficiency}</strong>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Severity:</span>
+                            <strong>${data.severity.toFixed(2)}</strong>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Confidence:</span>
+                            <strong>${data.confidence.toFixed(2)}</strong>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function handleImageSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const resultDiv = document.getElementById('processing-result');
+            resultDiv.innerHTML = '<div class="loading">Processing image...</div>';
+            
+            // Convert to base64
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const base64 = e.target.result.split(',')[1];
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/process/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user_id: 'web-test-user',
+                            image_base64: base64
+                        })
+                    });
+                    
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    
+                    const data = await response.json();
+                    const correctedImage = `data:${data.content_type};base64,${data.data}`;
+                    
+                    resultDiv.innerHTML = `
+                        <div class="result">
+                            <h3>✅ Image Processed</h3>
+                            <p style="color: #8b949e; margin: 10px 0;">Original vs Corrected:</p>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div>
+                                    <p style="text-align: center; margin-bottom: 5px;">Original</p>
+                                    <img src="${e.target.result}" class="image-preview">
+                                </div>
+                                <div>
+                                    <p style="text-align: center; margin-bottom: 5px;">Corrected</p>
+                                    <img src="${correctedImage}" class="image-preview">
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } catch (error) {
+                    resultDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+        }
+        
+        // Initialize on load
+        initializePlates();
+    </script>
+</body>
+</html>
