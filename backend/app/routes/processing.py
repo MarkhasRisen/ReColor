@@ -9,7 +9,7 @@ import numpy as np
 from flask import Blueprint, current_app, jsonify, request
 from PIL import Image
 
-from ..middleware.auth import optional_auth
+from ..middleware.auth import require_auth
 from ..pipeline.processing import AdaptiveColorPipeline, PipelineConfig
 from ..pipeline.profile import VisionProfile
 from ..schemas.processing import ProcessRequest, ProcessResponse
@@ -20,7 +20,7 @@ processing_blueprint = Blueprint("processing", __name__)
 
 
 @processing_blueprint.post("/")
-@optional_auth
+@require_auth  # Changed from optional_auth - processing requires authentication
 def process_image():
     payload = parse_request(request)
     schema = ProcessRequest(**payload)

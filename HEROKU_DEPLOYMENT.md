@@ -13,7 +13,7 @@ heroku login
 
 ### 2. Create Heroku App
 ```powershell
-cd C:\Users\markr\OneDrive\Desktop\Daltonization
+cd C:\Users\markr\Downloads\Daltonization
 heroku create recolor-api
 ```
 

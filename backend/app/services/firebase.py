@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-from firebase_admin import credentials, firestore, initialize_app
+from firebase_admin import credentials, firestore, initialize_app, messaging
 from flask import Flask
 
 from ..pipeline.profile import VisionProfile
@@ -69,3 +69,180 @@ def load_profile(user_id: str) -> Optional[VisionProfile]:
         severity=float(profile_data.get("severity", 0.0)),
         confidence=float(profile_data.get("confidence", 0.0)),
     )
+
+
+# ========== Cloud Messaging (FCM) Functions ==========
+
+def save_device_token(user_id: str, device_token: str, device_info: Optional[Dict[str, Any]] = None) -> None:
+    """Save FCM device token for a user."""
+    client = get_firestore_client()
+    document = client.collection("deviceTokens").document(user_id)
+    
+    payload = {
+        "token": device_token,
+        "updatedAt": firestore.SERVER_TIMESTAMP,
+    }
+    
+    if device_info:
+        payload["deviceInfo"] = device_info
+    
+    document.set(payload, merge=True)
+
+
+def get_device_token(user_id: str) -> Optional[str]:
+    """Retrieve FCM device token for a user."""
+    client = get_firestore_client()
+    document = client.collection("deviceTokens").document(user_id).get()
+    
+    if not document.exists:
+        return None
+    
+    data = document.to_dict() or {}
+    return data.get("token")
+
+
+def send_notification(
+    user_id: str,
+    title: str,
+    body: str,
+    data: Optional[Dict[str, str]] = None,
+    image_url: Optional[str] = None
+) -> bool:
+    """Send push notification to a specific user.
+    
+    Args:
+        user_id: Target user ID
+        title: Notification title
+        body: Notification body text
+        data: Optional custom data payload
+        image_url: Optional image URL for rich notification
+        
+    Returns:
+        True if sent successfully, False otherwise
+    """
+    token = get_device_token(user_id)
+    if not token:
+        return False
+    
+    try:
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title=title,
+                body=body,
+                image=image_url if image_url else None,
+            ),
+            data=data or {},
+            token=token,
+        )
+        
+        response = messaging.send(message)
+        return bool(response)
+    except Exception:
+        return False
+
+
+def send_multicast_notification(
+    user_ids: List[str],
+    title: str,
+    body: str,
+    data: Optional[Dict[str, str]] = None
+) -> Dict[str, Any]:
+    """Send push notification to multiple users.
+    
+    Args:
+        user_ids: List of target user IDs
+        title: Notification title
+        body: Notification body text
+        data: Optional custom data payload
+        
+    Returns:
+        Dict with success_count, failure_count, and failed_tokens
+    """
+    # Get all tokens
+    tokens = []
+    for user_id in user_ids:
+        token = get_device_token(user_id)
+        if token:
+            tokens.append(token)
+    
+    if not tokens:
+        return {"success_count": 0, "failure_count": 0, "failed_tokens": []}
+    
+    try:
+        message = messaging.MulticastMessage(
+            notification=messaging.Notification(
+                title=title,
+                body=body,
+            ),
+            data=data or {},
+            tokens=tokens,
+        )
+        
+        response = messaging.send_multicast(message)
+        
+        return {
+            "success_count": response.success_count,
+            "failure_count": response.failure_count,
+            "failed_tokens": [
+                tokens[idx] for idx, resp in enumerate(response.responses)
+                if not resp.success
+            ]
+        }
+    except Exception as e:
+        return {
+            "success_count": 0,
+            "failure_count": len(tokens),
+            "failed_tokens": tokens,
+            "error": str(e)
+        }
+
+
+def send_topic_notification(
+    topic: str,
+    title: str,
+    body: str,
+    data: Optional[Dict[str, str]] = None
+) -> bool:
+    """Send push notification to a topic (broadcast).
+    
+    Args:
+        topic: FCM topic name (e.g., 'calibration_reminders')
+        title: Notification title
+        body: Notification body text
+        data: Optional custom data payload
+        
+    Returns:
+        True if sent successfully, False otherwise
+    """
+    try:
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title=title,
+                body=body,
+            ),
+            data=data or {},
+            topic=topic,
+        )
+        
+        response = messaging.send(message)
+        return bool(response)
+    except Exception:
+        return False
+
+
+def subscribe_to_topic(token: str, topic: str) -> bool:
+    """Subscribe a device token to an FCM topic."""
+    try:
+        response = messaging.subscribe_to_topic([token], topic)
+        return response.success_count > 0
+    except Exception:
+        return False
+
+
+def unsubscribe_from_topic(token: str, topic: str) -> bool:
+    """Unsubscribe a device token from an FCM topic."""
+    try:
+        response = messaging.unsubscribe_from_topic([token], topic)
+        return response.success_count > 0
+    except Exception:
+        return False

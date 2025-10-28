@@ -16,13 +16,13 @@ The mobile app has been configured to connect to your backend at:
 
 2. **Make sure Flask is running** in a terminal:
    ```powershell
-   cd C:\Users\markr\OneDrive\Desktop\Daltonization\backend
+   cd C:\Users\markr\Downloads\Daltonization\backend
    ..\.venv\Scripts\python.exe -m flask --app app.main run --host 0.0.0.0 --port 8000
    ```
 
 3. **Start Expo development server**:
    ```powershell
-   cd C:\Users\markr\OneDrive\Desktop\Daltonization\mobile
+   cd C:\Users\markr\Downloads\Daltonization\mobile
    npm start
    ```
 
@@ -70,7 +70,7 @@ The mobile app has been configured to connect to your backend at:
 
 #### Run the app:
 ```powershell
-cd C:\Users\markr\OneDrive\Desktop\Daltonization\mobile
+cd C:\Users\markr\Downloads\Daltonization\mobile
 npx react-native run-android
 ```
 

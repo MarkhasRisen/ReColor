@@ -188,7 +188,7 @@ After adding images:
 
 **Ready to add images?** Place your PNG/JPG files in:
 ```
-C:\Users\markr\OneDrive\Desktop\Daltonization\backend\static\ishihara\
+C:\Users\markr\Downloads\Daltonization\backend\static\ishihara\
 ```
 
 Then test with:

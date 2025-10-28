@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
 
 ### Test Without Auth (Current Behavior):
 ```powershell
-cd C:\Users\markr\OneDrive\Desktop\Daltonization
+cd C:\Users\markr\Downloads\Daltonization
 .\.venv\Scripts\python.exe test_authentication.py
 ```
 
