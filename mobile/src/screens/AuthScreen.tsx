@@ -7,7 +7,9 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
+// import { auth } from '../services/firebase'; // Uncomment when using native build
 
 const AuthScreen = ({ navigation }: any) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -15,11 +17,38 @@ const AuthScreen = ({ navigation }: any) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const handleAuth = () => {
-    // TODO: Implement Firebase Auth
-    console.log(isLogin ? 'Logging in...' : 'Registering...');
-    // For now, just navigate to Home
-    navigation.replace('Main');
+  const handleAuth = async () => {
+    // Validate inputs
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (!isLogin && password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    try {
+      // TODO: Implement Firebase Auth when using native build
+      // if (isLogin) {
+      //   await auth().signInWithEmailAndPassword(email, password);
+      // } else {
+      //   await auth().createUserWithEmailAndPassword(email, password);
+      // }
+      
+      console.log(isLogin ? 'Logging in...' : 'Registering...');
+      console.log('Email:', email);
+      
+      // For Expo Go demo: simulate successful auth
+      Alert.alert(
+        'Success',
+        isLogin ? 'Logged in successfully!' : 'Account created successfully!',
+        [{ text: 'OK', onPress: () => navigation.replace('Main') }]
+      );
+    } catch (error: any) {
+      Alert.alert('Authentication Error', error.message);
+    }
   };
 
   const handleGuestMode = () => {

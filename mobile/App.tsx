@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+// import firebase from './src/services/firebase'; // Uncomment when using native build
 
 // Import all screens
 import SplashScreen from './src/screens/SplashScreen';
@@ -23,6 +24,14 @@ import LearnDetailsScreen from './src/screens/LearnDetailsScreen';
 const Stack = createStackNavigator();
 
 const App = () => {
+  useEffect(() => {
+    // Initialize Firebase when component mounts
+    // Note: @react-native-firebase requires native build, not compatible with Expo Go
+    // For Expo Go demo, Firebase features are commented out
+    console.log('ReColor App Initialized');
+    // console.log('Firebase initialized:', firebase.apps.length > 0);
+  }, []);
+
   return (
     <NavigationContainer>
       <Stack.Navigator

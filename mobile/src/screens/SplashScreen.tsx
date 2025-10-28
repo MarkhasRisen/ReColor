@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 
 const SplashScreen = ({ navigation }: any) => {
   useEffect(() => {
@@ -11,11 +11,9 @@ const SplashScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
-      <Image
-        source={require('../assets/logo.png')} // You'll need to add a logo
-        style={styles.logo}
-        resizeMode="contain"
-      />
+      <View style={styles.logoPlaceholder}>
+        <Text style={styles.logoText}>RC</Text>
+      </View>
       <Text style={styles.title}>ReColor</Text>
       <Text style={styles.subtitle}>Color Vision Enhancement</Text>
       <ActivityIndicator size="large" color="#4A90E2" style={styles.loader} />
@@ -30,10 +28,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logo: {
+  logoPlaceholder: {
     width: 120,
     height: 120,
+    backgroundColor: '#4A90E2',
+    borderRadius: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 20,
+  },
+  logoText: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   title: {
     fontSize: 36,
