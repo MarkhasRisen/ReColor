@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,14 +8,53 @@ import {
   SafeAreaView,
   TextInput,
   ScrollView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
+import { getIshiharaPlates } from '../services/api';
+
+interface Plate {
+  plate_number: number;
+  image_url: string;
+  is_control: boolean;
+}
 
 const QuickTestScreen = ({ navigation }: any) => {
   const [currentPlate, setCurrentPlate] = useState(1);
   const [response, setResponse] = useState('');
   const [responses, setResponses] = useState<{ [key: number]: string }>({});
+  const [plates, setPlates] = useState<Plate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const totalPlates = 14;
+  const totalPlates = plates.length || 14;
+
+  // Fetch plates from backend on mount
+  useEffect(() => {
+    loadPlates();
+  }, []);
+
+  const loadPlates = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getIshiharaPlates('quick');
+      setPlates(data.plates || []);
+    } catch (err: any) {
+      console.error('Failed to load Ishihara plates:', err);
+      setError(err.message || 'Failed to load test plates');
+      Alert.alert(
+        'Connection Error',
+        'Could not load test plates. Please check your backend connection.',
+        [
+          { text: 'Retry', onPress: loadPlates },
+          { text: 'Cancel', onPress: () => navigation.goBack() }
+        ]
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleNext = () => {
     if (response.trim()) {
@@ -49,6 +88,32 @@ const QuickTestScreen = ({ navigation }: any) => {
     }
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4A90E2" />
+          <Text style={styles.loadingText}>Loading test plates...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || plates.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>❌ {error || 'No plates available'}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadPlates}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const currentPlateData = plates[currentPlate - 1];
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -62,12 +127,20 @@ const QuickTestScreen = ({ navigation }: any) => {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.plateContainer}>
-          <View style={styles.platePlaceholder}>
-            <Text style={styles.plateText}>Plate {currentPlate}</Text>
-            <Text style={styles.placeholderNote}>
-              (Placeholder - replace with actual Ishihara plate images)
-            </Text>
-          </View>
+          {currentPlateData?.image_url ? (
+            <Image
+              source={{ uri: currentPlateData.image_url }}
+              style={styles.plateImage}
+              resizeMode="contain"
+            />
+          ) : (
+            <View style={styles.platePlaceholder}>
+              <Text style={styles.plateText}>Plate {currentPlate}</Text>
+              <Text style={styles.placeholderNote}>
+                (Image not available)
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.inputSection}>
@@ -119,6 +192,39 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 15,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#FF6B6B',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#4A90E2',
+    borderRadius: 10,
+    padding: 15,
+    paddingHorizontal: 30,
+  },
+  retryButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   header: {
     backgroundColor: '#FFF',
     padding: 15,
@@ -150,6 +256,11 @@ const styles = StyleSheet.create({
   plateContainer: {
     alignItems: 'center',
     marginBottom: 30,
+  },
+  plateImage: {
+    width: 300,
+    height: 300,
+    borderRadius: 150,
   },
   platePlaceholder: {
     width: 300,

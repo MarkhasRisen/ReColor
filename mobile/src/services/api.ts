@@ -1,16 +1,21 @@
 import { Platform } from "react-native";
 
-// Use your local machine's IP address so physical devices can connect
-// Android emulator uses 10.0.2.2 to reach host machine's localhost
-// TODO: Update to production URL after backend deployment
-const API_BASE_URL = Platform.select({
+// API Configuration
+// Development: Use local backend server
+// Production: Use Heroku deployment (update after deployment)
+const DEV_API_URL = Platform.select({
   ios: "http://192.168.1.9:8000",
   android: "http://10.0.2.2:8000", // For emulator; use http://192.168.1.9:8000 for physical device
   default: "http://192.168.1.9:8000",
 });
 
-// For production deployment:
-// const API_BASE_URL = "https://recolor-api.herokuapp.com";
+// TODO: Update this after deploying backend to Heroku
+const PROD_API_URL = "https://recolor-api.herokuapp.com";
+
+// Set to false for production
+const USE_DEV_SERVER = true;
+
+const API_BASE_URL = USE_DEV_SERVER ? DEV_API_URL : PROD_API_URL;
 
 export type CalibrationPayload = {
   userId: string;
@@ -36,12 +41,24 @@ export type IshiharaDiagnosis = {
 
 // Get Ishihara test plates
 export async function getIshiharaPlates(mode: "quick" | "comprehensive" = "quick") {
-  const response = await fetch(`${API_BASE_URL}/ishihara/plates?mode=${mode}`);
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch Ishihara plates: ${response.status}`);
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/ishihara/plates?mode=${mode}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch plates (${response.status}): ${errorText}`);
+    }
+    
+    return await response.json();
+  } catch (error: any) {
+    console.error('getIshiharaPlates error:', error);
+    throw new Error(error.message || 'Network error - could not connect to server');
   }
-  return response.json();
 }
 
 // Evaluate Ishihara test responses
@@ -51,46 +68,82 @@ export async function evaluateIshiharaTest(
   mode: "quick" | "comprehensive" = "quick",
   saveProfile: boolean = true
 ) {
-  const response = await fetch(`${API_BASE_URL}/ishihara/evaluate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      user_id: userId,
-      mode,
-      responses,
-      save_profile: saveProfile,
-    }),
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/ishihara/evaluate`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        mode,
+        responses,
+        save_profile: saveProfile,
+      }),
+    });
 
-  if (!response.ok) {
-    throw new Error(`Ishihara evaluation failed: ${response.status}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Evaluation failed (${response.status}): ${errorText}`);
+    }
+    
+    return await response.json();
+  } catch (error: any) {
+    console.error('evaluateIshiharaTest error:', error);
+    throw new Error(error.message || 'Network error - could not evaluate test');
   }
-  return response.json();
 }
 
 // Legacy calibration endpoint (deprecated - use Ishihara instead)
 export async function submitCalibration(payload: CalibrationPayload) {
-  const response = await fetch(`${API_BASE_URL}/calibration/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_id: payload.userId, responses: payload.responses }),
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/calibration/`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({ 
+        user_id: payload.userId, 
+        responses: payload.responses 
+      }),
+    });
 
-  if (!response.ok) {
-    throw new Error(`Calibration failed: ${response.status}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Calibration failed (${response.status}): ${errorText}`);
+    }
+    
+    return await response.json();
+  } catch (error: any) {
+    console.error('submitCalibration error:', error);
+    throw new Error(error.message || 'Network error - could not submit calibration');
   }
-  return response.json();
 }
 
 export async function submitImage(userId: string, imageBase64: string) {
-  const response = await fetch(`${API_BASE_URL}/process/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_id: userId, image_base64: imageBase64 }),
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/process/`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({ 
+        user_id: userId, 
+        image_base64: imageBase64 
+      }),
+    });
 
-  if (!response.ok) {
-    throw new Error(`Processing failed: ${response.status}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Processing failed (${response.status}): ${errorText}`);
+    }
+    
+    return await response.json();
+  } catch (error: any) {
+    console.error('submitImage error:', error);
+    throw new Error(error.message || 'Network error - could not process image');
   }
-  return response.json();
 }
