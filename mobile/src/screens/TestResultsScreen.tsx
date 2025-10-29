@@ -10,7 +10,9 @@ import {
   Alert,
 } from 'react-native';
 import { evaluateIshiharaTest } from '../services/api';
-// import { auth } from '../services/firebase'; // Uncomment when using Firebase
+import { auth } from '../services/firebase';
+import { saveTestResults, syncProfileToFirestore } from '../services/firebaseSync';
+import { updateProfileFromTest } from '../services/profileStorage';
 
 const TestResultsScreen = ({ route, navigation }: any) => {
   const { responses, mode } = route.params || {};
@@ -27,9 +29,10 @@ const TestResultsScreen = ({ route, navigation }: any) => {
       setLoading(true);
       setError(null);
 
-      // Get user ID from Firebase Auth (when implemented)
-      // const userId = auth().currentUser?.uid || 'guest';
-      const userId = 'guest_' + Date.now(); // Temporary guest ID
+      // Get user ID from Firebase Auth
+      const currentUser = auth().currentUser;
+      const userId = currentUser?.uid || 'guest_' + Date.now();
+      const isAuthenticated = !!currentUser;
 
       // Convert responses object to API format
       const apiResponses: { [key: number]: string } = {};
@@ -41,10 +44,36 @@ const TestResultsScreen = ({ route, navigation }: any) => {
         userId,
         apiResponses,
         mode || 'quick',
-        false // Don't save profile for guest users
+        isAuthenticated // Only save profile for authenticated users
       );
 
       setResults(data);
+
+      // Save to local storage and Firebase
+      if (data.diagnosis) {
+        const { cvd_type, severity } = data.diagnosis;
+        const totalPlates = mode === 'comprehensive' ? 38 : 14;
+        const correctCount = data.plate_analysis?.correct_count || 0;
+        
+        // Update local storage
+        await updateProfileFromTest(
+          cvd_type as any,
+          severity,
+          (correctCount / totalPlates) * 100,
+          mode || 'quick'
+        );
+
+        // Sync to Firestore if authenticated
+        if (isAuthenticated) {
+          try {
+            await saveTestResults(mode || 'quick', data);
+            console.log('Test results saved to Firestore');
+          } catch (syncError) {
+            console.warn('Could not sync to Firestore:', syncError);
+            // Don't show error to user - continue with local save
+          }
+        }
+      }
     } catch (err: any) {
       console.error('Failed to evaluate test:', err);
       setError(err.message || 'Failed to evaluate test results');
@@ -55,10 +84,12 @@ const TestResultsScreen = ({ route, navigation }: any) => {
       );
       // Fallback to placeholder results
       setResults({
-        cvd_type: 'normal',
-        severity: 0,
-        confidence: 0,
-        interpretation: 'Unable to connect to server for evaluation',
+        diagnosis: {
+          cvd_type: 'normal',
+          severity: 0,
+          confidence: 0,
+          interpretation: 'Unable to connect to server for evaluation',
+        },
       });
     } finally {
       setLoading(false);

@@ -9,13 +9,14 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-// import { auth } from '../services/firebase'; // Uncomment when using native build
+import { auth } from '../services/firebase';
 
 const AuthScreen = ({ navigation }: any) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleAuth = async () => {
     // Validate inputs
@@ -29,25 +30,69 @@ const AuthScreen = ({ navigation }: any) => {
       return;
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
+    // Validate password strength
+    if (!isLogin && password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
+      return;
+    }
+
+    setLoading(true);
     try {
-      // TODO: Implement Firebase Auth when using native build
-      // if (isLogin) {
-      //   await auth().signInWithEmailAndPassword(email, password);
-      // } else {
-      //   await auth().createUserWithEmailAndPassword(email, password);
-      // }
-      
-      console.log(isLogin ? 'Logging in...' : 'Registering...');
-      console.log('Email:', email);
-      
-      // For Expo Go demo: simulate successful auth
-      Alert.alert(
-        'Success',
-        isLogin ? 'Logged in successfully!' : 'Account created successfully!',
-        [{ text: 'OK', onPress: () => navigation.replace('Main') }]
-      );
+      if (isLogin) {
+        // Sign in existing user
+        const userCredential = await auth().signInWithEmailAndPassword(email, password);
+        console.log('User signed in:', userCredential.user.uid);
+        
+        Alert.alert(
+          'Success',
+          'Logged in successfully!',
+          [{ text: 'OK', onPress: () => navigation.replace('Main') }]
+        );
+      } else {
+        // Create new user
+        const userCredential = await auth().createUserWithEmailAndPassword(email, password);
+        console.log('User created:', userCredential.user.uid);
+        
+        Alert.alert(
+          'Success',
+          'Account created successfully!',
+          [{ text: 'OK', onPress: () => navigation.replace('Main') }]
+        );
+      }
     } catch (error: any) {
-      Alert.alert('Authentication Error', error.message);
+      console.error('Auth error:', error);
+      
+      // Handle specific Firebase errors
+      let errorMessage = 'Authentication failed. Please try again.';
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered. Please sign in instead.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address.';
+      } else if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email.';
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak. Use at least 6 characters.';
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed attempts. Please try again later.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Authentication Error', errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -93,9 +138,13 @@ const AuthScreen = ({ navigation }: any) => {
           />
         )}
 
-        <TouchableOpacity style={styles.button} onPress={handleAuth}>
+        <TouchableOpacity 
+          style={[styles.button, loading && styles.buttonDisabled]} 
+          onPress={handleAuth}
+          disabled={loading}
+        >
           <Text style={styles.buttonText}>
-            {isLogin ? 'Sign In' : 'Sign Up'}
+            {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Sign Up')}
           </Text>
         </TouchableOpacity>
 
@@ -158,6 +207,10 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  buttonDisabled: {
+    backgroundColor: '#A0C4E8',
+    opacity: 0.6,
   },
   switchText: {
     textAlign: 'center',
