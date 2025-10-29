@@ -67,6 +67,14 @@ const HomeScreen = ({ navigation }: any) => {
             color="#9B59B6"
             onPress={() => navigation.navigate('Education')}
           />
+
+          <FeatureCard
+            title="Test Algorithms"
+            description="Run tests to verify on-device processing"
+            icon="🧪"
+            color="#FFA500"
+            onPress={() => navigation.navigate('TestRunner')}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>

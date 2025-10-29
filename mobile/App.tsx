@@ -20,6 +20,7 @@ import CVDSimulationScreen from './src/screens/CVDSimulationScreen';
 import GalleryScreen from './src/screens/GalleryScreen';
 import EducationScreen from './src/screens/EducationScreen';
 import LearnDetailsScreen from './src/screens/LearnDetailsScreen';
+import TestRunnerScreen from './src/screens/TestRunnerScreen';
 
 const Stack = createStackNavigator();
 
@@ -139,6 +140,13 @@ const App = () => {
           name="LearnDetails" 
           component={LearnDetailsScreen} 
           options={{ title: 'Learn More' }}
+        />
+
+        {/* Testing & Debug */}
+        <Stack.Screen 
+          name="TestRunner" 
+          component={TestRunnerScreen} 
+          options={{ title: 'Algorithm Tests' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
