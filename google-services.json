@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "50383676625",
+    "project_id": "recolor-7d7fd",
+    "storage_bucket": "recolor-7d7fd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:50383676625:android:91cd747047b39ef8bed1f0",
+        "android_client_info": {
+          "package_name": "recolor.peri.lpu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAOoHkeZ5ZZtkSX8SkZI9JP1UjZGiwrR78"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
