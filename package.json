@@ -1,0 +1,25 @@
+{
+  "scripts": {
+    "export:matrix": "node scripts/export_matrix.js --output out/matrix.png",
+    "export:strip": "node scripts/export_strip.js --output out/strip.png",
+    "export:corrected": "node scripts/export_corrected.js --outDir out --strength 1.0",
+    "export:corrected:strip": "node scripts/export_corrected_strip.js --output out/corrected_strip.png --strength 1.0",
+    "export:grid": "node scripts/export_research_grid.js --output out/research_grid.png",
+    "export:combine": "node scripts/combine_rows.js --sim out/row_simulated.png --corr out/row_corrected.png --output out/matrix_combined.png",
+    "export:flow": "node scripts/export_flow_diagram.js --outputSvg out/flow_diagram.svg --outputPng out/flow_diagram.png"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-community/slider": "^5.1.1",
+    "@shopify/react-native-skia": "^2.3.13",
+    "react-native-keep-awake": "^4.0.0",
+    "react-native-reanimated": "^4.1.5",
+    "react-native-screen-brightness": "^2.0.0-alpha",
+    "react-native-vision-camera": "^4.7.3"
+  },
+  "devDependencies": {
+    "@react-native-community/cli": "^20.0.2",
+    "@types/react": "^19.2.6",
+    "sharp": "^0.33.4"
+  }
+}
