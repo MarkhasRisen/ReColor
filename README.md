@@ -1,17 +1,16 @@
-# ReColor – DaltonizedCamera + SKSL Shader (React Native)
+# Daltonization – Thesis Artifacts & Figure Generator
 
-High-performance, GPU-accelerated daltonization for live camera using:
-
-- react-native-vision-camera (live frames)
-- @shopify/react-native-skia (Runtime Shader on GPU)
-- react-native-reanimated (UI-thread slider without re-renders)
+High-performance, GPU-accelerated daltonization for live camera **plus** a set of
+CPU-based export scripts for generating all thesis figures.
 
 This repository includes:
 - A Skia Runtime Shader in SKSL performing LMS-based daltonization (with sRGB linearization).
 - A `DaltonizedCamera` component that renders the device camera and overlays a Skia canvas using the shader.
 - CVD matrices (Protan/Deutan/Tritan) for simulation and correction.
+- Node/Sharp scripts under `scripts/` to regenerate every figure used in the thesis
+  (2×3 matrix, 1×3 strips, research grid, algorithm flow diagram).
 
-## Requirements
+## 1. Requirements (Live App)
 
 - React Native 0.72+ (or Expo with custom dev client)
 - react-native-vision-camera (latest)
@@ -21,7 +20,15 @@ This repository includes:
 
 Note: The code compiles even without this plugin, but live GPU filtering requires it. Without the plugin, the overlay won’t receive the camera frame as a SkImage.
 
-## Shader Overview
+For the **figure-generation scripts** only, you just need:
+
+```sh
+npm install
+```
+
+The scripts run in Node and do not require a React Native runtime.
+
+## 2. Shader Overview (Algorithm)
 
 The shader operates per pixel:
 
@@ -34,7 +41,7 @@ The shader operates per pixel:
 7. LMS -> RGB via `u_LMS_TO_RGB`.
 8. Convert linear RGB -> sRGB and clamp.
 
-Source: `src/shaders/daltonize.ts` (`DALTONIZE_SKSL`).
+Source: `src/shaders/daltonize.ts` (`DALTONIZE_SKSL`). See also `src/shaders/daltonize.sksl` for a standalone SKSL version.
 
 ### 📝 Methodology & Technical Rationale
 
@@ -48,7 +55,7 @@ The ReColor algorithm uses a custom fragment shader approach to ensure high perf
 | Correction Model | Full Simulation + Gain Control: The algorithm simulates full Dichromacy (100% severity) to derive the maximum possible error vector. The single `u_Strength` slider then applies a gain factor to this correction vector. | Provides the user with a single, clear control that scales assistance strength without introducing confusing, mathematically redundant compounding effects. |
 | System Constraint Aware | Calibration Guard: The UI enforces maximum screen brightness and educates the user to disable protected OS color layers (like Night Shift/True Tone) that cannot be controlled programmatically. | Proves the software is aware of platform security boundaries and manages the physical display environment for reliable color output. |
 
-## Component API
+## 3. Live Camera Component API
 
 `src/components/DaltonizedCamera.tsx`
 
@@ -84,7 +91,7 @@ Implementation details:
 - The original image is drawn on top and clipped to `[0, split * width]` using a Skia `Mask` with a `Rect`.
 - A thin white divider marks the boundary for clear visual comparison.
 
-## Matrices
+## 4. Matrices
 
 `src/constants/matrices.ts` provides:
 - HPE RGB↔LMS transforms for linearized sRGB (column-major uniforms for SKSL)
@@ -92,7 +99,7 @@ Implementation details:
 - Matching correction matrices to redistribute lost cone signals
 - `MATRICES_BY_TYPE` and `CVDType` helpers to switch quickly
 
-## Usage Example
+## 5. Usage Example (Live App)
 
 ```tsx
 import React from 'react';
@@ -128,23 +135,98 @@ export default function App() {
 }
 ```
 
-## 2x3 Matrix Slide (Presentation)
+## 6. Thesis Figure Generation (scripts/export_* )
 
-To generate a clinical 2x3 grid (Row 1: Simulation, Row 2: Corrected):
+All heavy PNG outputs used in the thesis are intentionally **not** committed to git.
+Instead, regenerate them on demand using the scripts below. By default, outputs are
+written to the `out/` directory.
 
-1. Add your source image as `src/assets/source.jpg` (see `src/assets/README.md` for guidance).
-2. Render `MatrixSlide` in your app or as a separate screen.
-3. Optional: I can wire a Skia snapshot + RNFS saver for a high‑res PNG export.
+### 6.1 2×3 Matrix: Simulation (Row 1) + Correction (Row 2)
 
-Labels per panel:
-- Protanopia (Simulated)
-- Deuteranopia (Simulated)
-- Tritanopia (Simulated)
-- Protanopia (Corrected)
-- Deuteranopia (Corrected)
-- Tritanopia (Corrected)
+Six panels: Protan/Deutan/Tritan simulated on top row, corrected on bottom row.
 
-## Installation Notes
+```sh
+npm run export:matrix
+# => out/matrix.png
+```
+
+Optional sizing:
+
+```sh
+node scripts/export_matrix.js --size 3300x2550
+node scripts/export_matrix.js --letter --orientation portrait --dpi 300
+```
+
+### 6.2 1×3 Simulation Strip
+
+```sh
+npm run export:strip
+# => out/strip.png
+```
+
+### 6.3 1×3 Corrected Strip
+
+```sh
+npm run export:corrected:strip
+# => out/corrected_strip.png
+```
+
+Custom strength / sizing:
+
+```sh
+node scripts/export_corrected_strip.js --strength 0.8 --output out/corrected_strip_s0_8.png
+node scripts/export_corrected_strip.js --letter --orientation landscape --dpi 300
+```
+
+### 6.4 Individual Corrected Images (Per CVD Type)
+
+```sh
+npm run export:corrected
+# => out/protan_corrected.png
+# => out/deutan_corrected.png
+# => out/tritan_corrected.png
+```
+
+### 6.5 Research-Style Grid (Severity vs. Strength)
+
+Multi-row grid showing simulation severities (`s`) and correction strengths (`k`)
+for Protan/Deutan/Tritan:
+
+```sh
+npm run export:grid
+# => out/research_grid.png
+```
+
+Custom levels and sizing:
+
+```sh
+node scripts/export_research_grid.js --sim 0.25,0.5,0.75,1.0 --corr 0.25,0.5,0.75,1.0
+node scripts/export_research_grid.js --letter --orientation portrait --dpi 300
+```
+
+### 6.6 Algorithm Flow Diagram
+
+Thesis-grade flow diagram for the full pipeline
+(Linearization → LMS Transform → Simulation → Error → Correction):
+
+```sh
+npm run export:flow
+# => out/flow_diagram.svg
+# => out/flow_diagram.png
+```
+
+### 6.7 Combined 2×3 Matrix from Separate Rows (Optional)
+
+When generating rows separately:
+
+```sh
+node scripts/export_strip.js --output out/row_simulated.png
+node scripts/export_corrected_strip.js --output out/row_corrected.png --strength 1.0
+npm run export:combine
+# => out/matrix_combined.png
+```
+
+## 7. Installation Notes (React Native App)
 
 1. Install packages:
 
