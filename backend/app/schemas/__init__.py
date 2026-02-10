@@ -1,1 +1,0 @@
-"""Request/response schemas for the API."""
