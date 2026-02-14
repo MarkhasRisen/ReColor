@@ -1,0 +1,12 @@
+# Minimal inferred dependencies for this project
+# Adjust versions as needed for your environment and GPU/CPU support
+tensorflow>=2.5
+numpy>=1.19
+Pillow>=8.0
+scikit-image>=0.18
+matplotlib>=3.3
+
+# Optional / useful tools (uncomment if required)
+# imageio>=2.9
+# opencv-python>=4.5
+# h5py>=2.10

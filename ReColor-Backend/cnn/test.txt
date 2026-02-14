@@ -1,0 +1,10 @@
+families = {
+    "red": 0, 
+    "orange": 30,   # hue degrees
+    "yellow": 60,
+    "green": 120,
+    "blue": 240
+    "indigo": 275,
+    "violet": 300,
+    "black": 0,
+}

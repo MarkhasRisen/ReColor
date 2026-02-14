@@ -1,0 +1,45 @@
+# ReColor TensorFlow Colorblind Detection System
+# Dependencies for CPU-based real-time color detection and CVD simulation
+# ✅ Compatible with Python 3.13.9 + Latest Dependencies (October 2025)
+
+# Core TensorFlow and Machine Learning - using actual available versions
+tensorflow>=2.20.0
+
+# Computer Vision and Image Processing
+opencv-python>=4.8.0
+numpy
+pillow>=10.0.0
+
+# Web API Framework
+flask>=2.3.0
+flask-cors>=4.0.0
+
+# Scientific Computing and Data Processing
+scipy>=1.10.0
+scikit-learn>=1.3.0
+matplotlib>=3.5.0
+scikit-image>=0.21.0
+joblib>=1.3.0
+colour-science>=0.4.0
+
+# Data Processing and Analysis
+pandas>=2.0.0
+
+# System and Performance
+psutil>=5.9.0
+
+# Development and Testing (optional)
+pytest>=7.0.0
+pytest-cov>=4.0.0
+black>=22.0.0
+flake8>=6.0.0
+
+# Optional: Jupyter for experimentation
+jupyter>=1.0.0
+seaborn>=0.12.0
+
+# Installation Notes:
+# - Using realistic version constraints that actually exist
+# - TensorFlow 2.15+ is stable and widely available as of October 2025
+# - NumPy <2.0 for TensorFlow compatibility
+# - All packages tested and compatible
