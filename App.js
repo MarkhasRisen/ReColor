@@ -4,6 +4,7 @@ import {
   prepareInputTensor,
   getClassMask,
   applyDaltonization,
+  applyCVDSimulation,
   decodeJpegBase64,
   encodeToDataUri,
 } from './tensorHelper';
@@ -1926,9 +1927,66 @@ function ColorIdentifierScreen({ navigation }) {
 
 function CVDSimulationScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
-  const [mode, setMode] = useState('Protan'); 
-  const [showModal, setShowModal] = useState(false);
-  const [cameraType, setCameraType] = useState('Back Camera');
+  const [mode, setMode]                 = useState('Protan');
+  const [showModal, setShowModal]       = useState(false);
+  const [cameraType, setCameraType]     = useState('Back Camera');
+  const [processedUri, setProcessedUri] = useState(null);
+  const [modelStatus, setModelStatus]   = useState('loading');
+
+  const cameraRef    = useRef(null);
+  const intervalRef  = useRef(null);
+  const isProcessing = useRef(false);
+
+  // Load TFLite model
+  const tflite = useTensorflowModel(require('./assets/color_model.tflite'));
+
+  useEffect(() => {
+    if (tflite.state === 'loaded') setModelStatus('ready');
+    if (tflite.state === 'error')  setModelStatus('error');
+  }, [tflite.state]);
+
+  // ── Frame processing loop ─────────────────────────────────
+  const runFramePipeline = async () => {
+    if (isProcessing.current) return;
+    if (!cameraRef.current)   return;
+    if (tflite.state !== 'loaded' || !tflite.model) return;
+    if (mode === 'Off') { setProcessedUri(null); return; }
+
+    isProcessing.current = true;
+    try {
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.4, base64: false, skipProcessing: true, exif: false,
+      });
+
+      const resized = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        [{ resize: { width: 128, height: 128 } }],
+        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
+      );
+
+      const inputTensor  = prepareInputTensor(resized.base64);
+      const outputs      = tflite.model.runSync([inputTensor]);
+      const mask         = getClassMask(outputs[0]);
+      const rawImage     = decodeJpegBase64(resized.base64);
+      const simulated    = applyCVDSimulation(rawImage, mask, mode);
+      const uri          = encodeToDataUri(simulated, rawImage.width, rawImage.height);
+      setProcessedUri(uri);
+    } catch (e) {
+      // Silently ignore frame errors
+    } finally {
+      isProcessing.current = false;
+    }
+  };
+
+  useEffect(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (tflite.state === 'loaded') {
+      intervalRef.current = setInterval(runFramePipeline, 200);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [tflite.state, mode]);
 
   // --- PERMISSION CHECK ---
   if (!permission) return <View />;
@@ -1952,98 +2010,105 @@ function CVDSimulationScreen({ navigation }) {
     }
   };
 
-  const getSimColor = () => {
-    switch (mode) {
-      case 'Protan': return 'rgba(150, 120, 80, 0.4)'; 
-      case 'Deutan': return 'rgba(120, 130, 80, 0.4)'; 
-      case 'Tritan': return 'rgba(200, 150, 180, 0.4)'; 
-      default: return 'transparent';
-    }
-  };
-
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
-      {/* SWAPPED: ImageBackground -> CameraView */}
-      <CameraView 
-        style={{ flex: 1 }} 
+
+      {/* Live camera feed */}
+      <CameraView
+        style={StyleSheet.absoluteFill}
         facing={cameraType === 'Back Camera' ? 'back' : 'front'}
-      >
-        
-        {/* PRESERVED: The Filter Overlay View */}
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: getSimColor() }]} pointerEvents="none" />
-        
-        <SafeAreaView style={{ flex: 1 }}>
-          
-          <View style={styles.camTopBar}>
-            <View style={{flexDirection:'row', alignItems:'center'}}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 10 }}>
-                  <Ionicons name="arrow-back" size={24} color="#FFF" />
-                </TouchableOpacity>
-                <View style={styles.camPill}>
-                   <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>{cameraType}</Text>
-                </View>
-            </View>
-            <View style={{flexDirection:'row', alignItems:'center'}}>
-               <Text style={{color:'#FFF', fontWeight:'bold', marginRight:10}}>CVD Sim</Text>
-               <TouchableOpacity onPress={() => setShowModal(true)}>
-                 <Ionicons name="menu" size={28} color="#FFF" />
-               </TouchableOpacity>
-            </View>
+        ref={cameraRef}
+      />
+
+      {/* CNN-processed CVD simulation overlay */}
+      {processedUri && mode !== 'Off' && (
+        <Image
+          source={{ uri: processedUri }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="stretch"
+          fadeDuration={0}
+        />
+      )}
+
+      <SafeAreaView style={{ flex: 1 }}>
+
+        <View style={styles.camTopBar}>
+          <View style={{flexDirection:'row', alignItems:'center'}}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 10 }}>
+                <Ionicons name="arrow-back" size={24} color="#FFF" />
+              </TouchableOpacity>
+              <View style={styles.camPill}>
+                 <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>{cameraType}</Text>
+              </View>
           </View>
-
-          {/* --- INFO BOX (MATCHING REFERENCE) --- */}
-          <View style={{ 
-            position: 'absolute', top: 120, left: 20, right: 85, // Right padding avoids buttons
-            backgroundColor: 'rgba(30, 20, 20, 0.9)', // Dark reddish-black for high contrast
-            padding: 15, borderRadius: 12,
-            flexDirection: 'row', alignItems: 'center'
-          }}>
-             <Ionicons name="information-circle-outline" size={24} color="#FFF" style={{marginRight: 12}} />
-             <View style={{flex: 1}}>
-                <Text style={{ color: '#BBB', fontSize: 10, marginBottom: 2 }}>Simulation Active</Text>
-                <Text style={{ color: '#FFF', fontSize: 13, fontWeight: 'bold', lineHeight: 18 }}>
-                  {getSimDescription()}
-                </Text>
-             </View>
-          </View>
-
-          {/* Side Modes */}
-          <View style={{ position: 'absolute', top: 120, right: 20, alignItems: 'center', zIndex: 100, elevation: 100 }}>
-             <TouchableOpacity onPress={() => setMode('Off')} style={[styles.filterBtn, { backgroundColor: '#555', marginBottom: 20 }, mode === 'Off' && styles.filterBtnActive]}>
-               <Text style={{ fontWeight: 'bold', color: '#FFF' }}>Off</Text>
-             </TouchableOpacity>
-             
-             <TouchableOpacity onPress={() => setMode('Protan')} style={[styles.filterBtn, { backgroundColor: '#FF3B30', marginBottom: 15 }, mode === 'Protan' && styles.filterBtnActive]}>
-               <Text style={styles.filterText}>P</Text>
-             </TouchableOpacity>
-
-             <TouchableOpacity onPress={() => setMode('Deutan')} style={[styles.filterBtn, { backgroundColor: '#4CD964', marginBottom: 15 }, mode === 'Deutan' && styles.filterBtnActive]}>
-               <Text style={styles.filterText}>D</Text>
-             </TouchableOpacity>
-
-             <TouchableOpacity onPress={() => setMode('Tritan')} style={[styles.filterBtn, { backgroundColor: '#007AFF' }, mode === 'Tritan' && styles.filterBtnActive]}>
-               <Text style={styles.filterText}>T</Text>
+          <View style={{flexDirection:'row', alignItems:'center'}}>
+             <Text style={{color:'#FFF', fontWeight:'bold', marginRight:10}}>CVD Sim</Text>
+             <TouchableOpacity onPress={() => setShowModal(true)}>
+               <Ionicons name="menu" size={28} color="#FFF" />
              </TouchableOpacity>
           </View>
+        </View>
 
-          {/* Bottom Controls */}
-          <View style={{ position: 'absolute', bottom: 30, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 30, alignItems: 'center', zIndex: 50 }}>
-             <TouchableOpacity style={styles.camBtnCircleSmall} onPress={() => setCameraType(c => c === 'Back Camera' ? 'Front Camera' : 'Back Camera')}>
-                <Ionicons name="camera-reverse-outline" size={24} color="#FFF" />
-             </TouchableOpacity>
-             
-             <TouchableOpacity style={styles.shutterBtn}>
-                <Ionicons name="camera" size={32} color="#000" />
-             </TouchableOpacity>
-             
-             <TouchableOpacity style={styles.camBtnCircleSmall} onPress={() => navigation.navigate('CVDGallery')}>
-                <Ionicons name="image-outline" size={24} color="#FFF" />
-             </TouchableOpacity>
+        {/* Model status indicator */}
+        {modelStatus === 'loading' && (
+          <View style={{ position: 'absolute', top: 70, alignSelf: 'center',
+            backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
+            <Text style={{ color: '#FFF', fontSize: 12 }}>Loading model...</Text>
           </View>
+        )}
 
-          <ModeSelector visible={showModal} onClose={() => setShowModal(false)} navigation={navigation} currentMode="Simulation" />
-        </SafeAreaView>
-      </CameraView>
+        {/* --- INFO BOX --- */}
+        <View style={{
+          position: 'absolute', top: 120, left: 20, right: 85,
+          backgroundColor: 'rgba(30, 20, 20, 0.9)',
+          padding: 15, borderRadius: 12,
+          flexDirection: 'row', alignItems: 'center'
+        }}>
+           <Ionicons name="information-circle-outline" size={24} color="#FFF" style={{marginRight: 12}} />
+           <View style={{flex: 1}}>
+              <Text style={{ color: '#BBB', fontSize: 10, marginBottom: 2 }}>Simulation Active</Text>
+              <Text style={{ color: '#FFF', fontSize: 13, fontWeight: 'bold', lineHeight: 18 }}>
+                {getSimDescription()}
+              </Text>
+           </View>
+        </View>
+
+        {/* Side Modes */}
+        <View style={{ position: 'absolute', top: 120, right: 20, alignItems: 'center', zIndex: 100, elevation: 100 }}>
+           <TouchableOpacity onPress={() => setMode('Off')} style={[styles.filterBtn, { backgroundColor: '#555', marginBottom: 20 }, mode === 'Off' && styles.filterBtnActive]}>
+             <Text style={{ fontWeight: 'bold', color: '#FFF' }}>Off</Text>
+           </TouchableOpacity>
+
+           <TouchableOpacity onPress={() => setMode('Protan')} style={[styles.filterBtn, { backgroundColor: '#FF3B30', marginBottom: 15 }, mode === 'Protan' && styles.filterBtnActive]}>
+             <Text style={styles.filterText}>P</Text>
+           </TouchableOpacity>
+
+           <TouchableOpacity onPress={() => setMode('Deutan')} style={[styles.filterBtn, { backgroundColor: '#4CD964', marginBottom: 15 }, mode === 'Deutan' && styles.filterBtnActive]}>
+             <Text style={styles.filterText}>D</Text>
+           </TouchableOpacity>
+
+           <TouchableOpacity onPress={() => setMode('Tritan')} style={[styles.filterBtn, { backgroundColor: '#007AFF' }, mode === 'Tritan' && styles.filterBtnActive]}>
+             <Text style={styles.filterText}>T</Text>
+           </TouchableOpacity>
+        </View>
+
+        {/* Bottom Controls */}
+        <View style={{ position: 'absolute', bottom: 30, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 30, alignItems: 'center', zIndex: 50 }}>
+           <TouchableOpacity style={styles.camBtnCircleSmall} onPress={() => setCameraType(c => c === 'Back Camera' ? 'Front Camera' : 'Back Camera')}>
+              <Ionicons name="camera-reverse-outline" size={24} color="#FFF" />
+           </TouchableOpacity>
+
+           <TouchableOpacity style={styles.shutterBtn}>
+              <Ionicons name="camera" size={32} color="#000" />
+           </TouchableOpacity>
+
+           <TouchableOpacity style={styles.camBtnCircleSmall} onPress={() => navigation.navigate('CVDGallery')}>
+              <Ionicons name="image-outline" size={24} color="#FFF" />
+           </TouchableOpacity>
+        </View>
+
+        <ModeSelector visible={showModal} onClose={() => setShowModal(false)} navigation={navigation} currentMode="Simulation" />
+      </SafeAreaView>
     </View>
   );
 }

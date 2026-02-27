@@ -206,6 +206,50 @@ export function encodeToDataUri(rgbaPixels, width, height, quality = 85) {
   return `data:image/jpeg;base64,${b64}`;
 }
 
+// ─────────────────────────────────────────────────────────────
+// applyCVDSimulation
+//
+// Like applyDaltonization but stops at simulation — shows what
+// a colorblind person actually sees (no error redistribution).
+// Used by CVDSimulationScreen.
+// ─────────────────────────────────────────────────────────────
+export function applyCVDSimulation(rawImageData, mask, cvdType) {
+  const pixels       = new Uint8Array(rawImageData.data); // copy
+  const confusionSet = CONFUSION_CLASSES[cvdType];
+  const SIM          = CVD_SIM[cvdType];
+  const numPixels    = rawImageData.width * rawImageData.height;
+
+  for (let i = 0; i < numPixels; i++) {
+    if (!confusionSet.has(mask[i])) continue;
+
+    const rIdx = i * 4;
+    const rLin = srgbToLinear(pixels[rIdx]     / 255.0);
+    const gLin = srgbToLinear(pixels[rIdx + 1] / 255.0);
+    const bLin = srgbToLinear(pixels[rIdx + 2] / 255.0);
+
+    // RGB → LMS
+    const L = RGB_TO_LMS[0][0] * rLin + RGB_TO_LMS[0][1] * gLin + RGB_TO_LMS[0][2] * bLin;
+    const M = RGB_TO_LMS[1][0] * rLin + RGB_TO_LMS[1][1] * gLin + RGB_TO_LMS[1][2] * bLin;
+    const S = RGB_TO_LMS[2][0] * rLin + RGB_TO_LMS[2][1] * gLin + RGB_TO_LMS[2][2] * bLin;
+
+    // Simulate CVD (just show what they see — NO error redistribution)
+    const Ls = SIM[0][0] * L + SIM[0][1] * M + SIM[0][2] * S;
+    const Ms = SIM[1][0] * L + SIM[1][1] * M + SIM[1][2] * S;
+    const Ss = SIM[2][0] * L + SIM[2][1] * M + SIM[2][2] * S;
+
+    // LMS → RGB (simulated values directly)
+    const rOut = LMS_TO_RGB[0][0] * Ls + LMS_TO_RGB[0][1] * Ms + LMS_TO_RGB[0][2] * Ss;
+    const gOut = LMS_TO_RGB[1][0] * Ls + LMS_TO_RGB[1][1] * Ms + LMS_TO_RGB[1][2] * Ss;
+    const bOut = LMS_TO_RGB[2][0] * Ls + LMS_TO_RGB[2][1] * Ms + LMS_TO_RGB[2][2] * Ss;
+
+    pixels[rIdx]     = Math.round(linearToSrgb(Math.max(0, Math.min(1, rOut))) * 255);
+    pixels[rIdx + 1] = Math.round(linearToSrgb(Math.max(0, Math.min(1, gOut))) * 255);
+    pixels[rIdx + 2] = Math.round(linearToSrgb(Math.max(0, Math.min(1, bOut))) * 255);
+  }
+
+  return pixels;
+}
+
 export function applyDaltonization(rawImageData, mask, cvdType) {
   const pixels       = new Uint8Array(rawImageData.data); // copy
   const confusionSet = CONFUSION_CLASSES[cvdType];
