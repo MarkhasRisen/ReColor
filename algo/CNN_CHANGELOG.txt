@@ -1,0 +1,138 @@
+═══════════════════════════════════════════════════════════════════
+                    CNN MODEL CHANGES HISTORY
+                    ReColor — Colorblind Camera App
+═══════════════════════════════════════════════════════════════════
+
+
+───────────────────────────────────────────────────────────────────
+VERSION 1 — Initial 19-Class CNN (Nov 27, 2025)
+Commit: 3b3630e1
+File:   improved_fine_tune.ipynb
+───────────────────────────────────────────────────────────────────
+- First CNN prototype: 19 color classes
+- Used a separate Color-Classification-CNN submodule
+- Basic color classifier (not segmentation — single label per image)
+- Purpose: identify dominant color in cropped regions
+
+
+───────────────────────────────────────────────────────────────────
+VERSION 2 — CNN mk1: Synthetic Data + HSV Thresholds (Feb 18, 2026)
+Commit: 37f1a305
+File:   algo/cnn.ipynb (Cell 1 created)
+───────────────────────────────────────────────────────────────────
+- Moved to algo/cnn.ipynb (new notebook)
+- Switched from classification to SEMANTIC SEGMENTATION (per-pixel)
+- Architecture: U-Net (encoder-decoder with skip connections)
+- Training data: purely synthetic color patches (generated rectangles)
+- Labeling method: hard-coded HSV thresholds
+  - e.g., Hue 0-10 = Red, Hue 35-85 = Green, Saturation < X = Neutral
+- 10 color classes: Neutral, Red, Orange, Yellow, Green, Cyan,
+  Blue, Violet, Pink, Brown
+- Problem: synthetic-only data = poor generalization on real photos
+
+
+───────────────────────────────────────────────────────────────────
+VERSION 3 — CNN mk2: Added CIFAR-10 (Feb 19, 2026)
+Commits: 9b7fee4d, d3260c15
+File:    algo/cnn.ipynb
+───────────────────────────────────────────────────────────────────
+- Added CIFAR-10 real images to training (mixed with synthetic)
+- Still using HSV thresholds for ground-truth labeling
+- U-Net architecture unchanged (32/64/128 filters)
+- Accuracy: ~60-70% on test set
+- Problem: HSV thresholds misclassify muted/ambiguous colors
+  (e.g., muted greens detected as Neutral/gray)
+
+
+───────────────────────────────────────────────────────────────────
+VERSION 4 — Accuracy Improvement (Feb 25-26, 2026)
+Commits: 09441b6c, ec6e61b2
+File:    algo/cnn.ipynb
+───────────────────────────────────────────────────────────────────
+- Tuned HSV thresholds and training parameters
+- Achieved ~95% accuracy on test set
+- Still HSV-based labeling (fundamental limitation remains)
+- Muted greens and browns still problematic due to HSV's
+  non-perceptual nature
+
+
+───────────────────────────────────────────────────────────────────
+VERSION 5 — CIELAB Rework + Munsell References (Feb 26-27, 2026)
+Commits: 59b68237, ccc7f271
+File:    algo/cnn.ipynb
+───────────────────────────────────────────────────────────────────
+MAJOR REWORK — replaced entire labeling system:
+
+Labeling changes:
+- REMOVED: all hard-coded HSV thresholds
+- ADDED: CIELAB color space nearest-neighbor classification
+- ADDED: Munsell-sourced reference colors for each class:
+    Class 0 Neutral  — chroma threshold (C* < 22)
+    Class 1 Red      — Munsell 5R  5/14  → sRGB (220, 38, 38)
+    Class 2 Orange   — Munsell 5YR 6/14  → sRGB (249,115, 22)
+    Class 3 Yellow   — Munsell 5Y  8/12  → sRGB (234,179,  8)
+    Class 4 Green    — Munsell 5G  5/10  → sRGB ( 34,140, 34)
+    Class 5 Cyan     — Munsell 5BG 5/6   → sRGB (  6,182,212)
+    Class 6 Blue     — Munsell 5B  4/8   → sRGB ( 37, 99,235)
+    Class 7 Violet   — Munsell 5P  4/10  → sRGB (124, 58,237)
+    Class 8 Pink     — Munsell 5RP 7/10  → sRGB (236, 72,153)
+    Class 9 Brown    — Munsell 5YR 4/6   → sRGB (146, 64, 14)
+- Uses Delta-E 1976 (Euclidean distance in Lab) for classification
+- Neutral assigned when chroma C* < 22 (achromatic pixels)
+
+Training changes:
+- Dataset: 6000 CIFAR-10 train + 2000 synthetic patches + 1000 test
+- Synthetic patches generated in LAB space (random hue ±30° from ref)
+- Auto-computed class weights from actual frequency distribution
+- Weighted loss: custom weighted_sparse_cce (handles class imbalance)
+- Callbacks: ReduceLROnPlateau (factor=0.5, patience=4)
+             EarlyStopping (patience=8, restore_best_weights=True)
+
+Architecture (unchanged from mk2):
+- U-Net: 32 → 64 → 128 filters (encoder)
+         128 → 64 → 32 filters (decoder)
+- BatchNormalization after every Conv2D
+- Skip connections via Concatenate
+- Output: Conv2D(10, 1x1, softmax) — per-pixel 10-class probabilities
+
+New cells added:
+- Cell 1.5: "Load Saved Model" — skip retraining, load from
+  color_segmenter.keras with custom_objects
+- Cell 2: Updated visualization — 4 panels:
+  Input | CIELAB Ground Truth | CNN Prediction | 50/50 Overlay
+- Cell 3: TFLite INT8 export (unchanged, already working)
+
+Model files:
+- color_segmenter.keras — full Keras model (~2-3 MB)
+- color_model.tflite    — INT8 quantized for mobile (~500 KB)
+
+
+───────────────────────────────────────────────────────────────────
+INTEGRATION — CVD Simulation + Camera Screens (Feb-Mar 2026)
+Files: tensorHelper.js, App.js
+───────────────────────────────────────────────────────────────────
+- tensorHelper.js: LMS color space matrices (Hunt-Pointer-Estevez)
+  - applyDaltonization()  — CNN mask + LMS sim + error redistribution
+  - applyCVDSimulation()  — CNN mask + LMS sim only (no correction)
+  - CVD simulation matrices for Protan, Deutan, Tritan
+  - Confusion class sets: which color classes each CVD type confuses
+
+- CVDSimulationScreen (App.js):
+  - REMOVED: fake rgba tint overlay (getSimColor)
+  - ADDED: real CNN pipeline — takePictureAsync → resize 128x128 →
+    prepareInputTensor → model.runSync → getClassMask →
+    applyCVDSimulation → encodeToDataUri → display
+  - Processes frames every 200ms (~5 FPS)
+
+- CameraSimScreen (App.js):
+  - Uses same CNN pipeline but calls applyDaltonization()
+  - Adds error redistribution to help colorblind users see colors
+
+- TFLite runtime: react-native-fast-tflite v1.5.1
+  (v1.6.1 has broken module resolution — spec/NativeRNTflite
+   not compiled to JS in published package)
+
+
+═══════════════════════════════════════════════════════════════════
+                     END OF CHANGES HISTORY
+═══════════════════════════════════════════════════════════════════
