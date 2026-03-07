@@ -16,7 +16,7 @@ import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -1927,15 +1927,18 @@ function ColorIdentifierScreen({ navigation }) {
 
 function CVDSimulationScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
-  const [mode, setMode]                 = useState('Protan');
+  const [mode, setMode]                 = useState('Off');
   const [showModal, setShowModal]       = useState(false);
   const [cameraType, setCameraType]     = useState('Back Camera');
   const [processedUri, setProcessedUri] = useState(null);
   const [modelStatus, setModelStatus]   = useState('loading');
 
   const cameraRef    = useRef(null);
-  const intervalRef  = useRef(null);
   const isProcessing = useRef(false);
+  const modeRef      = useRef(mode);
+
+  // Keep modeRef in sync so the async pipeline always reads current mode
+  useEffect(() => { modeRef.current = mode; }, [mode]);
 
   // Load TFLite model
   const tflite = useTensorflowModel(require('./assets/color_model.tflite'));
@@ -1945,48 +1948,59 @@ function CVDSimulationScreen({ navigation }) {
     if (tflite.state === 'error')  setModelStatus('error');
   }, [tflite.state]);
 
-  // ── Frame processing loop ─────────────────────────────────
-  const runFramePipeline = async () => {
+  // ── Frame processing loop (self-scheduling, not setInterval) ──
+  const runFramePipeline = useCallback(async () => {
     if (isProcessing.current) return;
     if (!cameraRef.current)   return;
     if (tflite.state !== 'loaded' || !tflite.model) return;
-    if (mode === 'Off') { setProcessedUri(null); return; }
+
+    const currentMode = modeRef.current;
+    if (currentMode === 'Off') {
+      setProcessedUri(null);
+      setTimeout(runFramePipeline, 300);
+      return;
+    }
 
     isProcessing.current = true;
     try {
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.4, base64: false, skipProcessing: true, exif: false,
+        quality: 0.3, base64: true, skipProcessing: true, exif: false,
+        shutterSound: false,
       });
 
       const resized = await ImageManipulator.manipulateAsync(
         photo.uri,
         [{ resize: { width: 128, height: 128 } }],
-        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
+        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.8 }
       );
 
       const inputTensor  = prepareInputTensor(resized.base64);
       const outputs      = tflite.model.runSync([inputTensor]);
       const mask         = getClassMask(outputs[0]);
       const rawImage     = decodeJpegBase64(resized.base64);
-      const simulated    = applyCVDSimulation(rawImage, mask, mode);
+      const simulated    = applyCVDSimulation(rawImage, mask, currentMode);
       const uri          = encodeToDataUri(simulated, rawImage.width, rawImage.height);
       setProcessedUri(uri);
     } catch (e) {
-      // Silently ignore frame errors
+      console.warn('[CVDSim] frame error:', e.message || e);
     } finally {
       isProcessing.current = false;
+      // Schedule next frame after current one finishes (no overlap)
+      setTimeout(runFramePipeline, 100);
     }
-  };
+  }, [tflite.state, tflite.model]);
 
+  // Start/stop the pipeline when model loads
   useEffect(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
     if (tflite.state === 'loaded') {
-      intervalRef.current = setInterval(runFramePipeline, 200);
+      setTimeout(runFramePipeline, 500);
     }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [tflite.state, mode]);
+  }, [tflite.state, runFramePipeline]);
+
+  // Clear overlay when mode switches to Off
+  useEffect(() => {
+    if (mode === 'Off') setProcessedUri(null);
+  }, [mode]);
 
   // --- PERMISSION CHECK ---
   if (!permission) return <View />;
@@ -2020,17 +2034,18 @@ function CVDSimulationScreen({ navigation }) {
         ref={cameraRef}
       />
 
-      {/* CNN-processed CVD simulation overlay */}
+      {/* CNN-processed CVD simulation overlay — pointerEvents="none" so touches pass through */}
       {processedUri && mode !== 'Off' && (
         <Image
           source={{ uri: processedUri }}
           style={StyleSheet.absoluteFill}
-          resizeMode="stretch"
+          resizeMode="cover"
           fadeDuration={0}
+          pointerEvents="none"
         />
       )}
 
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
 
         <View style={styles.camTopBar}>
           <View style={{flexDirection:'row', alignItems:'center'}}>
@@ -2050,10 +2065,12 @@ function CVDSimulationScreen({ navigation }) {
         </View>
 
         {/* Model status indicator */}
-        {modelStatus === 'loading' && (
+        {modelStatus !== 'ready' && (
           <View style={{ position: 'absolute', top: 70, alignSelf: 'center',
             backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
-            <Text style={{ color: '#FFF', fontSize: 12 }}>Loading model...</Text>
+            <Text style={{ color: '#FFF', fontSize: 12 }}>
+              {modelStatus === 'loading' ? 'Loading model...' : 'Model error'}
+            </Text>
           </View>
         )}
 
