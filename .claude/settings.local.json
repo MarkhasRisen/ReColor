@@ -3,7 +3,8 @@
     "allow": [
       "Bash(ls -la /c/xampp/htdocs/Evala/ReColor/*.js /c/xampp/htdocs/Evala/ReColor/*.jsx /c/xampp/htdocs/Evala/ReColor/*.ts /c/xampp/htdocs/Evala/ReColor/*.tsx)",
       "Bash(npm pack react-native-fast-tflite@1.5.1 --dry-run)",
-      "Bash(npm install react-native-fast-tflite@1.5.1 --save)"
+      "Bash(npm install react-native-fast-tflite@1.5.1 --save)",
+      "Bash(python -c \"import matplotlib.colors as mc; print\\(len\\(mc.XKCD_COLORS\\)\\)\")"
     ]
   }
 }

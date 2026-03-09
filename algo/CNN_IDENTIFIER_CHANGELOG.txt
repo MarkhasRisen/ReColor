@@ -1,0 +1,85 @@
+═══════════════════════════════════════════════════════════════════
+              CNN IDENTIFIER — CHANGES HISTORY
+              ReColor — Colorblind Camera App
+═══════════════════════════════════════════════════════════════════
+
+
+───────────────────────────────────────────────────────────────────
+VERSION 1 — Color Identifier CNN (Mar 8, 2026)
+File: algo/cnn_identifier.ipynb
+───────────────────────────────────────────────────────────────────
+PURPOSE:
+  Separate CNN model for whole-image color identification.
+  Unlike the segmenter (U-Net, per-pixel), this is a standard
+  classifier that outputs a single dominant color class per image.
+
+REFERENCE DATASET:
+  XKCD Color Survey — 949 crowdsourced color names with RGB values
+  Source: https://xkcd.com/color/rgb/
+  Accessed via matplotlib.colors.XKCD_COLORS (not hardcoded)
+
+LABELING METHOD:
+  1. Keyword matching: maps XKCD color names → 10 classes
+     (e.g., "cherry" → Red, "seafoam" → Cyan)
+  2. CIELAB nearest-neighbor fallback: unmatched XKCD colors
+     assigned to closest class centroid using Delta-E 1976
+  3. Class centroids are data-driven (computed from XKCD survey,
+     not hardcoded like the segmenter's Munsell references)
+  4. Neutral threshold: 90th percentile of XKCD neutral colors'
+     chroma values (data-driven, not fixed at C*=22)
+
+10 COLOR CLASSES:
+  0-Neutral, 1-Red, 2-Orange, 3-Yellow, 4-Green,
+  5-Cyan, 6-Blue, 7-Violet, 8-Pink, 9-Brown
+
+ARCHITECTURE:
+  Standard CNN classifier (NOT U-Net):
+    Conv2D(32)x2 + BN → MaxPool →
+    Conv2D(64)x2 + BN → MaxPool →
+    Conv2D(128)x2 + BN →
+    GlobalAveragePooling2D →
+    Dense(64) + Dropout(0.3) →
+    Dense(10, softmax)
+  Input:  128x128x3 (RGB)
+  Output: 10 class probabilities (single prediction per image)
+
+TRAINING DATA:
+  - CIFAR-10: 6000 train / 1000 test (real images)
+  - Synthetic: 2000 single-color patches (LAB-space generation)
+  - Total: 8000 train / 1000 test
+
+TRAINING CONFIG:
+  - Loss: sparse_categorical_crossentropy
+  - Optimizer: Adam (lr=1e-3)
+  - Class weights: auto-computed from frequency distribution
+  - Callbacks: ReduceLROnPlateau (factor=0.5, patience=4)
+               EarlyStopping (patience=8, restore_best_weights)
+  - Batch size: 16, Max epochs: 30
+
+NOTEBOOK CELLS:
+  Cell 1    — Full training pipeline (XKCD → label → train → save)
+  Cell 1.5  — Load saved model (skip retraining)
+  Cell 2    — Test with test_image.jpg (visualization + confidence)
+  Cell 3    — TFLite INT8 export (color_identifier.tflite)
+
+MODEL FILES:
+  - color_identifier.keras  — full Keras model
+  - color_identifier.tflite — INT8 quantized for mobile
+
+KEY DIFFERENCES FROM SEGMENTER (cnn.ipynb):
+  ┌─────────────────┬──────────────────────┬─────────────────────┐
+  │                  │ Segmenter (cnn.ipynb)│ Identifier (this)   │
+  ├─────────────────┼──────────────────────┼─────────────────────┤
+  │ Architecture    │ U-Net (encoder-dec.) │ Standard CNN class. │
+  │ Output          │ 128x128x10 mask      │ 10 probabilities    │
+  │ Task            │ Per-pixel segment.   │ Whole-image classif.│
+  │ Color reference │ Munsell color system │ XKCD Color Survey   │
+  │ Neutral thresh. │ Fixed C* < 22        │ XKCD 90th pct.      │
+  │ Centroids       │ Hardcoded Munsell    │ Data-driven XKCD    │
+  │ Loss function   │ Custom weighted CCE  │ Standard sparse CCE │
+  └─────────────────┴──────────────────────┴─────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════
+                     END OF CHANGES HISTORY
+═══════════════════════════════════════════════════════════════════
