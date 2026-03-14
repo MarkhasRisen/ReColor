@@ -80,6 +80,169 @@ KEY DIFFERENCES FROM SEGMENTER (cnn.ipynb):
   └─────────────────┴──────────────────────┴─────────────────────┘
 
 
+───────────────────────────────────────────────────────────────────
+VERSION 1.1 — Bug Fix: rgb_array_to_lab (Mar 9, 2026)
+File: algo/cnn_identifier.ipynb — Cell 1
+───────────────────────────────────────────────────────────────────
+BUG:
+  ValueError: could not broadcast input array from shape (3,3)
+  into shape (3,) at centroids computation (line 119).
+
+ROOT CAUSE:
+  rgb_array_to_lab() looped over individual pixels, calling
+  cv2.cvtColor() on (1, 3) arrays. OpenCV interpreted these as
+  1x3 grayscale images instead of single RGB pixels, producing
+  wrong output shapes.
+
+FIX:
+  Process all 949 XKCD colors as a single (N, 1, 3) image in
+  one cv2.cvtColor() call. Correct shape and much faster.
+
+  Before (broken):
+    pixels = rgb_arr.reshape(-1, 1, 3)
+    bgr = np.array([cv2.cvtColor(p, ...) for p in pixels])  # per-pixel loop
+    lab = np.array([cv2.cvtColor(b, ...) for b in bgr])
+
+  After (fixed):
+    img_rgb = rgb_arr.reshape(-1, 1, 3)   # (N, 1, 3) — Nx1 image
+    img_bgr = cv2.cvtColor(img_rgb, ...)  # single call
+    img_lab = cv2.cvtColor(img_bgr, ...)  # single call
+
+
+───────────────────────────────────────────────────────────────────
+VERSION 2 — Accuracy Improvements (Mar 9, 2026)
+File: algo/cnn_identifier.ipynb — Cell 1
+───────────────────────────────────────────────────────────────────
+PROBLEM:
+  V1 achieved only ~77% accuracy. Root causes identified:
+  1. Noisy labels — CIFAR-10 multi-color scenes had ambiguous
+     dominant color (e.g., red car + gray road + blue sky)
+  2. CIFAR resolution — 32x32 upscaled to 128x128 = blurry
+  3. Synthetic-real domain gap — flat solid patches ≠ real images
+  4. No data augmentation — model memorized, didn't generalize
+  5. Class imbalance — natural images skew to certain colors
+
+CHANGES:
+
+  1. CONFIDENCE THRESHOLD (label quality)
+     - Added min_dominance=0.30 parameter to label_dominant_color()
+     - CIFAR images where no single color exceeds 30% are discarded
+     - Only trains on images with a clear dominant color
+     - Increased CIFAR pool: 10000 candidates → ~kept after filtering
+
+  2. DIVERSE SYNTHETICS (5 types instead of 1)
+     - TYPE 1: Solid patches with noise (from V1)
+     - TYPE 2: Gradient patches — two shades of same class
+     - TYPE 3: Textured patches — smooth noise tinted to class color
+     - TYPE 4: Blob patches — colored shapes on neutral background
+     - TYPE 5: Multi-color scenes — 60-80% dominant + other colors
+     - Increased from 2000 → 5000 synthetic images
+     - Also generates 1000 synthetic test images
+
+  3. DATA AUGMENTATION (built into model)
+     - RandomFlip (horizontal)
+     - RandomRotation (±18°)
+     - RandomZoom (±10%)
+     - RandomBrightness (±15%)
+     - RandomContrast (±15%)
+     - NO RandomHue — would change the correct label!
+     - Only active during training (auto-disabled at inference)
+
+  4. DEEPER ARCHITECTURE
+     - Added Conv Block 4: Conv2D(256) + BN
+     - Added extra Dense(128) + Dropout(0.4) layer
+     - Increased Dropout: 0.3 → 0.4 (first FC layer)
+
+  5. TRAINING CONFIG UPDATES
+     - Batch size: 16 → 32
+     - Max epochs: 30 → 40
+     - EarlyStopping patience: 8 → 10
+     - ReduceLROnPlateau min_lr: 1e-5 → 1e-6
+     - Added training curves plot (loss + accuracy)
+
+ARCHITECTURE (V2):
+    [Data Augmentation layers] →
+    Conv2D(32)x2 + BN → MaxPool →
+    Conv2D(64)x2 + BN → MaxPool →
+    Conv2D(128)x2 + BN → MaxPool →
+    Conv2D(256) + BN →
+    GlobalAveragePooling2D →
+    Dense(128) + Dropout(0.4) →
+    Dense(64) + Dropout(0.3) →
+    Dense(10, softmax)
+
+
+───────────────────────────────────────────────────────────────────
+VERSION 3 — STL-10 Dataset + Bug Fixes (Mar 14, 2026)
+File: algo/cnn_identifier.ipynb — Cell 0 (new) + Cell 1
+───────────────────────────────────────────────────────────────────
+PROBLEM:
+  V2 regressed from 77% to ~31% accuracy. Training started at
+  random chance (10%) and never recovered. Root causes:
+
+  1. In-model RandomBrightness/Contrast pushed pixel values outside
+     [0,1] range, corrupting color signal → model couldn't learn
+  2. Blob generator had incorrect labels — shapes (r=25-55) often
+     covered <50% of image, leaving Neutral as true dominant but
+     label was set to target class
+  3. Multi-color generator had unpredictable patch overlap
+  4. Too many simultaneous changes made debugging impossible
+
+DATASET CHANGE:
+  CIFAR-10 (32x32) → STL-10 unlabelled (96x96)
+  - Resolution: 96x96 needs far less upscaling to 128x128
+    (3x better than CIFAR's 6.25x upscale factor)
+  - Pool size: 100,000 unlabelled images (vs 10,000 CIFAR)
+  - Loaded via tensorflow_datasets (Cell 0 installs it)
+  - Requires ~2.6 GB download on first run (cached after)
+
+NEW CELL 0 — PREREQUISITES:
+  pip install tensorflow-datasets (needed for STL-10 loading)
+
+CHANGES IN V3:
+
+  1. REMOVED in-model augmentation layers
+     - All RandomFlip/Rotation/Zoom/Brightness/Contrast layers removed
+     - Replaced with offline numpy horizontal flip (safe for color)
+     - Horizontal flip: X_flip = X[:, :, ::-1, :]  (preserves label)
+
+  2. FIXED generators — 4 clean types (blob + multi-color removed)
+     - TYPE 1: Solid patches (V1, proven clean)
+     - TYPE 2: Gradient patches (vectorized — fixed O(N²) pixel loop)
+     - TYPE 3: Textured patches (clean labels)
+     - TYPE 4: Two-color patches (75% target + 25% other quadrant,
+               guaranteed dominance — replaces unreliable blob/multi)
+     - Removed: Blob (shapes < 50% coverage → wrong labels)
+     - Removed: Multi-color (overlapping patches → unpredictable)
+
+  3. FIXED type inconsistency in random_color_for_class() Neutral case
+     - a_new, b_new now wrapped in float() (consistent with chromatic)
+
+  4. RESTORED V1 architecture (proven to reach 77%)
+     Conv2D(32)×2 + BN → MaxPool →
+     Conv2D(64)×2 + BN → MaxPool →
+     Conv2D(128)×2 + BN →
+     GlobalAveragePooling2D →
+     Dense(64) + Dropout(0.3) →
+     Dense(10, softmax)
+
+  5. KEPT from V2 (good ideas that weren't the problem):
+     - Confidence threshold (MIN_DOMINANCE=0.30)
+     - Diverse synthetic generators (fixed versions)
+     - Training curves plot
+
+  6. REVERTED to V1 training config:
+     - Batch size: 16, Max epochs: 30
+     - ReduceLROnPlateau patience: 4, EarlyStopping patience: 8
+
+NOT A BUG (confirmed correct design):
+  REF_LAB[1:] skip in label_dominant_color() is intentional.
+  Neutral is handled by chroma threshold separately; +1 offset
+  correctly maps argmin indices (0-8) back to classes (1-9).
+
+TARGET: Beat V1's 77% accuracy.
+
+
 ═══════════════════════════════════════════════════════════════════
                      END OF CHANGES HISTORY
 ═══════════════════════════════════════════════════════════════════
