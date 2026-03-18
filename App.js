@@ -16,6 +16,7 @@ import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -1935,14 +1936,9 @@ function CVDSimulationScreen({ navigation }) {
   const [processedUri, setProcessedUri] = useState(null);
   const [modelStatus, setModelStatus]   = useState('loading');
 
-  const [isCameraReady, setIsCameraReady] = useState(false);
-
   const cameraRef    = useRef(null);
   const isProcessing = useRef(false);
   const intervalRef  = useRef(null);
-
-  // Reset camera readiness when switching front/back
-  useEffect(() => { setIsCameraReady(false); }, [cameraType]);
 
   // Load TFLite model
   const tflite = useTensorflowModel(require('./assets/color_model.tflite'));
@@ -1956,7 +1952,6 @@ function CVDSimulationScreen({ navigation }) {
   const runFramePipeline = async () => {
     if (isProcessing.current) return;
     if (!cameraRef.current)   return;
-    if (!isCameraReady)       return;
     if (tflite.state !== 'loaded' || !tflite.model) return;
     if (mode === 'Off') { setProcessedUri(null); return; }
 
@@ -1987,14 +1982,14 @@ function CVDSimulationScreen({ navigation }) {
     }
   };
 
-  // Start/restart interval when model, mode, or camera readiness changes
+  // Start/restart interval when model or mode changes
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
-    if (tflite.state === 'loaded' && isCameraReady) {
+    if (tflite.state === 'loaded') {
       intervalRef.current = setInterval(runFramePipeline, 200);
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [tflite.state, mode, isCameraReady]);
+  }, [tflite.state, mode]);
 
   // --- PERMISSION CHECK ---
   if (!permission) return <View />;
@@ -2011,6 +2006,12 @@ function CVDSimulationScreen({ navigation }) {
 
   const handleCapture = async () => {
     try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please allow access to save photos.');
+        return;
+      }
+
       if (processedUri && mode !== 'Off') {
         const filename = `cvd_sim_${Date.now()}.jpg`;
         const fileUri = FileSystem.documentDirectory + filename;
@@ -2018,12 +2019,14 @@ function CVDSimulationScreen({ navigation }) {
         await FileSystem.writeAsStringAsync(fileUri, base64Data, {
           encoding: FileSystem.EncodingType.Base64,
         });
-        Alert.alert('Saved', 'Simulation screenshot saved.');
+        await MediaLibrary.saveToLibraryAsync(fileUri);
+        Alert.alert('Saved', 'Simulation screenshot saved to gallery.');
       } else if (cameraRef.current) {
-        await cameraRef.current.takePictureAsync({
+        const photo = await cameraRef.current.takePictureAsync({
           quality: 0.8, base64: false, skipProcessing: false, exif: true,
         });
-        Alert.alert('Saved', 'Photo captured.');
+        await MediaLibrary.saveToLibraryAsync(photo.uri);
+        Alert.alert('Saved', 'Photo saved to gallery.');
       }
     } catch (e) {
       console.warn('[CVDSim] capture error:', e);
@@ -2048,7 +2051,6 @@ function CVDSimulationScreen({ navigation }) {
         style={StyleSheet.absoluteFill}
         facing={cameraType === 'Back Camera' ? 'back' : 'front'}
         ref={cameraRef}
-        onCameraReady={() => setIsCameraReady(true)}
       />
 
       {/* CNN-processed CVD simulation overlay — pointerEvents="none" so touches pass through */}

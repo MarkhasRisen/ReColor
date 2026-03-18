@@ -11,6 +11,8 @@
 
 import JPEG from 'jpeg-js';
 import { decode as base64Decode } from 'base64-arraybuffer';
+import { Buffer } from 'buffer';
+if (typeof global.Buffer === 'undefined') global.Buffer = Buffer;
 
 // ─────────────────────────────────────────────────────────────
 // Color class definitions (must match algo/cnn.ipynb)
