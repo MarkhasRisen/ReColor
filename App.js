@@ -15,10 +15,12 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Dimensions,
   Image,
@@ -1933,12 +1935,14 @@ function CVDSimulationScreen({ navigation }) {
   const [processedUri, setProcessedUri] = useState(null);
   const [modelStatus, setModelStatus]   = useState('loading');
 
+  const [isCameraReady, setIsCameraReady] = useState(false);
+
   const cameraRef    = useRef(null);
   const isProcessing = useRef(false);
-  const modeRef      = useRef(mode);
+  const intervalRef  = useRef(null);
 
-  // Keep modeRef in sync so the async pipeline always reads current mode
-  useEffect(() => { modeRef.current = mode; }, [mode]);
+  // Reset camera readiness when switching front/back
+  useEffect(() => { setIsCameraReady(false); }, [cameraType]);
 
   // Load TFLite model
   const tflite = useTensorflowModel(require('./assets/color_model.tflite'));
@@ -1948,23 +1952,18 @@ function CVDSimulationScreen({ navigation }) {
     if (tflite.state === 'error')  setModelStatus('error');
   }, [tflite.state]);
 
-  // ── Frame processing loop (self-scheduling, not setInterval) ──
-  const runFramePipeline = useCallback(async () => {
+  // ── Frame processing loop (plain function — closure captures current state) ──
+  const runFramePipeline = async () => {
     if (isProcessing.current) return;
     if (!cameraRef.current)   return;
+    if (!isCameraReady)       return;
     if (tflite.state !== 'loaded' || !tflite.model) return;
-
-    const currentMode = modeRef.current;
-    if (currentMode === 'Off') {
-      setProcessedUri(null);
-      setTimeout(runFramePipeline, 300);
-      return;
-    }
+    if (mode === 'Off') { setProcessedUri(null); return; }
 
     isProcessing.current = true;
     try {
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.3, base64: true, skipProcessing: true, exif: false,
+        quality: 0.3, base64: false, skipProcessing: true, exif: false,
         shutterSound: false,
       });
 
@@ -1978,29 +1977,24 @@ function CVDSimulationScreen({ navigation }) {
       const outputs      = tflite.model.runSync([inputTensor]);
       const mask         = getClassMask(outputs[0]);
       const rawImage     = decodeJpegBase64(resized.base64);
-      const simulated    = applyCVDSimulation(rawImage, mask, currentMode);
+      const simulated    = applyCVDSimulation(rawImage, mask, mode);
       const uri          = encodeToDataUri(simulated, rawImage.width, rawImage.height);
       setProcessedUri(uri);
     } catch (e) {
       console.warn('[CVDSim] frame error:', e.message || e);
     } finally {
       isProcessing.current = false;
-      // Schedule next frame after current one finishes (no overlap)
-      setTimeout(runFramePipeline, 100);
     }
-  }, [tflite.state, tflite.model]);
+  };
 
-  // Start/stop the pipeline when model loads
+  // Start/restart interval when model, mode, or camera readiness changes
   useEffect(() => {
-    if (tflite.state === 'loaded') {
-      setTimeout(runFramePipeline, 500);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (tflite.state === 'loaded' && isCameraReady) {
+      intervalRef.current = setInterval(runFramePipeline, 200);
     }
-  }, [tflite.state, runFramePipeline]);
-
-  // Clear overlay when mode switches to Off
-  useEffect(() => {
-    if (mode === 'Off') setProcessedUri(null);
-  }, [mode]);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [tflite.state, mode, isCameraReady]);
 
   // --- PERMISSION CHECK ---
   if (!permission) return <View />;
@@ -2014,6 +2008,28 @@ function CVDSimulationScreen({ navigation }) {
       </View>
     );
   }
+
+  const handleCapture = async () => {
+    try {
+      if (processedUri && mode !== 'Off') {
+        const filename = `cvd_sim_${Date.now()}.jpg`;
+        const fileUri = FileSystem.documentDirectory + filename;
+        const base64Data = processedUri.split(',')[1];
+        await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        Alert.alert('Saved', 'Simulation screenshot saved.');
+      } else if (cameraRef.current) {
+        await cameraRef.current.takePictureAsync({
+          quality: 0.8, base64: false, skipProcessing: false, exif: true,
+        });
+        Alert.alert('Saved', 'Photo captured.');
+      }
+    } catch (e) {
+      console.warn('[CVDSim] capture error:', e);
+      Alert.alert('Error', 'Could not save the photo.');
+    }
+  };
 
   const getSimDescription = () => {
     switch(mode) {
@@ -2032,6 +2048,7 @@ function CVDSimulationScreen({ navigation }) {
         style={StyleSheet.absoluteFill}
         facing={cameraType === 'Back Camera' ? 'back' : 'front'}
         ref={cameraRef}
+        onCameraReady={() => setIsCameraReady(true)}
       />
 
       {/* CNN-processed CVD simulation overlay — pointerEvents="none" so touches pass through */}
@@ -2115,7 +2132,7 @@ function CVDSimulationScreen({ navigation }) {
               <Ionicons name="camera-reverse-outline" size={24} color="#FFF" />
            </TouchableOpacity>
 
-           <TouchableOpacity style={styles.shutterBtn}>
+           <TouchableOpacity style={styles.shutterBtn} onPress={handleCapture}>
               <Ionicons name="camera" size={32} color="#000" />
            </TouchableOpacity>
 
