@@ -40,7 +40,10 @@
           }
         }
       ],
-      "react-native-fast-tflite"
+      "react-native-fast-tflite",
+      ["react-native-vision-camera", {
+        "cameraPermissionText": "ReColor needs camera access for CVD simulation"
+      }]
     ],
     "experiments": {
       "typedRoutes": true,

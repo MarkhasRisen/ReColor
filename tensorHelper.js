@@ -82,6 +82,40 @@ const CVD_SIM = {
 };
 
 // ─────────────────────────────────────────────────────────────
+// Combined CVD simulation matrices for GPU color filter
+// M_combined = LMS_TO_RGB × CVD_SIM × RGB_TO_LMS
+// Applied directly in sRGB space (standard approximation).
+// ─────────────────────────────────────────────────────────────
+function mulMat3(A, B) {
+  const R = [[0,0,0],[0,0,0],[0,0,0]];
+  for (let i = 0; i < 3; i++)
+    for (let j = 0; j < 3; j++)
+      for (let k = 0; k < 3; k++)
+        R[i][j] += A[i][k] * B[k][j];
+  return R;
+}
+
+const CVD_COMBINED = {};
+for (const type of ['Protan', 'Deutan', 'Tritan']) {
+  CVD_COMBINED[type] = mulMat3(LMS_TO_RGB, mulMat3(CVD_SIM[type], RGB_TO_LMS));
+}
+
+/**
+ * Returns a 20-element array for Skia.ColorFilter.MakeMatrix()
+ * Format: 4x5 row-major [R_row, G_row, B_row, A_row] with offsets
+ */
+export function getCVDColorMatrix(cvdType) {
+  const m = CVD_COMBINED[cvdType];
+  if (!m) return [1,0,0,0,0, 0,1,0,0,0, 0,0,1,0,0, 0,0,0,1,0]; // identity
+  return [
+    m[0][0], m[0][1], m[0][2], 0, 0,
+    m[1][0], m[1][1], m[1][2], 0, 0,
+    m[2][0], m[2][1], m[2][2], 0, 0,
+    0,       0,       0,       1, 0,
+  ];
+}
+
+// ─────────────────────────────────────────────────────────────
 // Error-shift matrices
 // Redistribute the missing-cone error into the surviving channels
 // so the user can perceive the difference.
