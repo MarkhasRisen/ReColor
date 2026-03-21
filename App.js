@@ -7,7 +7,11 @@ import {
   applyCVDSimulation,
   decodeJpegBase64,
   encodeToDataUri,
+  getCVDColorMatrix,
 } from './tensorHelper';
+import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
+import { useSkiaFrameProcessor } from 'react-native-vision-camera';
+import { Skia } from '@shopify/react-native-skia';
 
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
@@ -15,10 +19,13 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from 'expo-image-picker';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Dimensions,
   Image,
@@ -1926,71 +1933,35 @@ function ColorIdentifierScreen({ navigation }) {
 }
 
 function CVDSimulationScreen({ navigation }) {
-  const [permission, requestPermission] = useCameraPermissions();
-  const [mode, setMode]                 = useState('Protan');
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const [mode, setMode]                 = useState('Off');
   const [showModal, setShowModal]       = useState(false);
-  const [cameraType, setCameraType]     = useState('Back Camera');
-  const [processedUri, setProcessedUri] = useState(null);
-  const [modelStatus, setModelStatus]   = useState('loading');
+  const [cameraPosition, setCameraPosition] = useState('back');
 
-  const cameraRef    = useRef(null);
-  const intervalRef  = useRef(null);
-  const isProcessing = useRef(false);
+  const cameraRef = useRef(null);
+  const device = useCameraDevice(cameraPosition);
 
-  // Load TFLite model
-  const tflite = useTensorflowModel(require('./assets/color_model.tflite'));
+  // GPU color filter — recomputed only when CVD mode changes
+  const colorFilter = useMemo(() => {
+    if (mode === 'Off') return null;
+    return Skia.ColorFilter.MakeMatrix(getCVDColorMatrix(mode));
+  }, [mode]);
 
-  useEffect(() => {
-    if (tflite.state === 'loaded') setModelStatus('ready');
-    if (tflite.state === 'error')  setModelStatus('error');
-  }, [tflite.state]);
-
-  // ── Frame processing loop ─────────────────────────────────
-  const runFramePipeline = async () => {
-    if (isProcessing.current) return;
-    if (!cameraRef.current)   return;
-    if (tflite.state !== 'loaded' || !tflite.model) return;
-    if (mode === 'Off') { setProcessedUri(null); return; }
-
-    isProcessing.current = true;
-    try {
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.4, base64: false, skipProcessing: true, exif: false,
-      });
-
-      const resized = await ImageManipulator.manipulateAsync(
-        photo.uri,
-        [{ resize: { width: 128, height: 128 } }],
-        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
-      );
-
-      const inputTensor  = prepareInputTensor(resized.base64);
-      const outputs      = tflite.model.runSync([inputTensor]);
-      const mask         = getClassMask(outputs[0]);
-      const rawImage     = decodeJpegBase64(resized.base64);
-      const simulated    = applyCVDSimulation(rawImage, mask, mode);
-      const uri          = encodeToDataUri(simulated, rawImage.width, rawImage.height);
-      setProcessedUri(uri);
-    } catch (e) {
-      // Silently ignore frame errors
-    } finally {
-      isProcessing.current = false;
+  // Skia frame processor — applies color matrix on GPU for every video frame
+  const frameProcessor = useSkiaFrameProcessor((frame) => {
+    'worklet';
+    if (colorFilter) {
+      const paint = Skia.Paint();
+      paint.setColorFilter(colorFilter);
+      frame.render(paint);
+    } else {
+      frame.render();
     }
-  };
-
-  useEffect(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (tflite.state === 'loaded') {
-      intervalRef.current = setInterval(runFramePipeline, 200);
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [tflite.state, mode]);
+  }, [colorFilter]);
 
   // --- PERMISSION CHECK ---
-  if (!permission) return <View />;
-  if (!permission.granted) {
+  if (hasPermission === null) return <View />;
+  if (!hasPermission) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <Text style={{ marginBottom: 20 }}>Camera access is needed for simulation.</Text>
@@ -2001,6 +1972,58 @@ function CVDSimulationScreen({ navigation }) {
     );
   }
 
+  const handleCapture = async () => {
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please allow access to save photos.');
+        return;
+      }
+
+      if (cameraRef.current) {
+        const photo = await cameraRef.current.takePhoto({
+          qualityPrioritization: 'balanced',
+        });
+        // photo.path is the file path from VisionCamera
+        const fileUri = `file://${photo.path}`;
+
+        if (mode !== 'Off') {
+          // Apply CVD simulation to the captured photo in JS (one-time)
+          const resized = await ImageManipulator.manipulateAsync(
+            fileUri,
+            [{ resize: { width: 128, height: 128 } }],
+            { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
+          );
+          const rawImage = decodeJpegBase64(resized.base64);
+          // Apply CVD color matrix to every pixel
+          const m = getCVDColorMatrix(mode);
+          const pixels = rawImage.data;
+          for (let i = 0; i < pixels.length; i += 4) {
+            const r = pixels[i] / 255, g = pixels[i+1] / 255, b = pixels[i+2] / 255;
+            pixels[i]   = Math.min(255, Math.max(0, (m[0]*r + m[1]*g + m[2]*b) * 255));
+            pixels[i+1] = Math.min(255, Math.max(0, (m[5]*r + m[6]*g + m[7]*b) * 255));
+            pixels[i+2] = Math.min(255, Math.max(0, (m[10]*r + m[11]*g + m[12]*b) * 255));
+          }
+          const uri = encodeToDataUri(rawImage, rawImage.width, rawImage.height);
+          const filename = `cvd_sim_${Date.now()}.jpg`;
+          const saveUri = FileSystem.documentDirectory + filename;
+          const base64Data = uri.split(',')[1];
+          await FileSystem.writeAsStringAsync(saveUri, base64Data, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          await MediaLibrary.saveToLibraryAsync(saveUri);
+          Alert.alert('Saved', 'CVD simulation photo saved to gallery.');
+        } else {
+          await MediaLibrary.saveToLibraryAsync(fileUri);
+          Alert.alert('Saved', 'Photo saved to gallery.');
+        }
+      }
+    } catch (e) {
+      console.warn('[CVDSim] capture error:', e);
+      Alert.alert('Error', 'Could not save the photo.');
+    }
+  };
+
   const getSimDescription = () => {
     switch(mode) {
       case 'Protan': return 'Protanopia: Red-green color blindness (red deficiency)';
@@ -2010,27 +2033,25 @@ function CVDSimulationScreen({ navigation }) {
     }
   };
 
+  const cameraLabel = cameraPosition === 'back' ? 'Back Camera' : 'Front Camera';
+
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
 
-      {/* Live camera feed */}
-      <CameraView
-        style={StyleSheet.absoluteFill}
-        facing={cameraType === 'Back Camera' ? 'back' : 'front'}
-        ref={cameraRef}
-      />
-
-      {/* CNN-processed CVD simulation overlay */}
-      {processedUri && mode !== 'Off' && (
-        <Image
-          source={{ uri: processedUri }}
+      {/* VisionCamera — live feed with GPU-accelerated CVD color filter */}
+      {device && (
+        <Camera
+          ref={cameraRef}
           style={StyleSheet.absoluteFill}
-          resizeMode="stretch"
-          fadeDuration={0}
+          device={device}
+          isActive={true}
+          photo={true}
+          frameProcessor={frameProcessor}
+          pixelFormat="rgb"
         />
       )}
 
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
 
         <View style={styles.camTopBar}>
           <View style={{flexDirection:'row', alignItems:'center'}}>
@@ -2038,7 +2059,7 @@ function CVDSimulationScreen({ navigation }) {
                 <Ionicons name="arrow-back" size={24} color="#FFF" />
               </TouchableOpacity>
               <View style={styles.camPill}>
-                 <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>{cameraType}</Text>
+                 <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>{cameraLabel}</Text>
               </View>
           </View>
           <View style={{flexDirection:'row', alignItems:'center'}}>
@@ -2048,14 +2069,6 @@ function CVDSimulationScreen({ navigation }) {
              </TouchableOpacity>
           </View>
         </View>
-
-        {/* Model status indicator */}
-        {modelStatus === 'loading' && (
-          <View style={{ position: 'absolute', top: 70, alignSelf: 'center',
-            backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
-            <Text style={{ color: '#FFF', fontSize: 12 }}>Loading model...</Text>
-          </View>
-        )}
 
         {/* --- INFO BOX --- */}
         <View style={{
@@ -2094,11 +2107,11 @@ function CVDSimulationScreen({ navigation }) {
 
         {/* Bottom Controls */}
         <View style={{ position: 'absolute', bottom: 30, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 30, alignItems: 'center', zIndex: 50 }}>
-           <TouchableOpacity style={styles.camBtnCircleSmall} onPress={() => setCameraType(c => c === 'Back Camera' ? 'Front Camera' : 'Back Camera')}>
+           <TouchableOpacity style={styles.camBtnCircleSmall} onPress={() => setCameraPosition(p => p === 'back' ? 'front' : 'back')}>
               <Ionicons name="camera-reverse-outline" size={24} color="#FFF" />
            </TouchableOpacity>
 
-           <TouchableOpacity style={styles.shutterBtn}>
+           <TouchableOpacity style={styles.shutterBtn} onPress={handleCapture}>
               <Ionicons name="camera" size={32} color="#000" />
            </TouchableOpacity>
 
