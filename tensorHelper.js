@@ -82,23 +82,28 @@ const CVD_SIM = {
 };
 
 // ─────────────────────────────────────────────────────────────
-// Combined CVD simulation matrices for GPU color filter
-// M_combined = LMS_TO_RGB × CVD_SIM × RGB_TO_LMS
-// Applied directly in sRGB space (standard approximation).
+// Combined CVD simulation matrices (Viénot 1999)
+// Pre-validated sRGB-domain matrices — work directly on gamma-
+// encoded pixel values without LMS conversion.
+// All entries stay in [-0.3, 1.3] range (no clamp artifacts).
 // ─────────────────────────────────────────────────────────────
-function mulMat3(A, B) {
-  const R = [[0,0,0],[0,0,0],[0,0,0]];
-  for (let i = 0; i < 3; i++)
-    for (let j = 0; j < 3; j++)
-      for (let k = 0; k < 3; k++)
-        R[i][j] += A[i][k] * B[k][j];
-  return R;
-}
-
-const CVD_COMBINED = {};
-for (const type of ['Protan', 'Deutan', 'Tritan']) {
-  CVD_COMBINED[type] = mulMat3(LMS_TO_RGB, mulMat3(CVD_SIM[type], RGB_TO_LMS));
-}
+const CVD_COMBINED = {
+  Protan: [
+    [0.152286, 1.052583, -0.204868],
+    [0.114503, 0.786281,  0.099216],
+    [-0.003882, -0.048116, 1.051998],
+  ],
+  Deutan: [
+    [0.367322, 0.860646, -0.227968],
+    [0.280085, 0.672501,  0.047413],
+    [-0.011820, 0.042940, 0.968881],
+  ],
+  Tritan: [
+    [1.255528, -0.076749, -0.178779],
+    [-0.078411, 0.930809,  0.147602],
+    [0.004733, 0.691367,  0.303900],
+  ],
+};
 
 /**
  * Returns a 20-element array for Skia.ColorFilter.MakeMatrix()
@@ -222,6 +227,51 @@ export function getClassMask(outputTensor, numClasses = 10) {
 export function decodeJpegBase64(base64Jpeg) {
   const buffer = base64Decode(base64Jpeg);
   return JPEG.decode(new Uint8Array(buffer), { useTArray: true });
+}
+
+// ─────────────────────────────────────────────────────────────
+// downscaleToTensor
+//
+// Downscales RGBA pixel data directly to a Float32Array tensor
+// suitable for TFLite input, using nearest-neighbor sampling.
+// Avoids a second ImageManipulator async call.
+// ─────────────────────────────────────────────────────────────
+export function downscaleToTensor(rgbaData, srcW, srcH, dstW, dstH) {
+  const tensor = new Float32Array(dstW * dstH * 3);
+  const xRatio = srcW / dstW;
+  const yRatio = srcH / dstH;
+  for (let y = 0; y < dstH; y++) {
+    const srcY = Math.floor(y * yRatio);
+    for (let x = 0; x < dstW; x++) {
+      const srcX = Math.floor(x * xRatio);
+      const srcIdx = (srcY * srcW + srcX) * 4;
+      const dstIdx = (y * dstW + x) * 3;
+      tensor[dstIdx]     = rgbaData[srcIdx]     / 255.0;
+      tensor[dstIdx + 1] = rgbaData[srcIdx + 1] / 255.0;
+      tensor[dstIdx + 2] = rgbaData[srcIdx + 2] / 255.0;
+    }
+  }
+  return tensor;
+}
+
+// ─────────────────────────────────────────────────────────────
+// upscaleMaskNearest
+//
+// Upscales a Uint8Array class mask using nearest-neighbor.
+// Used to match the CNN's 128x128 mask to a higher display
+// resolution for sharper daltonization overlay.
+// ─────────────────────────────────────────────────────────────
+export function upscaleMaskNearest(mask, srcW, srcH, dstW, dstH) {
+  const out = new Uint8Array(dstW * dstH);
+  const xRatio = srcW / dstW;
+  const yRatio = srcH / dstH;
+  for (let y = 0; y < dstH; y++) {
+    const srcY = Math.floor(y * yRatio);
+    for (let x = 0; x < dstW; x++) {
+      out[y * dstW + x] = mask[srcY * srcW + Math.floor(x * xRatio)];
+    }
+  }
+  return out;
 }
 
 // ─────────────────────────────────────────────────────────────
