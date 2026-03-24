@@ -19,11 +19,9 @@
     "@react-navigation/native": "^7.1.24",
     "@react-navigation/native-stack": "^7.8.5",
     "@react-navigation/stack": "^7.6.11",
-    "@shopify/react-native-skia": "2.2.12",
     "base64-arraybuffer": "^1.0.2",
     "buffer": "^6.0.3",
     "expo": "~54.0.27",
-    "expo-camera": "~17.0.10",
     "expo-constants": "~18.0.11",
     "expo-dev-client": "~6.0.20",
     "expo-file-system": "~19.0.20",
@@ -51,8 +49,7 @@
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-vision-camera": "^4.7.3",
-    "react-native-web": "~0.21.0",
-    "react-native-worklets-core": "^1.6.3"
+    "react-native-web": "~0.21.0"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
