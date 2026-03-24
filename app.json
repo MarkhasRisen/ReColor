@@ -41,14 +41,9 @@
         }
       ],
       "react-native-fast-tflite",
-      "react-native-worklets-core",
-      [
-        "react-native-vision-camera",
-        {
-          "cameraPermissionText": "ReColor needs access to your camera to identify colors.",
-          "enableFrameProcessors": true
-        }
-      ]
+      ["react-native-vision-camera", {
+        "cameraPermissionText": "ReColor needs camera access for CVD simulation"
+      }]
     ],
     "experiments": {
       "typedRoutes": true,
