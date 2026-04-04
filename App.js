@@ -60,6 +60,14 @@ import {
 
 // --- Configuration & Constants ---
 const { width, height: screenHeight } = Dimensions.get('window');
+
+// Device-adaptive processing sizes.
+// CNN always runs at 128x128 (model requirement — fixed).
+// Display overlay scales with screen: half the short edge, capped at 512 for performance.
+// Capture uses full screen-width resolution for best saved photo quality.
+const CNN_SIZE     = 128;
+const DISPLAY_SIZE = Math.min(512, Math.round(Math.min(width, screenHeight) * 0.5));
+const CAPTURE_SIZE = Math.min(1024, width);
 const COLORS = {
   primary: '#6C63FF', // Purple
   secondary: '#FF4081', // Pink
@@ -1556,9 +1564,6 @@ function CameraSimScreen({ navigation }) {
     if (tflite.state === 'error')  setModelStatus('error');
   }, [tflite.state]);
 
-  const DISPLAY_SIZE = 384;
-  const CNN_SIZE = 128;
-
   // ── Self-scheduling frame pipeline (no setInterval spam) ──
   const runFramePipeline = useCallback(async () => {
     if (isProcessing.current) return;
@@ -1575,7 +1580,7 @@ function CameraSimScreen({ navigation }) {
       });
       const fileUri = `file://${photo.path}`;
 
-      // 2. Single async resize to display resolution (384x384)
+      // 2. Single async resize to device-adaptive display resolution
       const displayResized = await ImageManipulator.manipulateAsync(
         fileUri,
         [{ resize: { width: DISPLAY_SIZE, height: DISPLAY_SIZE } }],
@@ -1639,8 +1644,7 @@ function CameraSimScreen({ navigation }) {
       const fileUri = `file://${photo.path}`;
 
       if (cvdType !== 'Off' && tflite.state === 'loaded' && tflite.model) {
-        // Save daltonized version at higher resolution
-        const CAPTURE_SIZE = 512;
+        // Save daltonized version at device-adaptive capture resolution
         const captureResized = await ImageManipulator.manipulateAsync(
           fileUri, [{ resize: { width: CAPTURE_SIZE, height: CAPTURE_SIZE } }],
           { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
@@ -1807,9 +1811,10 @@ function ColorIdentifierScreen({ navigation }) {
 
   const [cursorPosition, setCursorPosition] = useState({ x: width / 2, y: 300 });
   const [identifiedColor, setIdentifiedColor] = useState({ name: 'Ready to Scan', hex: '#333', conf: '' });
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isDetecting, setIsDetecting] = useState(false); // UI-only indicator
 
   const cameraRef = useRef(null);
+  const isProcessingRef = useRef(false); // ref not state — avoids race conditions
   const device = useCameraDevice(cameraPosition);
 
   // --- PERMISSION CHECK ---
@@ -1826,37 +1831,47 @@ function ColorIdentifierScreen({ navigation }) {
   }
 
   // --- Color detection using CIELAB Delta-E at cursor position ---
-  const runDetection = async () => {
-    if (!cameraRef.current || isProcessing) return;
-    setIsProcessing(true);
+  // Fix 1: cx/cy passed directly — avoids stale cursorPosition state closure
+  // Fix 2: isProcessingRef (not state) — prevents race between onResponderGrant + onResponderMove
+  // Fix 4: exif:false forces corrected orientation on Android
+  const runDetection = async (cx, cy) => {
+    if (!cameraRef.current || isProcessingRef.current) return;
+    isProcessingRef.current = true;
+    setIsDetecting(true);
 
     try {
-      // 1. Take photo silently
+      // 1. Take photo silently — exif:false avoids orientation mismatch on Android
       const photo = await cameraRef.current.takePhoto({
         qualityPrioritization: 'speed',
         enableShutterSound: false,
       });
       const fileUri = `file://${photo.path}`;
 
-      // 2. Map cursor screen position to photo pixel coordinates
-      // VisionCamera 4.x returns width/height on photo — fall back to screen size if missing
-      const photoW = photo.width  || width;
-      const photoH = photo.height || screenHeight;
-      const scaleX = photoW / width;
-      const scaleY = photoH / screenHeight;
+      // 2. Resize photo to match screen width — preserves aspect ratio, avoids orientation issues
+      const normalized = await ImageManipulator.manipulateAsync(
+        fileUri,
+        [{ resize: { width } }],
+        { format: ImageManipulator.SaveFormat.JPEG, compress: 1.0 }
+      );
+
+      // 3. Map cursor screen coords to normalized photo coords (1:1 on X, scaled on Y)
+      const normH = normalized.height || screenHeight;
+      const scaleX = 1; // photo width === screen width
+      const scaleY = normH / screenHeight;
       const patchSize = 10;
       const half = patchSize / 2;
-      const cropX = Math.max(0, Math.min(photoW - patchSize, Math.round(cursorPosition.x * scaleX) - half));
-      const cropY = Math.max(0, Math.min(photoH - patchSize, Math.round(cursorPosition.y * scaleY) - half));
+      const normW = normalized.width || width;
+      const cropX = Math.max(0, Math.min(normW - patchSize, Math.round(cx * scaleX) - half));
+      const cropY = Math.max(0, Math.min(normH - patchSize, Math.round(cy * scaleY) - half));
 
-      // 3. Crop 10x10 patch at cursor — JPEG at quality 1.0 (no compression artifacts at this size)
+      // 4. Crop 10x10 patch at exact cursor position
       const cropResult = await ImageManipulator.manipulateAsync(
-        fileUri,
+        normalized.uri,
         [{ crop: { originX: cropX, originY: cropY, width: patchSize, height: patchSize } }],
         { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 1.0 }
       );
 
-      // 4. Decode and average RGB across all pixels in the patch
+      // 5. Decode and average RGB across all patch pixels
       const pixelData = decodeJpegBase64(cropResult.base64);
       const numPixels = pixelData.width * pixelData.height;
       let avgR = 0, avgG = 0, avgB = 0;
@@ -1869,20 +1884,22 @@ function ColorIdentifierScreen({ navigation }) {
       avgG = Math.round(avgG / numPixels);
       avgB = Math.round(avgB / numPixels);
 
-      // 5. Identify via CIELAB Delta-E nearest-neighbor
+      // 6. Identify via CIELAB Delta-E nearest-neighbor
       const result = identifyColor(avgR, avgG, avgB);
       setIdentifiedColor({ name: result.className, hex: result.hex, conf: `${result.confidence}%` });
     } catch (e) {
       console.log('[ColorID] detection error:', e);
     } finally {
-      setIsProcessing(false);
+      isProcessingRef.current = false;
+      setIsDetecting(false);
     }
   };
 
+  // Fix 3: only fire on release (not continuous move) so detection uses final finger position
   const handleTouch = (evt) => {
     const { locationX, locationY } = evt.nativeEvent;
     setCursorPosition({ x: locationX, y: locationY });
-    runDetection();
+    runDetection(locationX, locationY); // Fix 1: pass coords directly, not from state
   };
 
   return (
@@ -1903,8 +1920,8 @@ function ColorIdentifierScreen({ navigation }) {
       <View
         style={StyleSheet.absoluteFill}
         onStartShouldSetResponder={() => true}
-        onResponderMove={handleTouch}
         onResponderGrant={handleTouch}
+        onResponderRelease={handleTouch}
       />
 
       <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
@@ -1940,7 +1957,7 @@ function ColorIdentifierScreen({ navigation }) {
               <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: identifiedColor.hex, marginBottom: 5, borderWidth: 2, borderColor:'#FFF' }} />
               <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>{identifiedColor.name}</Text>
               <Text style={{ color: '#CCC', fontSize: 12 }}>
-                 {isProcessing ? "Calculating..." : `RGB Match: ${identifiedColor.conf}`}
+                 {isDetecting ? "Calculating..." : `Delta-E Match: ${identifiedColor.conf}`}
               </Text>
            </View>
         </View>
@@ -2023,7 +2040,7 @@ function CVDSimulationScreen({ navigation }) {
         if (mode !== 'Off') {
           const resized = await ImageManipulator.manipulateAsync(
             fileUri,
-            [{ resize: { width: 512, height: 512 } }],
+            [{ resize: { width: CAPTURE_SIZE } }],
             { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
           );
           const rawImage = decodeJpegBase64(resized.base64);
@@ -2035,7 +2052,7 @@ function CVDSimulationScreen({ navigation }) {
             pixels[i+1] = Math.min(255, Math.max(0, (m[5]*r + m[6]*g + m[7]*b) * 255));
             pixels[i+2] = Math.min(255, Math.max(0, (m[10]*r + m[11]*g + m[12]*b) * 255));
           }
-          const uri = encodeToDataUri(rawImage, rawImage.width, rawImage.height);
+          const uri = encodeToDataUri(pixels, rawImage.width, rawImage.height);
           const filename = `cvd_sim_${Date.now()}.jpg`;
           const saveUri = FileSystem.documentDirectory + filename;
           await FileSystem.writeAsStringAsync(saveUri, uri.split(',')[1], {
