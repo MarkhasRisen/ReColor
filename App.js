@@ -65,7 +65,7 @@ const { width, height: screenHeight } = Dimensions.get('window');
 // CNN always runs at 128x128 (model requirement — fixed).
 // Display overlay scales with screen: half the short edge, capped at 512 for performance.
 // Capture uses full screen-width resolution for best saved photo quality.
-const CNN_SIZE     = 128;
+const CNN_SIZE     = 256;
 const DISPLAY_SIZE = Math.min(512, Math.round(Math.min(width, screenHeight) * 0.5));
 const CAPTURE_SIZE = Math.min(1024, width);
 const COLORS = {
