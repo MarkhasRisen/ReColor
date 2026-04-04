@@ -8,18 +8,21 @@ import {
   getCVDColorMatrix,
   downscaleToTensor,
   upscaleMaskNearest,
+  identifyColor,
 } from './tensorHelper';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
+import { useSkiaFrameProcessor } from 'react-native-vision-camera';
+import { Skia } from '@shopify/react-native-skia';
 
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer, useNavigation } from '@react-navigation/native';
+import { NavigationContainer, useNavigation, useIsFocused } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from 'expo-image-picker';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -56,7 +59,7 @@ import {
 } from './firebaseConfig';
 
 // --- Configuration & Constants ---
-const { width } = Dimensions.get('window');
+const { width, height: screenHeight } = Dimensions.get('window');
 const COLORS = {
   primary: '#6C63FF', // Purple
   secondary: '#FF4081', // Pink
@@ -1527,6 +1530,7 @@ function SurveySuccessScreen({ navigation }) {
 
 function CameraSimScreen({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
+  const isFocused = useIsFocused();
   const [cameraPosition, setCameraPosition] = useState('back');
   const [cvdType, setCvdType]           = useState('Protan');
   const [processedUri, setProcessedUri] = useState(null);
@@ -1687,7 +1691,7 @@ function CameraSimScreen({ navigation }) {
           ref={cameraRef}
           style={StyleSheet.absoluteFill}
           device={device}
-          isActive={true}
+          isActive={isFocused}
           photo={true}
           enableShutterSound={false}
         />
@@ -1793,30 +1797,10 @@ function CameraSimScreen({ navigation }) {
 // --- THE REAL LOGIC: Euclidean Color Classifier ---
 // This replaces the TFLite model for the Expo Go environment.
 // It calculates the geometric distance between the camera pixel and known colors.
-const CLASSIFIER_DB = {
-  'Red': { r: 255, g: 0, b: 0, hex: '#FF0000' },
-  'Green': { r: 0, g: 128, b: 0, hex: '#008000' },
-  'Blue': { r: 0, g: 0, b: 255, hex: '#0000FF' },
-  'Yellow': { r: 255, g: 255, b: 0, hex: '#FFFF00' },
-  'Cyan': { r: 0, g: 255, b: 255, hex: '#00FFFF' },
-  'Magenta': { r: 255, g: 0, b: 255, hex: '#FF00FF' },
-  'White': { r: 255, g: 255, b: 255, hex: '#FFFFFF' },
-  'Black': { r: 0, g: 0, b: 0, hex: '#000000' },
-  'Gray': { r: 128, g: 128, b: 128, hex: '#808080' },
-  'Orange': { r: 255, g: 165, b: 0, hex: '#FFA500' },
-  'Purple': { r: 128, g: 0, b: 128, hex: '#800080' },
-  'Brown': { r: 165, g: 42, b: 42, hex: '#A52A2A' },
-  'Beige': { r: 245, g: 245, b: 220, hex: '#F5F5DC' },
-  'Gold': { r: 255, g: 215, b: 0, hex: '#FFD700' },
-  'Silver': { r: 192, g: 192, b: 192, hex: '#C0C0C0' },
-  'Pink': { r: 255, g: 192, b: 203, hex: '#FFC0CB' },
-  'Navy': { r: 0, g: 0, b: 128, hex: '#000080' },
-  'Teal': { r: 0, g: 128, b: 128, hex: '#008080' },
-  'Lime': { r: 0, g: 255, b: 0, hex: '#00FF00' }
-};
 
 function ColorIdentifierScreen({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
+  const isFocused = useIsFocused();
   const [cameraPosition, setCameraPosition] = useState('back');
   const [audio, setAudio] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -1841,52 +1825,53 @@ function ColorIdentifierScreen({ navigation }) {
     );
   }
 
-  // --- Color detection using center pixel sampling ---
+  // --- Color detection using CIELAB Delta-E at cursor position ---
   const runDetection = async () => {
     if (!cameraRef.current || isProcessing) return;
     setIsProcessing(true);
 
     try {
-      // 1. Take photo — no shutter sound, no preview freeze
+      // 1. Take photo silently
       const photo = await cameraRef.current.takePhoto({
         qualityPrioritization: 'speed',
         enableShutterSound: false,
       });
       const fileUri = `file://${photo.path}`;
 
-      // 2. Crop center 20x20 pixels then resize to 1x1 for average color
+      // 2. Map cursor screen position to photo pixel coordinates
+      // VisionCamera 4.x returns width/height on photo — fall back to screen size if missing
+      const photoW = photo.width  || width;
+      const photoH = photo.height || screenHeight;
+      const scaleX = photoW / width;
+      const scaleY = photoH / screenHeight;
+      const patchSize = 10;
+      const half = patchSize / 2;
+      const cropX = Math.max(0, Math.min(photoW - patchSize, Math.round(cursorPosition.x * scaleX) - half));
+      const cropY = Math.max(0, Math.min(photoH - patchSize, Math.round(cursorPosition.y * scaleY) - half));
+
+      // 3. Crop 10x10 patch at cursor — JPEG at quality 1.0 (no compression artifacts at this size)
       const cropResult = await ImageManipulator.manipulateAsync(
         fileUri,
-        [
-          { crop: { originX: photo.width / 2 - 10, originY: photo.height / 2 - 10, width: 20, height: 20 } },
-          { resize: { width: 1, height: 1 } },
-        ],
+        [{ crop: { originX: cropX, originY: cropY, width: patchSize, height: patchSize } }],
         { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 1.0 }
       );
 
-      // 3. Decode the 1x1 JPEG to get actual RGB values
+      // 4. Decode and average RGB across all pixels in the patch
       const pixelData = decodeJpegBase64(cropResult.base64);
-      const r = pixelData.data[0];
-      const g = pixelData.data[1];
-      const b = pixelData.data[2];
-
-      // 4. Find nearest color by Euclidean distance
-      let bestName = 'Unknown';
-      let bestHex = '#333';
-      let bestDist = Infinity;
-      for (const [name, col] of Object.entries(CLASSIFIER_DB)) {
-        const dist = Math.sqrt((r - col.r) ** 2 + (g - col.g) ** 2 + (b - col.b) ** 2);
-        if (dist < bestDist) {
-          bestDist = dist;
-          bestName = name;
-          bestHex = col.hex;
-        }
+      const numPixels = pixelData.width * pixelData.height;
+      let avgR = 0, avgG = 0, avgB = 0;
+      for (let i = 0; i < numPixels; i++) {
+        avgR += pixelData.data[i * 4];
+        avgG += pixelData.data[i * 4 + 1];
+        avgB += pixelData.data[i * 4 + 2];
       }
+      avgR = Math.round(avgR / numPixels);
+      avgG = Math.round(avgG / numPixels);
+      avgB = Math.round(avgB / numPixels);
 
-      // Confidence: inverse of distance (max RGB distance is ~441)
-      const confidence = Math.max(0, Math.round((1 - bestDist / 441) * 100));
-
-      setIdentifiedColor({ name: bestName, hex: bestHex, conf: `${confidence}%` });
+      // 5. Identify via CIELAB Delta-E nearest-neighbor
+      const result = identifyColor(avgR, avgG, avgB);
+      setIdentifiedColor({ name: result.className, hex: result.hex, conf: `${result.confidence}%` });
     } catch (e) {
       console.log('[ColorID] detection error:', e);
     } finally {
@@ -1909,7 +1894,7 @@ function ColorIdentifierScreen({ navigation }) {
           ref={cameraRef}
           style={StyleSheet.absoluteFill}
           device={device}
-          isActive={true}
+          isActive={isFocused}
           photo={true}
           enableShutterSound={false}
         />
@@ -1983,72 +1968,29 @@ function ColorIdentifierScreen({ navigation }) {
 
 function CVDSimulationScreen({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
+  const isFocused = useIsFocused();
   const [mode, setMode]                 = useState('Off');
   const [showModal, setShowModal]       = useState(false);
   const [cameraPosition, setCameraPosition] = useState('back');
-  const [processedUri, setProcessedUri] = useState(null);
 
   const cameraRef = useRef(null);
   const device = useCameraDevice(cameraPosition);
-  const isProcessing = useRef(false);
-  const timerRef     = useRef(null);
-  const modeRef      = useRef(mode);
 
-  // Keep ref in sync with state
-  useEffect(() => { modeRef.current = mode; }, [mode]);
-
-  // ── Self-scheduling CVD simulation loop ──
-  const runSimLoop = useCallback(async () => {
-    if (isProcessing.current) return;
-    if (!cameraRef.current) { timerRef.current = setTimeout(runSimLoop, 200); return; }
-    if (modeRef.current === 'Off') { setProcessedUri(null); timerRef.current = setTimeout(runSimLoop, 200); return; }
-
-    isProcessing.current = true;
-    try {
-      const photo = await cameraRef.current.takePhoto({
-        qualityPrioritization: 'speed',
-        enableShutterSound: false,
-      });
-      const fileUri = `file://${photo.path}`;
-
-      // Resize for fast JS-side processing (no CNN — just matrix multiply)
-      const resized = await ImageManipulator.manipulateAsync(
-        fileUri,
-        [{ resize: { width: 384, height: 384 } }],
-        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.8 }
-      );
-      const rawImage = decodeJpegBase64(resized.base64);
-
-      // Apply CVD color matrix to every pixel (no CNN needed — simple matrix multiply)
-      const m = getCVDColorMatrix(modeRef.current);
-      const pixels = rawImage.data;
-      for (let i = 0; i < pixels.length; i += 4) {
-        const r = pixels[i] / 255, g = pixels[i+1] / 255, b = pixels[i+2] / 255;
-        pixels[i]   = Math.min(255, Math.max(0, (m[0]*r + m[1]*g + m[2]*b) * 255));
-        pixels[i+1] = Math.min(255, Math.max(0, (m[5]*r + m[6]*g + m[7]*b) * 255));
-        pixels[i+2] = Math.min(255, Math.max(0, (m[10]*r + m[11]*g + m[12]*b) * 255));
-      }
-
-      const uri = encodeToDataUri(rawImage, rawImage.width, rawImage.height);
-      setProcessedUri(uri);
-    } catch (e) {
-      // Silently ignore frame errors
-    } finally {
-      isProcessing.current = false;
-      timerRef.current = setTimeout(runSimLoop, 50); // Faster than Enhancement — no CNN overhead
+  // Build Paint object outside the worklet — Skia objects must not be
+  // constructed inside worklets in react-native-skia 2.x
+  const paint = useMemo(() => {
+    const p = Skia.Paint();
+    if (mode !== 'Off') {
+      p.setColorFilter(Skia.ColorFilter.MakeMatrix(getCVDColorMatrix(mode)));
     }
-  }, []);
-
-  // Start loop on mount, stop on unmount
-  useEffect(() => {
-    timerRef.current = setTimeout(runSimLoop, 200);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [runSimLoop]);
-
-  // Clear overlay when mode is Off
-  useEffect(() => {
-    if (mode === 'Off') setProcessedUri(null);
+    return p;
   }, [mode]);
+
+  // Skia frame processor — runs on GPU for every video frame
+  const frameProcessor = useSkiaFrameProcessor((frame) => {
+    'worklet';
+    frame.render(paint);
+  }, [paint]);
 
   // --- PERMISSION CHECK ---
   if (hasPermission === null) return <View />;
@@ -2126,26 +2068,16 @@ function CVDSimulationScreen({ navigation }) {
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
 
-      {/* VisionCamera — live feed, no frame processor (avoids Skia crash) */}
+      {/* VisionCamera + Skia GPU frame processor — applies CVD color matrix in real-time */}
       {device && (
         <Camera
           ref={cameraRef}
           style={StyleSheet.absoluteFill}
           device={device}
-          isActive={true}
+          isActive={isFocused}
           photo={true}
-          enableShutterSound={false}
-        />
-      )}
-
-      {/* CVD-simulated overlay */}
-      {processedUri && mode !== 'Off' && (
-        <Image
-          source={{ uri: processedUri }}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-          fadeDuration={0}
-          pointerEvents="none"
+          pixelFormat="native"
+          frameProcessor={frameProcessor}
         />
       )}
 
