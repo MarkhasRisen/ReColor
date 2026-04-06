@@ -9,9 +9,9 @@
  *  - applyDaltonization()  – Pixel-level CVD compensation
  */
 
-import JPEG from 'jpeg-js';
 import { decode as base64Decode } from 'base64-arraybuffer';
 import { Buffer } from 'buffer';
+import JPEG from 'jpeg-js';
 if (typeof global.Buffer === 'undefined') global.Buffer = Buffer;
 
 // ─────────────────────────────────────────────────────────────
@@ -312,10 +312,11 @@ export function identifyColor(r, g, b) {
 // ─────────────────────────────────────────────────────────────
 // prepareInputTensor
 //
-// Decodes a base64-encoded JPEG string (128×128) into a
-// Float32Array of shape [128*128*3] normalized to [0, 1].
+// Decodes a base64-encoded JPEG string (CNN_SIZE×CNN_SIZE) into a
+// Float32Array of shape [CNN_SIZE*CNN_SIZE*3] normalized to [0, 1].
 //
 // Uses jpeg-js for correct JPEG decoding (NOT raw byte iteration).
+// NOTE: App.js uses downscaleToTensor() instead (avoids a second async call).
 // ─────────────────────────────────────────────────────────────
 export function prepareInputTensor(base64Jpeg) {
   const buffer    = base64Decode(base64Jpeg);
@@ -339,8 +340,8 @@ export function prepareInputTensor(base64Jpeg) {
 // getClassMask
 //
 // Converts the TFLite output tensor (Float32Array of length
-// 128*128*NUM_CLASSES) to a per-pixel class index (Uint8Array
-// of length 128*128) via argmax.
+// CNN_SIZE*CNN_SIZE*NUM_CLASSES, HWC layout) to a per-pixel
+// class index (Uint8Array of length CNN_SIZE*CNN_SIZE) via argmax.
 // ─────────────────────────────────────────────────────────────
 export function getClassMask(outputTensor, numClasses = 10) {
   const numPixels = outputTensor.length / numClasses;
@@ -385,51 +386,6 @@ export function decodeJpegBase64(base64Jpeg) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// downscaleToTensor
-//
-// Downscales RGBA pixel data directly to a Float32Array tensor
-// suitable for TFLite input, using nearest-neighbor sampling.
-// Avoids a second ImageManipulator async call.
-// ─────────────────────────────────────────────────────────────
-export function downscaleToTensor(rgbaData, srcW, srcH, dstW, dstH) {
-  const tensor = new Float32Array(dstW * dstH * 3);
-  const xRatio = srcW / dstW;
-  const yRatio = srcH / dstH;
-  for (let y = 0; y < dstH; y++) {
-    const srcY = Math.floor(y * yRatio);
-    for (let x = 0; x < dstW; x++) {
-      const srcX = Math.floor(x * xRatio);
-      const srcIdx = (srcY * srcW + srcX) * 4;
-      const dstIdx = (y * dstW + x) * 3;
-      tensor[dstIdx]     = rgbaData[srcIdx]     / 255.0;
-      tensor[dstIdx + 1] = rgbaData[srcIdx + 1] / 255.0;
-      tensor[dstIdx + 2] = rgbaData[srcIdx + 2] / 255.0;
-    }
-  }
-  return tensor;
-}
-
-// ─────────────────────────────────────────────────────────────
-// upscaleMaskNearest
-//
-// Upscales a Uint8Array class mask using nearest-neighbor.
-// Used to match the CNN's 128x128 mask to a higher display
-// resolution for sharper daltonization overlay.
-// ─────────────────────────────────────────────────────────────
-export function upscaleMaskNearest(mask, srcW, srcH, dstW, dstH) {
-  const out = new Uint8Array(dstW * dstH);
-  const xRatio = srcW / dstW;
-  const yRatio = srcH / dstH;
-  for (let y = 0; y < dstH; y++) {
-    const srcY = Math.floor(y * yRatio);
-    for (let x = 0; x < dstW; x++) {
-      out[y * dstW + x] = mask[srcY * srcW + Math.floor(x * xRatio)];
-    }
-  }
-  return out;
-}
-
-// ─────────────────────────────────────────────────────────────
 // encodeToDataUri
 //
 // Encodes a modified RGBA Uint8Array back to a JPEG data URI
@@ -437,11 +393,12 @@ export function upscaleMaskNearest(mask, srcW, srcH, dstW, dstH) {
 // ─────────────────────────────────────────────────────────────
 export function encodeToDataUri(rgbaPixels, width, height, quality = 85) {
   const encoded = JPEG.encode({ data: rgbaPixels, width, height }, quality);
-  // Convert raw byte buffer to base64 manually (no native Buffer available in RN)
   const bytes = encoded.data;
+  // Chunked conversion avoids O(n²) single-char concat for large JPEG outputs
   let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  const CHUNK = 8192;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
   }
   const b64 = btoa(binary);
   return `data:image/jpeg;base64,${b64}`;

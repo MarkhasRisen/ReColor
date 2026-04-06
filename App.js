@@ -59,15 +59,7 @@ import {
 } from './firebaseConfig';
 
 // --- Configuration & Constants ---
-const { width, height: screenHeight } = Dimensions.get('window');
-
-// Device-adaptive processing sizes.
-// CNN always runs at 128x128 (model requirement — fixed).
-// Display overlay scales with screen: half the short edge, capped at 512 for performance.
-// Capture uses full screen-width resolution for best saved photo quality.
-const CNN_SIZE     = 256;
-const DISPLAY_SIZE = Math.min(512, Math.round(Math.min(width, screenHeight) * 0.5));
-const CAPTURE_SIZE = Math.min(1024, width);
+const { width } = Dimensions.get('window');
 const COLORS = {
   primary: '#6C63FF', // Purple
   secondary: '#FF4081', // Pink
@@ -1256,13 +1248,16 @@ function IshiharaTestScreen({ route, navigation }) {
         severity = percentage < 40 ? "Severe" : "Moderate";
       }
 
-      // SAVE TO FIREBASE (The "Miracle" Part)
+      // SAVE TO FIREBASE — wrapped so a network failure doesn't block navigation
       if (auth.currentUser) {
-        // This function handles the Dual Write (User Profile + Research Data)
-        await saveExamResult(auth.currentUser.uid, finalScore, diagnosis, severity);
+        try {
+          await saveExamResult(auth.currentUser.uid, finalScore, diagnosis, severity);
+        } catch (fbErr) {
+          console.warn('[Ishihara] Firebase save failed:', fbErr);
+        }
       }
 
-      // NAVIGATE
+      // NAVIGATE — always reached, even if Firebase save failed
       navigation.replace('IshiharaResult', { score: newScore, total: total, type: testType });
     }
   }; 
@@ -1547,16 +1542,11 @@ function CameraSimScreen({ navigation }) {
 
   const cameraRef      = useRef(null);
   const isProcessing   = useRef(false);
-  const timerRef       = useRef(null);
-  const cvdTypeRef     = useRef(cvdType);
 
   const device = useCameraDevice(cameraPosition);
 
   // Load TFLite model
   const tflite = useTensorflowModel(require('./assets/color_model.tflite'));
-
-  // Keep ref in sync with state
-  useEffect(() => { cvdTypeRef.current = cvdType; }, [cvdType]);
 
   // Track model readiness
   useEffect(() => {
@@ -1564,12 +1554,12 @@ function CameraSimScreen({ navigation }) {
     if (tflite.state === 'error')  setModelStatus('error');
   }, [tflite.state]);
 
-  // ── Self-scheduling frame pipeline (no setInterval spam) ──
-  const runFramePipeline = useCallback(async () => {
+  // ── Frame processing loop ───────────────────────────────────
+  const runFramePipeline = async () => {
     if (isProcessing.current) return;
-    if (!cameraRef.current) { timerRef.current = setTimeout(runFramePipeline, 200); return; }
-    if (tflite.state !== 'loaded' || !tflite.model) { timerRef.current = setTimeout(runFramePipeline, 200); return; }
-    if (cvdTypeRef.current === 'Off') { setProcessedUri(null); timerRef.current = setTimeout(runFramePipeline, 200); return; }
+    if (!cameraRef.current)   return;
+    if (tflite.state !== 'loaded' || !tflite.model) return;
+    if (cvdType === 'Off') { setProcessedUri(null); return; }
 
     isProcessing.current = true;
     try {
@@ -1580,31 +1570,28 @@ function CameraSimScreen({ navigation }) {
       });
       const fileUri = `file://${photo.path}`;
 
-      // 2. Single async resize to device-adaptive display resolution
-      const displayResized = await ImageManipulator.manipulateAsync(
-        fileUri,
-        [{ resize: { width: DISPLAY_SIZE, height: DISPLAY_SIZE } }],
-        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.8 }
+      // 2. Resize to 128×128 and get base64 for inference
+      const resized = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        [{ resize: { width: 128, height: 128 } }],
+        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
       );
 
-      // 3. Decode to RGBA at display resolution
-      const rawImage = decodeJpegBase64(displayResized.base64);
+      // 3. Prepare TFLite input tensor (Float32Array [128*128*3])
+      const inputTensor = prepareInputTensor(resized.base64);
 
-      // 4. Downscale RGBA → CNN tensor in JS (fast, synchronous — no second async call)
-      const inputTensor = downscaleToTensor(rawImage.data, DISPLAY_SIZE, DISPLAY_SIZE, CNN_SIZE, CNN_SIZE);
-
-      // 5. Run U-Net inference at 128x128
+      // 4. Run U-Net inference
       const outputs = tflite.model.runSync([inputTensor]);
       const mask128 = getClassMask(outputs[0]);
 
-      // 6. Upscale mask to display resolution (nearest-neighbor)
-      const mask = upscaleMaskNearest(mask128, CNN_SIZE, CNN_SIZE, DISPLAY_SIZE, DISPLAY_SIZE);
+      // 6. Decode JPEG to raw RGBA pixels
+      const rawImage = decodeJpegBase64(resized.base64);
 
-      // 7. Apply daltonization at display resolution (9x more pixels than 128x128)
-      const daltonized = applyDaltonization(rawImage, mask, cvdTypeRef.current);
+      // 7. Apply targeted daltonization to confused color regions
+      const daltonized = applyDaltonization(rawImage, mask, cvdType);
 
       // 8. Re-encode to data URI for display
-      const uri = encodeToDataUri(daltonized, DISPLAY_SIZE, DISPLAY_SIZE);
+      const uri = encodeToDataUri(daltonized, rawImage.width, rawImage.height);
       setProcessedUri(uri);
     } catch (e) {
       // Silently ignore frame errors
@@ -1615,61 +1602,16 @@ function CameraSimScreen({ navigation }) {
     }
   }, [tflite.state, tflite.model]);
 
-  // Start pipeline when model is ready, stop on unmount
+  // Start / restart interval when model is ready or CVD type changes
   useEffect(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
     if (tflite.state === 'loaded') {
-      timerRef.current = setTimeout(runFramePipeline, 200);
+      intervalRef.current = setInterval(runFramePipeline, 200); // ~5 FPS
     }
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [tflite.state, runFramePipeline]);
-
-  // Clear overlay when CVD type changes to Off
-  useEffect(() => {
-    if (cvdType === 'Off') setProcessedUri(null);
-  }, [cvdType]);
-
-  // ── Capture to gallery ──
-  const handleCapture = async () => {
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permission needed', 'Allow access to save photos.'); return; }
-      if (!cameraRef.current) return;
-
-      const photo = await cameraRef.current.takePhoto({
-        qualityPrioritization: 'balanced',
-        enableShutterSound: false,
-      });
-      const fileUri = `file://${photo.path}`;
-
-      if (cvdType !== 'Off' && tflite.state === 'loaded' && tflite.model) {
-        // Save daltonized version at device-adaptive capture resolution
-        const captureResized = await ImageManipulator.manipulateAsync(
-          fileUri, [{ resize: { width: CAPTURE_SIZE, height: CAPTURE_SIZE } }],
-          { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
-        );
-        const rawImage = decodeJpegBase64(captureResized.base64);
-        const inputTensor = downscaleToTensor(rawImage.data, CAPTURE_SIZE, CAPTURE_SIZE, CNN_SIZE, CNN_SIZE);
-        const outputs = tflite.model.runSync([inputTensor]);
-        const mask128 = getClassMask(outputs[0]);
-        const mask = upscaleMaskNearest(mask128, CNN_SIZE, CNN_SIZE, CAPTURE_SIZE, CAPTURE_SIZE);
-        const daltonized = applyDaltonization(rawImage, mask, cvdType);
-        const uri = encodeToDataUri(daltonized, CAPTURE_SIZE, CAPTURE_SIZE);
-        const filename = `daltonized_${Date.now()}.jpg`;
-        const saveUri = FileSystem.documentDirectory + filename;
-        await FileSystem.writeAsStringAsync(saveUri, uri.split(',')[1], { encoding: FileSystem.EncodingType.Base64 });
-        await MediaLibrary.saveToLibraryAsync(saveUri);
-        Alert.alert('Saved', 'Enhanced photo saved to gallery.');
-      } else {
-        await MediaLibrary.saveToLibraryAsync(fileUri);
-        Alert.alert('Saved', 'Photo saved to gallery.');
-      }
-    } catch (e) {
-      console.warn('[CameraSim] capture error:', e);
-      Alert.alert('Error', 'Could not save the photo.');
-    }
-  };
+  }, [tflite.state, cvdType]);
 
   // ── Permission gates ──
   if (hasPermission === null) return <View />;
@@ -1895,34 +1837,26 @@ function ColorIdentifierScreen({ navigation }) {
     }
   };
 
-  // Fix 3: only fire on release (not continuous move) so detection uses final finger position
   const handleTouch = (evt) => {
     const { locationX, locationY } = evt.nativeEvent;
     setCursorPosition({ x: locationX, y: locationY });
-    runDetection(locationX, locationY); // Fix 1: pass coords directly, not from state
+    // Trigger detection on tap
+    runDetection();
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
-
-      {/* VisionCamera — no shutter sound, no freeze */}
-      {device && (
-        <Camera
-          ref={cameraRef}
-          style={StyleSheet.absoluteFill}
-          device={device}
-          isActive={isFocused}
-          photo={true}
-          enableShutterSound={false}
+      <CameraView 
+        style={{ flex: 1 }} 
+        facing={cameraType === 'Back Camera' ? 'back' : 'front'}
+        ref={(ref) => setCamera(ref)}
+      >
+        <View 
+          style={StyleSheet.absoluteFill} 
+          onStartShouldSetResponder={() => true}
+          onResponderMove={handleTouch}
+          onResponderGrant={handleTouch}
         />
-      )}
-
-      <View
-        style={StyleSheet.absoluteFill}
-        onStartShouldSetResponder={() => true}
-        onResponderGrant={handleTouch}
-        onResponderRelease={handleTouch}
-      />
 
       <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
         <View style={styles.camTopBar}>
