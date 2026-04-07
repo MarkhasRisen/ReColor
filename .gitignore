@@ -41,3 +41,8 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Python / ML training environment
+venv/
+__pycache__/
+*.pyc

@@ -5,7 +5,8 @@
       "Bash(npm pack react-native-fast-tflite@1.5.1 --dry-run)",
       "Bash(npm install react-native-fast-tflite@1.5.1 --save)",
       "Bash(python -c \"import matplotlib.colors as mc; print\\(len\\(mc.XKCD_COLORS\\)\\)\")",
-      "Bash(python3 -c ':*)"
+      "Bash(python3 -c ':*)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for d2 in [d.get\\('dependencies',{}\\),d.get\\('peerDependencies',{}\\)] for k,v in d2.items\\(\\) if 'reanimated' in k.lower\\(\\)}, indent=2\\)\\)\")"
     ]
   }
 }

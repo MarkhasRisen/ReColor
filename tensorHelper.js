@@ -310,6 +310,46 @@ export function identifyColor(r, g, b) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// downscaleToTensor
+//
+// Synchronous: converts a jpeg-js decoded rawImage
+// { data: Uint8Array (RGBA), width, height } directly to a
+// Float32Array tensor [H*W*3] normalized to [0, 1].
+// Avoids re-encoding to base64 — use this instead of prepareInputTensor.
+// ─────────────────────────────────────────────────────────────
+export function downscaleToTensor(rawImage) {
+  const { data, width, height } = rawImage;
+  const tensor = new Float32Array(height * width * 3);
+  for (let i = 0; i < height * width; i++) {
+    tensor[i * 3 + 0] = data[i * 4 + 0] / 255.0; // R
+    tensor[i * 3 + 1] = data[i * 4 + 1] / 255.0; // G
+    tensor[i * 3 + 2] = data[i * 4 + 2] / 255.0; // B
+  }
+  return tensor;
+}
+
+// ─────────────────────────────────────────────────────────────
+// upscaleMaskNearest
+//
+// Nearest-neighbor resize of a class-mask Uint8Array from
+// (srcW × srcH) to (dstW × dstH). Used to match CNN output
+// mask dimensions to the display image dimensions.
+// ─────────────────────────────────────────────────────────────
+export function upscaleMaskNearest(mask, srcW, srcH, dstW, dstH) {
+  const out    = new Uint8Array(dstW * dstH);
+  const scaleX = srcW / dstW;
+  const scaleY = srcH / dstH;
+  for (let y = 0; y < dstH; y++) {
+    const sy = Math.min(srcH - 1, Math.floor(y * scaleY));
+    for (let x = 0; x < dstW; x++) {
+      const sx = Math.min(srcW - 1, Math.floor(x * scaleX));
+      out[y * dstW + x] = mask[sy * srcW + sx];
+    }
+  }
+  return out;
+}
+
+// ─────────────────────────────────────────────────────────────
 // prepareInputTensor
 //
 // Decodes a base64-encoded JPEG string (CNN_SIZE×CNN_SIZE) into a

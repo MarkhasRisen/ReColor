@@ -59,7 +59,18 @@ import {
 } from './firebaseConfig';
 
 // --- Configuration & Constants ---
-const { width } = Dimensions.get('window');
+const { width, height: screenHeight } = Dimensions.get('window');
+
+// Device-adaptive processing sizes.
+// CNN runs at CNN_SIZE x CNN_SIZE (update this when retraining at a new resolution).
+// Display overlay scales with screen: half the short edge, capped at 512 for performance.
+// Capture uses full screen-width resolution for best saved photo quality.
+const CNN_SIZE     = 256;
+// Display overlay width: half the short screen edge, capped at 512px.
+// Larger = sharper overlay but slower daltonization; 512 is a good balance.
+const DISPLAY_SIZE = Math.min(512, Math.round(Math.min(width, screenHeight) * 0.5));
+const CAPTURE_SIZE = Math.min(1024, width);
+
 const COLORS = {
   primary: '#6C63FF', // Purple
   secondary: '#FF4081', // Pink
@@ -1540,78 +1551,145 @@ function CameraSimScreen({ navigation }) {
   const [showModal, setShowModal]       = useState(false);
   const [modelStatus, setModelStatus]   = useState('loading');
 
-  const cameraRef      = useRef(null);
-  const isProcessing   = useRef(false);
+  const cameraRef    = useRef(null);
+  const isProcessing = useRef(false);
+  const timerRef     = useRef(null);
+  const cvdTypeRef   = useRef(cvdType);
+  const isFocusedRef = useRef(isFocused);
+  const isMountedRef = useRef(true);
 
   const device = useCameraDevice(cameraPosition);
+
+  // Keep refs in sync with state so the pipeline worklet sees latest values
+  useEffect(() => { cvdTypeRef.current = cvdType; }, [cvdType]);
+  useEffect(() => { isFocusedRef.current = isFocused; }, [isFocused]);
+  useEffect(() => { isMountedRef.current = true; return () => { isMountedRef.current = false; }; }, []);
 
   // Load TFLite model
   const tflite = useTensorflowModel(require('./assets/color_model.tflite'));
 
   // Track model readiness
   useEffect(() => {
-    if (tflite.state === 'loaded') setModelStatus('ready');
-    if (tflite.state === 'error')  setModelStatus('error');
+    if (tflite.state === 'loaded')  setModelStatus('ready');
+    else if (tflite.state === 'error') setModelStatus('error');
+    else setModelStatus('loading');
   }, [tflite.state]);
 
   // ── Frame processing loop ───────────────────────────────────
-  const runFramePipeline = async () => {
-    if (isProcessing.current) return;
-    if (!cameraRef.current)   return;
+  const runFramePipeline = useCallback(async () => {
+    if (!isMountedRef.current) return;
+    if (isProcessing.current)  return;
+    if (!isFocusedRef.current) return;
     if (tflite.state !== 'loaded' || !tflite.model) return;
-    if (cvdType === 'Off') { setProcessedUri(null); return; }
+    if (!cameraRef.current) {
+      // Camera not ready yet (e.g. mid-flip) — retry shortly
+      if (isMountedRef.current) timerRef.current = setTimeout(runFramePipeline, 200);
+      return;
+    }
+    if (cvdTypeRef.current === 'Off') {
+      setProcessedUri(null);
+      if (isMountedRef.current) timerRef.current = setTimeout(runFramePipeline, 200);
+      return;
+    }
 
     isProcessing.current = true;
     try {
-      // 1. VisionCamera takePhoto — no preview freeze, no shutter sound
+      // 1. Capture frame
       const photo = await cameraRef.current.takePhoto({
         qualityPrioritization: 'speed',
         enableShutterSound: false,
       });
       const fileUri = `file://${photo.path}`;
 
-      // 2. Resize to 128×128 and get base64 for inference
-      const resized = await ImageManipulator.manipulateAsync(
-        photo.uri,
-        [{ resize: { width: 128, height: 128 } }],
+      // 2a. Resize to DISPLAY_SIZE wide (aspect-ratio preserved) — for the output overlay.
+      //     Wider than CNN_SIZE so the displayed result is sharp, not stretched.
+      const displayResized = await ImageManipulator.manipulateAsync(
+        fileUri,
+        [{ resize: { width: DISPLAY_SIZE } }],
+        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.85 }
+      );
+
+      // 2b. Resize to CNN_SIZE×CNN_SIZE (square squash matches training) — for inference only.
+      const cnnResized = await ImageManipulator.manipulateAsync(
+        fileUri,
+        [{ resize: { width: CNN_SIZE, height: CNN_SIZE } }],
         { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
       );
 
-      // 3. Prepare TFLite input tensor (Float32Array [128*128*3])
-      const inputTensor = prepareInputTensor(resized.base64);
+      // 3. Decode both — display image for daltonization output, CNN image for tensor input
+      const displayImage = decodeJpegBase64(displayResized.base64);
+      const cnnImage     = decodeJpegBase64(cnnResized.base64);
 
-      // 4. Run U-Net inference
-      const outputs = tflite.model.runSync([inputTensor]);
-      const mask128 = getClassMask(outputs[0]);
+      // 4. Build Float32Array input tensor from the 256×256 CNN image
+      const inputTensor = downscaleToTensor(cnnImage);
 
-      // 6. Decode JPEG to raw RGBA pixels
-      const rawImage = decodeJpegBase64(resized.base64);
+      // 5. Run U-Net inference → class mask at CNN_SIZE×CNN_SIZE
+      const outputs  = tflite.model.runSync([inputTensor]);
+      const cnnMask  = getClassMask(outputs[0]);
 
-      // 7. Apply targeted daltonization to confused color regions
-      const daltonized = applyDaltonization(rawImage, mask, cvdType);
+      // 6. Upscale the CNN mask to match the display image dimensions
+      const displayMask = upscaleMaskNearest(
+        cnnMask,
+        CNN_SIZE, CNN_SIZE,
+        displayImage.width, displayImage.height
+      );
 
-      // 8. Re-encode to data URI for display
-      const uri = encodeToDataUri(daltonized, rawImage.width, rawImage.height);
-      setProcessedUri(uri);
+      // 7. Apply targeted daltonization at display resolution — sharp overlay
+      const daltonized = applyDaltonization(displayImage, displayMask, cvdTypeRef.current);
+
+      // 8. Encode and push to overlay
+      const uri = encodeToDataUri(daltonized, displayImage.width, displayImage.height);
+      if (isMountedRef.current) setProcessedUri(uri);
     } catch (e) {
       // Silently ignore frame errors
     } finally {
       isProcessing.current = false;
-      // Schedule next frame immediately after current finishes
-      timerRef.current = setTimeout(runFramePipeline, 50);
+      // Schedule next frame — only if still mounted and screen still focused
+      if (isMountedRef.current && isFocusedRef.current) {
+        timerRef.current = setTimeout(runFramePipeline, 50);
+      }
     }
   }, [tflite.state, tflite.model]);
 
-  // Start / restart interval when model is ready or CVD type changes
+  // Start / stop pipeline when model is ready, screen is focused, CVD type, or camera changes
   useEffect(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (tflite.state === 'loaded') {
-      intervalRef.current = setInterval(runFramePipeline, 200); // ~5 FPS
+    clearTimeout(timerRef.current);
+    if (tflite.state === 'loaded' && isFocused) {
+      // Small delay on camera flip to let the new device warm up
+      timerRef.current = setTimeout(runFramePipeline, 300);
     }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [tflite.state, cvdType]);
+    return () => clearTimeout(timerRef.current);
+  }, [tflite.state, cvdType, isFocused, cameraPosition, runFramePipeline]);
+
+  // handleCapture: pause pipeline → save full-res photo → resume
+  const handleCapture = async () => {
+    clearTimeout(timerRef.current);
+    // Wait for any in-flight frame to finish — max 1.5 s to avoid hanging forever
+    let waited = 0;
+    while (isProcessing.current && waited < 1500) {
+      await new Promise(r => setTimeout(r, 30));
+      waited += 30;
+    }
+    clearTimeout(timerRef.current);
+    try {
+      if (!cameraRef.current) return;
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please allow access to save photos.');
+        return;
+      }
+      const photo = await cameraRef.current.takePhoto({
+        qualityPrioritization: 'quality',
+        enableShutterSound: false,
+      });
+      await MediaLibrary.saveToLibraryAsync(`file://${photo.path}`);
+      Alert.alert('Saved', 'Photo saved to your gallery.');
+    } catch (e) {
+      Alert.alert('Error', 'Could not save photo.');
+    } finally {
+      if (isMountedRef.current) timerRef.current = setTimeout(runFramePipeline, 50);
+    }
+  };
 
   // ── Permission gates ──
   if (hasPermission === null) return <View />;
@@ -1740,10 +1818,6 @@ function CameraSimScreen({ navigation }) {
   );
 }
 
-// --- THE REAL LOGIC: Euclidean Color Classifier ---
-// This replaces the TFLite model for the Expo Go environment.
-// It calculates the geometric distance between the camera pixel and known colors.
-
 function ColorIdentifierScreen({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
   const isFocused = useIsFocused();
@@ -1751,13 +1825,19 @@ function ColorIdentifierScreen({ navigation }) {
   const [audio, setAudio] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
-  const [cursorPosition, setCursorPosition] = useState({ x: width / 2, y: 300 });
+  const [cursorPosition, setCursorPosition] = useState({ x: width / 2, y: screenHeight / 2 });
   const [identifiedColor, setIdentifiedColor] = useState({ name: 'Ready to Scan', hex: '#333', conf: '' });
   const [isDetecting, setIsDetecting] = useState(false); // UI-only indicator
 
-  const cameraRef = useRef(null);
+  const cameraRef       = useRef(null);
   const isProcessingRef = useRef(false); // ref not state — avoids race conditions
+  const isMountedRef    = useRef(true);
   const device = useCameraDevice(cameraPosition);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   // --- PERMISSION CHECK ---
   if (hasPermission === null) return <View />;
@@ -1772,28 +1852,26 @@ function ColorIdentifierScreen({ navigation }) {
     );
   }
 
-  // --- Color detection using CIELAB Delta-E at cursor position ---
-  // Fix 1: cx/cy passed directly — avoids stale cursorPosition state closure
-  // Fix 2: isProcessingRef (not state) — prevents race between onResponderGrant + onResponderMove
-  // Fix 4: exif:false forces corrected orientation on Android
+  // Color detection: takes photo, crops 10×10 PNG patch at (cx,cy), averages RGB, Delta-E match
   const runDetection = async (cx, cy) => {
     if (!cameraRef.current || isProcessingRef.current) return;
     isProcessingRef.current = true;
     setIsDetecting(true);
 
     try {
-      // 1. Take photo silently — exif:false avoids orientation mismatch on Android
+      // 1. Take photo silently
       const photo = await cameraRef.current.takePhoto({
         qualityPrioritization: 'speed',
         enableShutterSound: false,
       });
       const fileUri = `file://${photo.path}`;
 
-      // 2. Resize photo to match screen width — preserves aspect ratio, avoids orientation issues
+      // 2. Resize photo to match screen width — JPEG is fine here (coordinate mapping only)
+      //    PNG is reserved for the tiny 10×10 crop where DCT blocks degrade accuracy
       const normalized = await ImageManipulator.manipulateAsync(
         fileUri,
         [{ resize: { width } }],
-        { format: ImageManipulator.SaveFormat.JPEG, compress: 1.0 }
+        { format: ImageManipulator.SaveFormat.JPEG, compress: 0.92 }
       );
 
       // 3. Map cursor screen coords to normalized photo coords (1:1 on X, scaled on Y)
@@ -1806,14 +1884,15 @@ function ColorIdentifierScreen({ navigation }) {
       const cropX = Math.max(0, Math.min(normW - patchSize, Math.round(cx * scaleX) - half));
       const cropY = Math.max(0, Math.min(normH - patchSize, Math.round(cy * scaleY) - half));
 
-      // 4. Crop 10x10 patch at exact cursor position
+      // 4. Crop 10x10 patch at exact cursor position — JPEG at max quality
+      //    (averaging 100 pixels makes any DCT error negligible)
       const cropResult = await ImageManipulator.manipulateAsync(
         normalized.uri,
         [{ crop: { originX: cropX, originY: cropY, width: patchSize, height: patchSize } }],
         { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 1.0 }
       );
 
-      // 5. Decode and average RGB across all patch pixels
+      // 5. Decode JPEG patch and average RGB
       const pixelData = decodeJpegBase64(cropResult.base64);
       const numPixels = pixelData.width * pixelData.height;
       let avgR = 0, avgG = 0, avgB = 0;
@@ -1828,34 +1907,46 @@ function ColorIdentifierScreen({ navigation }) {
 
       // 6. Identify via CIELAB Delta-E nearest-neighbor
       const result = identifyColor(avgR, avgG, avgB);
-      setIdentifiedColor({ name: result.className, hex: result.hex, conf: `${result.confidence}%` });
+      if (isMountedRef.current) {
+        setIdentifiedColor({ name: result.className, hex: result.hex, conf: `${result.confidence}%` });
+      }
     } catch (e) {
       console.log('[ColorID] detection error:', e);
     } finally {
       isProcessingRef.current = false;
-      setIsDetecting(false);
+      if (isMountedRef.current) setIsDetecting(false);
     }
   };
 
-  const handleTouch = (evt) => {
+  const handleTouchMove = (evt) => {
     const { locationX, locationY } = evt.nativeEvent;
     setCursorPosition({ x: locationX, y: locationY });
-    // Trigger detection on tap
-    runDetection();
+  };
+
+  const handleTouchEnd = (evt) => {
+    const { locationX, locationY } = evt.nativeEvent;
+    setCursorPosition({ x: locationX, y: locationY });
+    runDetection(locationX, locationY);
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
-      <CameraView 
-        style={{ flex: 1 }} 
-        facing={cameraType === 'Back Camera' ? 'back' : 'front'}
-        ref={(ref) => setCamera(ref)}
-      >
-        <View 
-          style={StyleSheet.absoluteFill} 
+      {device && (
+        <Camera
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          device={device}
+          isActive={isFocused}
+          photo={true}
+          enableShutterSound={false}
+        />
+      )}
+        <View
+          style={StyleSheet.absoluteFill}
           onStartShouldSetResponder={() => true}
-          onResponderMove={handleTouch}
-          onResponderGrant={handleTouch}
+          onResponderMove={handleTouchMove}
+          onResponderGrant={handleTouchMove}
+          onResponderRelease={handleTouchEnd}
         />
 
       <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
@@ -1869,7 +1960,7 @@ function ColorIdentifierScreen({ navigation }) {
               </View>
           </View>
           <View style={{flexDirection:'row', alignItems:'center'}}>
-             <TouchableOpacity onPress={() => setAudio(!audio)} style={{ marginRight: 15 }}>
+             <TouchableOpacity onPress={() => { setAudio(a => !a); Alert.alert('Audio', audio ? 'Audio off (feature coming soon)' : 'Audio on (feature coming soon)'); }} style={{ marginRight: 15 }}>
                 <Ionicons name={audio ? "volume-high" : "volume-mute"} size={24} color="#FFF" />
              </TouchableOpacity>
              <TouchableOpacity onPress={() => setShowModal(true)}>
@@ -2019,7 +2110,7 @@ function CVDSimulationScreen({ navigation }) {
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
 
-      {/* VisionCamera + Skia GPU frame processor — applies CVD color matrix in real-time */}
+      {/* VisionCamera + Skia GPU frame processor — only active when a CVD mode is selected */}
       {device && (
         <Camera
           ref={cameraRef}
@@ -2028,7 +2119,7 @@ function CVDSimulationScreen({ navigation }) {
           isActive={isFocused}
           photo={true}
           pixelFormat="native"
-          frameProcessor={frameProcessor}
+          frameProcessor={mode !== 'Off' ? frameProcessor : undefined}
         />
       )}
 
