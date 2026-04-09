@@ -4,8 +4,8 @@
  * Provides:
  *  - Color class definitions (matching cnn.ipynb)
  *  - LMS color-space matrices for Daltonization (Brettel/Fidaner method)
- *  - prepareInputTensor()  – JPEG base64 → Float32Array [128*128*3]
- *  - getClassMask()        – TFLite output → Uint8Array class mask [128*128]
+ *  - prepareInputTensor()  – JPEG base64 → Float32Array [256*256*3]
+ *  - getClassMask()        – TFLite output → Uint8Array class mask [256*256]
  *  - applyDaltonization()  – Pixel-level CVD compensation
  */
 
@@ -361,7 +361,7 @@ export function upscaleMaskNearest(mask, srcW, srcH, dstW, dstH) {
 export function prepareInputTensor(base64Jpeg) {
   const buffer    = base64Decode(base64Jpeg);
   const rawImage  = JPEG.decode(new Uint8Array(buffer), { useTArray: true });
-  // rawImage.data is RGBA Uint8Array; width/height should be 128
+  // rawImage.data is RGBA Uint8Array; width/height should be CNN_SIZE (256)
 
   const W = rawImage.width;
   const H = rawImage.height;

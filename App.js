@@ -43,10 +43,12 @@ import {
 } from 'react-native';
 // 1. Import Firestore Tools (Standard Library)
 import {
+  addDoc,
   collection,
   onSnapshot,
   orderBy,
-  query
+  query,
+  serverTimestamp
 } from 'firebase/firestore';
 
 // 2. Import Your Config & Auth Functions (Local File)
@@ -54,8 +56,9 @@ import {
   auth,
   createUserWithEmailAndPassword,
   db,
-  saveExamResult, // <--- ADDED: Critical for connecting to the database
-  signInWithEmailAndPassword
+  saveExamResult,
+  signInWithEmailAndPassword,
+  signOut
 } from './firebaseConfig';
 
 // --- Configuration & Constants ---
@@ -127,18 +130,6 @@ const RAW_PLATES = [
   { id: 36, img: require('./assets/plate_18.png'), answer: '26' },
   { id: 37, img: require('./assets/plate_1.png'), answer: '12' },
   { id: 38, img: require('./assets/plate_2.png'), answer: '8' },
-];
-// --- Mock Data ---
-const MOCK_HISTORY = [
-  { type: 'Protanomaly', date: 'October 24, 2025', severity: 'Mild', score: 64 },
-  { type: 'Deuteranomaly', date: 'October 24, 2025', severity: 'Severe', score: 0 },
-  { type: 'Deuteranomaly', date: 'October 24, 2025', severity: 'Severe', score: 0 },
-];
-
-const EDU_ARTICLES = [
-  { id: 1, title: 'What is Color Vision Deficiency?', image: 'https://placehold.co/300x150/FF9F43/FFFFFF?text=CVD+Info', desc: 'Learn about the science behind color vision.' },
-  { id: 2, title: 'Types of Color Blindness', image: 'https://placehold.co/300x150/FF6B6B/FFFFFF?text=Eye+Anatomy', desc: 'Understand Protanomaly, Deuteranomaly, and Tritanomaly.' },
-  { id: 3, title: 'Designing for Accessibility', image: 'https://placehold.co/300x150/2ECC71/FFFFFF?text=Accessibility', desc: 'Best practices for creating accessible content.' },
 ];
 
 // --- Components ---
@@ -349,9 +340,8 @@ function LoginScreen({ navigation }) {
       console.log("Login Success");
       navigation.replace('MainTabs');
     } catch (error) {
-      // 2. Emergency "Auto-Signup" for Defense Demo
-      // If user doesn't exist, we create them on the fly so you don't get stuck.
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+      // 2. Auto-signup only for genuinely non-existent users
+      if (error.code === 'auth/user-not-found') {
         try {
           await createUserWithEmailAndPassword(auth, email, password);
           console.log("Account Created on the fly");
@@ -359,6 +349,8 @@ function LoginScreen({ navigation }) {
         } catch (regError) {
           Alert.alert("Registration Error", regError.message);
         }
+      } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+        Alert.alert("Login Failed", "Incorrect email or password.");
       } else {
         Alert.alert("Login Failed", error.message);
       }
@@ -417,12 +409,32 @@ function LoginScreen({ navigation }) {
 }
 
 function AdminLoginScreen({ navigation }) {
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPass, setAdminPass]   = useState('');
+  const [adminLoading, setAdminLoading] = useState(false);
+
+  const handleAdminLogin = async () => {
+    if (!adminEmail || !adminPass) {
+      Alert.alert("Error", "Please enter email and password.");
+      return;
+    }
+    setAdminLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+      navigation.navigate('AdminHub', { role: 'admin' });
+    } catch (e) {
+      Alert.alert("Login Failed", "Incorrect email or password.");
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Header title="Admin Portal" subtitle="Secure Access" back />
       <BackgroundBubbles />
-      
-      <ScrollView contentContainerStyle={{ padding: 20 }}showsVerticalScrollIndicator={false}>
+
+      <ScrollView contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
         <View style={{ alignItems: 'center', marginVertical: 30 }}>
           <View style={styles.iconCircleGradient}>
             <Ionicons name="lock-closed-outline" size={40} color="#FFF" />
@@ -441,18 +453,22 @@ function AdminLoginScreen({ navigation }) {
         <Text style={styles.label}>Email Address</Text>
         <View style={styles.inputContainer}>
           <Ionicons name="mail-outline" size={20} color="#999" />
-          <TextInput style={styles.input} placeholder="admin@recolor.app" />
+          <TextInput style={styles.input} placeholder="admin@recolor.app" value={adminEmail} onChangeText={setAdminEmail} autoCapitalize="none" />
         </View>
 
         <Text style={styles.label}>Password</Text>
         <View style={styles.inputContainer}>
           <Ionicons name="key-outline" size={20} color="#999" />
-          <TextInput style={styles.input} placeholder="••••••••" secureTextEntry />
+          <TextInput style={styles.input} placeholder="••••••••" secureTextEntry value={adminPass} onChangeText={setAdminPass} />
         </View>
 
-        <TouchableOpacity style={[styles.btnPrimary, { marginTop: 20, backgroundColor: '#8E24AA' }]}>
-          <Ionicons name="lock-open-outline" size={20} color="#FFF" style={{ marginRight: 10 }} />
-          <Text style={styles.btnText}>Sign In Securely</Text>
+        <TouchableOpacity style={[styles.btnPrimary, { marginTop: 20, backgroundColor: '#8E24AA' }]} onPress={handleAdminLogin}>
+          {adminLoading ? <ActivityIndicator color="#FFF" /> : (
+            <>
+              <Ionicons name="lock-open-outline" size={20} color="#FFF" style={{ marginRight: 10 }} />
+              <Text style={styles.btnText}>Sign In Securely</Text>
+            </>
+          )}
         </TouchableOpacity>
 
         {/* DEMO CREDENTIALS - CLICKABLE */}
@@ -592,9 +608,9 @@ function AdminHubScreen({ route, navigation }) {
         )}
 
         {/* Logout - RED BUTTON */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={{ marginTop: 30, backgroundColor: '#D32F2F', padding: 15, borderRadius: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
-          onPress={() => navigation.navigate('Login')}
+          onPress={() => { signOut(auth).catch(() => {}); navigation.navigate('Login'); }}
         >
           <Ionicons name="log-out-outline" size={20} color="#FFF" style={{ marginRight: 10 }} />
           <Text style={{ fontWeight: 'bold', color: '#FFF' }}>Logout from Admin Portal</Text>
@@ -819,14 +835,16 @@ function ResearchDashboardScreen({ navigation }) {
 // --- Screens: User Main Tabs ---
 
 function HomeScreen({ navigation }) {
+  const userName = (auth.currentUser?.email || 'Guest').split('@')[0];
+
   return (
     <View style={styles.container}>
       {/* ADD BUBBLES HERE */}
       <BackgroundBubbles />
 
-      <ScrollView contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}style={{ backgroundColor: 'transparent' }}>
+      <ScrollView contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false} style={{ backgroundColor: 'transparent' }}>
         <View style={{ marginTop: 10, marginBottom: 20 }}>
-          <Text style={{ color: '#666', marginBottom: 5 }}>Hello, Demo User</Text>
+          <Text style={{ color: '#666', marginBottom: 5 }}>Hello, {userName}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={{ fontSize: 28, fontWeight: 'bold', flex: 1, marginRight: 10 }}>
               Welcome to ReColor
@@ -907,6 +925,7 @@ function HistoryScreen() {
           // Handle missing fields safely
           type: data.diagnosis || "Unknown",
           score: data.score !== undefined ? data.score : "?",
+          total: data.total || 14,
           severity: data.severity || "N/A",
           // Convert Firebase Timestamp to readable text
           date: data.date?.toDate ? data.date.toDate().toLocaleDateString() : "Just now"
@@ -946,7 +965,7 @@ function HistoryScreen() {
                   <Text style={{ fontSize: 12, color: '#888' }}>{item.date}</Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={{ fontSize: 20, fontWeight: 'bold', color: COLORS.primary }}>{item.score}/14</Text>
+                  <Text style={{ fontSize: 20, fontWeight: 'bold', color: COLORS.primary }}>{item.score}/{item.total}</Text>
                   <Text style={{ fontSize: 11, fontWeight: 'bold', color: item.severity === 'Severe' ? COLORS.danger : COLORS.warning }}>
                     {item.severity}
                   </Text>
@@ -961,17 +980,19 @@ function HistoryScreen() {
 }
 
 function ProfileScreen({ navigation }) {
+  const userEmail = auth.currentUser?.email || 'Guest';
+  const userName = userEmail.split('@')[0];
+
   return (
     <View style={styles.container}>
       <BackgroundBubbles />
       <ScrollView contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
-        
+
         {/* Header */}
         <View style={{ marginTop: 20, marginBottom: 20, flexDirection: 'row', alignItems: 'center' }}>
-          
-          {/* Text Container: flex: 1 pushes the image to the right, but respects the image's margin */}
+
           <View style={{ flex: 1 }}>
-            <Text style={{ color: '#666', fontSize: 16 }}>Hello, Demo User</Text>
+            <Text style={{ color: '#666', fontSize: 16 }}>Hello, {userName}</Text>
             <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#333' }}>Welcome to ReColor</Text>
           </View>
           
@@ -992,8 +1013,8 @@ function ProfileScreen({ navigation }) {
             <Ionicons name="person" size={40} color="#FFF" />
           </View>
           
-          <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#333' }}>Demo User</Text>
-          <Text style={{ color: '#888', marginBottom: 25 }}>demo@recolor.app</Text>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#333' }}>{userName}</Text>
+          <Text style={{ color: '#888', marginBottom: 25 }}>{userEmail}</Text>
 
           {/* Manage Settings Button */}
           <TouchableOpacity 
@@ -1011,6 +1032,8 @@ function ProfileScreen({ navigation }) {
 // --- Screens: User Feature Flows ---
 
 function SettingsScreen({ navigation }) {
+  const userEmail = auth.currentUser?.email || 'Guest';
+  const userName = userEmail.split('@')[0];
   const [enhancement, setEnhancement] = useState(0);
   const [audio, setAudio] = useState(true);
 
@@ -1029,11 +1052,11 @@ function SettingsScreen({ navigation }) {
           </View>
           <View style={{ marginBottom: 10 }}>
             <Text style={{ color: '#999', fontSize: 12 }}>Name</Text>
-            <Text style={{ fontSize: 16, color: '#333', fontWeight: '500' }}>Demo User</Text>
+            <Text style={{ fontSize: 16, color: '#333', fontWeight: '500' }}>{userName}</Text>
           </View>
           <View>
             <Text style={{ color: '#999', fontSize: 12 }}>Email</Text>
-            <Text style={{ fontSize: 16, color: '#333', fontWeight: '500' }}>demo@recolor.app</Text>
+            <Text style={{ fontSize: 16, color: '#333', fontWeight: '500' }}>{userEmail}</Text>
           </View>
         </Card>
 
@@ -1099,9 +1122,9 @@ function SettingsScreen({ navigation }) {
         {/* Account Section - RED BUTTON */}
         <Card>
           <Text style={{ marginBottom: 15, fontWeight: 'bold', fontSize: 16, color: '#333' }}>Account</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.btnPrimary, { backgroundColor: '#D32F2F', height: 45 }]}
-            onPress={() => navigation.replace('Login')}
+            onPress={() => { signOut(auth).catch(() => {}); navigation.replace('Login'); }}
           >
             <Ionicons name="log-out-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
             <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Log Out</Text>
@@ -1249,27 +1272,37 @@ function IshiharaTestScreen({ route, navigation }) {
       const finalScore = newScore;
       const total = queue.length;
       
-      // Simple Diagnosis Logic
+      // Diagnosis logic based on Ishihara screening guidelines
+      // Standard Ishihara plates primarily detect red-green deficiency.
+      // Severity is graded by the percentage of correctly identified plates.
       let diagnosis = "Normal Vision";
       let severity = "None";
       const percentage = (finalScore / total) * 100;
 
       if (percentage < 80) {
-        diagnosis = "Deuteranomaly (Simulated)";
-        severity = percentage < 40 ? "Severe" : "Moderate";
+        if (percentage >= 60) {
+          diagnosis = "Mild Red-Green Deficiency";
+          severity = "Mild";
+        } else if (percentage >= 40) {
+          diagnosis = "Moderate Red-Green Deficiency";
+          severity = "Moderate";
+        } else {
+          diagnosis = "Strong Red-Green Deficiency";
+          severity = "Severe";
+        }
       }
 
       // SAVE TO FIREBASE — wrapped so a network failure doesn't block navigation
       if (auth.currentUser) {
         try {
-          await saveExamResult(auth.currentUser.uid, finalScore, diagnosis, severity);
+          await saveExamResult(auth.currentUser.uid, finalScore, diagnosis, severity, total);
         } catch (fbErr) {
           console.warn('[Ishihara] Firebase save failed:', fbErr);
         }
       }
 
       // NAVIGATE — always reached, even if Firebase save failed
-      navigation.replace('IshiharaResult', { score: newScore, total: total, type: testType });
+      navigation.replace('IshiharaResult', { score: newScore, total: total, type: testType, diagnosis, severity });
     }
   }; 
 
@@ -1391,19 +1424,36 @@ function IshiharaTestScreen({ route, navigation }) {
   );
 }
 
-function IshiharaResultScreen({ navigation }) {
+function IshiharaResultScreen({ route, navigation }) {
+  const { score = 0, total = 14, diagnosis = 'Unknown', severity = 'N/A' } = route.params || {};
+  const percentage = Math.round((score / total) * 100);
+  const isNormal = diagnosis === 'Normal Vision';
+
+  const getDescription = () => {
+    if (isNormal) return 'Your color vision appears to be within the normal range based on this screening.';
+    if (diagnosis.includes('Protan')) return 'Red-green color vision deficiency. Red colors appear less bright and may be confused with greens and browns.';
+    if (diagnosis.includes('Deutan')) return 'Red-green color vision deficiency. Green colors appear less bright and may be confused with reds and browns.';
+    if (diagnosis.includes('Tritan')) return 'Blue-yellow color vision deficiency. Blue colors may be confused with greens, and yellows with violets.';
+    return 'Possible color vision deficiency detected. Consider consulting an eye care professional for a comprehensive assessment.';
+  };
+
+  const severityColor = severity === 'Severe' ? '#D50000' : severity === 'Moderate' ? '#FF9800' : '#4CAF50';
+  const cardBg = isNormal ? '#E8F5E9' : '#FFF3E0';
+  const iconColor = isNormal ? '#4CAF50' : '#FF9800';
+  const iconName = isNormal ? 'checkmark-circle' : 'alert-circle';
+
   return (
     <ScrollView style={styles.container}>
       <Header title="Your Results" back />
       <View style={{ padding: 20 }}>
-        
-        <Card style={{ backgroundColor: '#FFF3E0', alignItems: 'center', paddingVertical: 30 }}>
-           <Ionicons name="alert-circle" size={40} color="#FF9800" />
+
+        <Card style={{ backgroundColor: cardBg, alignItems: 'center', paddingVertical: 30 }}>
+           <Ionicons name={iconName} size={40} color={iconColor} />
            <Text style={{ color: '#E65100', marginTop: 10 }}>Classification</Text>
-           <Text style={{ color: '#E65100', fontSize: 12 }}>Likely</Text>
-           <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#3E2723', marginVertical: 5 }}>Deuteranomaly</Text>
-           <View style={{ backgroundColor: '#D50000', paddingHorizontal: 15, paddingVertical: 5, borderRadius: 15 }}>
-             <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>Severity: Severe</Text>
+           <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#3E2723', marginVertical: 5 }}>{diagnosis}</Text>
+           <Text style={{ color: '#555', fontSize: 14, marginBottom: 10 }}>Score: {score}/{total} ({percentage}%)</Text>
+           <View style={{ backgroundColor: severityColor, paddingHorizontal: 15, paddingVertical: 5, borderRadius: 15 }}>
+             <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>Severity: {severity}</Text>
            </View>
         </Card>
 
@@ -1413,15 +1463,14 @@ function IshiharaResultScreen({ navigation }) {
             <Text style={{ marginLeft: 10, fontWeight: 'bold', color: '#0D47A1' }}>What This Means</Text>
           </View>
           <Text style={{ color: '#1565C0', lineHeight: 20 }}>
-            Red-green color vision deficiency. Green colors appear less bright.
+            {getDescription()}
           </Text>
-          <Text style={{ color: '#2196F3', marginTop: 10, fontWeight: 'bold' }}>Learn More {'>'}</Text>
         </Card>
 
         <Card style={{ marginTop: 20 }}>
           <Text style={{ fontWeight: 'bold', color: '#6C63FF', marginBottom: 15 }}>Recommendations</Text>
-          
-          <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+
+          <TouchableOpacity onPress={() => navigation.navigate('CameraSim')} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
              <View style={[styles.iconCircle, { backgroundColor: '#F3E5F5', width: 40, height: 40 }]}>
                 <Ionicons name="color-wand" size={20} color="#9C27B0" />
              </View>
@@ -1444,7 +1493,7 @@ function IshiharaResultScreen({ navigation }) {
           </TouchableOpacity>
         </Card>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.btnPrimary, { marginTop: 20, backgroundColor: '#1A237E' }]}
           onPress={() => navigation.navigate('MainTabs')}
         >
@@ -1461,17 +1510,45 @@ function IshiharaResultScreen({ navigation }) {
 function SurveyScreen({ navigation }) {
   const [selectedCause, setSelectedCause] = useState(null);
   const [selectedSex, setSelectedSex] = useState(null);
-  
+  const [submitting, setSubmitting] = useState(false);
+  const causes = ['Medical Intake', 'Genetics', 'Ageing', 'Others'];
+
+  const handleSubmit = async () => {
+    if (selectedCause === null || !selectedSex) {
+      Alert.alert("Incomplete", "Please answer all questions before submitting.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const surveyData = {
+        cause: causes[selectedCause],
+        sex: selectedSex,
+        userId: auth.currentUser?.uid || 'anonymous',
+        timestamp: serverTimestamp(),
+      };
+      await addDoc(collection(db, "surveys"), surveyData);
+      if (auth.currentUser) {
+        await addDoc(collection(db, "users", auth.currentUser.uid, "surveys"), surveyData);
+      }
+      navigation.replace('SurveySuccess');
+    } catch (e) {
+      console.warn('[Survey] save failed:', e);
+      navigation.replace('SurveySuccess');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Header title="Quick Survey" back />
-      <ScrollView contentContainerStyle={{ padding: 20 }}showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
         <Text style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 18, marginBottom: 5 }}>Help Us Understand</Text>
         <Text style={{ textAlign: 'center', color: '#777', marginBottom: 25 }}>What do you think are the causes of your CVD?</Text>
 
         {/* Causes Grid */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 }}>
-           {['Medical Intake', 'Genetics', 'Ageing', 'Others'].map((item, idx) => (
+           {causes.map((item, idx) => (
              <TouchableOpacity 
                key={idx} 
                onPress={() => setSelectedCause(idx)}
@@ -1511,11 +1588,12 @@ function SurveyScreen({ navigation }) {
           </View>
         </Card>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.btnPrimary, { marginTop: 30, backgroundColor: '#111' }]}
-          onPress={() => navigation.replace('SurveySuccess')}
+          onPress={handleSubmit}
+          disabled={submitting}
         >
-          <Text style={styles.btnText}>Submit Survey</Text>
+          {submitting ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Submit Survey</Text>}
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -1564,6 +1642,12 @@ function CameraSimScreen({ navigation }) {
   useEffect(() => { cvdTypeRef.current = cvdType; }, [cvdType]);
   useEffect(() => { isFocusedRef.current = isFocused; }, [isFocused]);
   useEffect(() => { isMountedRef.current = true; return () => { isMountedRef.current = false; }; }, []);
+
+  // Auto-request camera permission once on mount
+  useEffect(() => {
+    if (!hasPermission) requestPermission();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Load TFLite model
   const tflite = useTensorflowModel(require('./assets/color_model.tflite'));
@@ -1692,7 +1776,6 @@ function CameraSimScreen({ navigation }) {
   };
 
   // ── Permission gates ──
-  if (hasPermission === null) return <View />;
   if (!hasPermission) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -1839,8 +1922,13 @@ function ColorIdentifierScreen({ navigation }) {
     return () => { isMountedRef.current = false; };
   }, []);
 
+  // Auto-request camera permission once on mount
+  useEffect(() => {
+    if (!hasPermission) requestPermission();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // --- PERMISSION CHECK ---
-  if (hasPermission === null) return <View />;
   if (!hasPermission) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -1852,7 +1940,7 @@ function ColorIdentifierScreen({ navigation }) {
     );
   }
 
-  // Color detection: takes photo, crops 10×10 PNG patch at (cx,cy), averages RGB, Delta-E match
+  // Color detection: takes photo, decodes full image, reads pixels directly at cursor position
   const runDetection = async (cx, cy) => {
     if (!cameraRef.current || isProcessingRef.current) return;
     isProcessingRef.current = true;
@@ -1866,49 +1954,65 @@ function ColorIdentifierScreen({ navigation }) {
       });
       const fileUri = `file://${photo.path}`;
 
-      // 2. Resize photo to match screen width — JPEG is fine here (coordinate mapping only)
-      //    PNG is reserved for the tiny 10×10 crop where DCT blocks degrade accuracy
-      const normalized = await ImageManipulator.manipulateAsync(
+      // 2. Resize to manageable size & get base64 (ImageManipulator applies EXIF rotation)
+      const resized = await ImageManipulator.manipulateAsync(
         fileUri,
-        [{ resize: { width } }],
-        { format: ImageManipulator.SaveFormat.JPEG, compress: 0.92 }
+        [{ resize: { width: 640 } }],
+        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.95 }
       );
+      const imgW = resized.width;
+      const imgH = resized.height;
 
-      // 3. Map cursor screen coords to normalized photo coords (1:1 on X, scaled on Y)
-      const normH = normalized.height || screenHeight;
-      const scaleX = 1; // photo width === screen width
-      const scaleY = normH / screenHeight;
-      const patchSize = 10;
-      const half = patchSize / 2;
-      const normW = normalized.width || width;
-      const cropX = Math.max(0, Math.min(normW - patchSize, Math.round(cx * scaleX) - half));
-      const cropY = Math.max(0, Math.min(normH - patchSize, Math.round(cy * scaleY) - half));
+      // 3. Decode the full resized image — read pixels directly from the RGBA buffer
+      const decoded = decodeJpegBase64(resized.base64);
 
-      // 4. Crop 10x10 patch at exact cursor position — JPEG at max quality
-      //    (averaging 100 pixels makes any DCT error negligible)
-      const cropResult = await ImageManipulator.manipulateAsync(
-        normalized.uri,
-        [{ crop: { originX: cropX, originY: cropY, width: patchSize, height: patchSize } }],
-        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 1.0 }
-      );
+      // 4. Cover-mode coordinate mapping
+      //    Camera preview fills the screen (cover) — must account for crop offset
+      const screenAspect = width / screenHeight;
+      const photoAspect  = imgW / imgH;
 
-      // 5. Decode JPEG patch and average RGB
-      const pixelData = decodeJpegBase64(cropResult.base64);
-      const numPixels = pixelData.width * pixelData.height;
-      let avgR = 0, avgG = 0, avgB = 0;
-      for (let i = 0; i < numPixels; i++) {
-        avgR += pixelData.data[i * 4];
-        avgG += pixelData.data[i * 4 + 1];
-        avgB += pixelData.data[i * 4 + 2];
+      let pixX, pixY;
+      if (photoAspect > screenAspect) {
+        // Photo wider than screen → height fills, sides cropped
+        const visibleW = screenAspect * imgH;
+        const offsetX  = (imgW - visibleW) / 2;
+        pixX = Math.round(offsetX + (cx / width) * visibleW);
+        pixY = Math.round((cy / screenHeight) * imgH);
+      } else {
+        // Photo taller than screen → width fills, top/bottom cropped
+        const visibleH = imgW / screenAspect;
+        const offsetY  = (imgH - visibleH) / 2;
+        pixX = Math.round((cx / width) * imgW);
+        pixY = Math.round(offsetY + (cy / screenHeight) * visibleH);
       }
-      avgR = Math.round(avgR / numPixels);
-      avgG = Math.round(avgG / numPixels);
-      avgB = Math.round(avgB / numPixels);
+
+      // 5. Average a 10×10 neighborhood around the mapped pixel
+      const half = 5;
+      const x0 = Math.max(0, pixX - half);
+      const y0 = Math.max(0, pixY - half);
+      const x1 = Math.min(imgW, pixX + half);
+      const y1 = Math.min(imgH, pixY + half);
+
+      let avgR = 0, avgG = 0, avgB = 0, count = 0;
+      for (let py = y0; py < y1; py++) {
+        for (let px = x0; px < x1; px++) {
+          const idx = (py * imgW + px) * 4;
+          avgR += decoded.data[idx];
+          avgG += decoded.data[idx + 1];
+          avgB += decoded.data[idx + 2];
+          count++;
+        }
+      }
+      avgR = Math.round(avgR / count);
+      avgG = Math.round(avgG / count);
+      avgB = Math.round(avgB / count);
 
       // 6. Identify via CIELAB Delta-E nearest-neighbor
       const result = identifyColor(avgR, avgG, avgB);
+      // Show actual sampled hex in swatch so user can verify mapping
+      const sampledHex = '#' + [avgR, avgG, avgB].map(c => c.toString(16).padStart(2, '0')).join('');
       if (isMountedRef.current) {
-        setIdentifiedColor({ name: result.className, hex: result.hex, conf: `${result.confidence}%` });
+        setIdentifiedColor({ name: result.className, hex: sampledHex, conf: `${result.confidence}%` });
       }
     } catch (e) {
       console.log('[ColorID] detection error:', e);
@@ -2018,6 +2122,12 @@ function CVDSimulationScreen({ navigation }) {
   const cameraRef = useRef(null);
   const device = useCameraDevice(cameraPosition);
 
+  // Auto-request camera permission once on mount
+  useEffect(() => {
+    if (!hasPermission) requestPermission();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Build Paint object outside the worklet — Skia objects must not be
   // constructed inside worklets in react-native-skia 2.x
   const paint = useMemo(() => {
@@ -2035,7 +2145,6 @@ function CVDSimulationScreen({ navigation }) {
   }, [paint]);
 
   // --- PERMISSION CHECK ---
-  if (hasPermission === null) return <View />;
   if (!hasPermission) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -2198,36 +2307,61 @@ function CVDSimulationScreen({ navigation }) {
   );
 }
 function CVDGalleryScreen({ navigation }) {
-  const [image, setImage] = useState(null);
-  const [mode, setMode] = useState('Off');
+  const [originalUri, setOriginalUri] = useState(null);
+  const [displayUri, setDisplayUri]   = useState(null);
+  const [mode, setMode]               = useState('Off');
+  const [processing, setProcessing]   = useState(false);
 
-  // 1. Pick Image Logic
   const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 1,
     });
-
     if (!result.canceled) {
-      setImage(result.assets[0].uri);
+      const uri = result.assets[0].uri;
+      setOriginalUri(uri);
+      setDisplayUri(uri);
+      setMode('Off');
     }
   };
 
-  // 2. Filter Logic (Overlay)
-  const getFilterColor = () => {
-    switch (mode) {
-      case 'Protan': return 'rgba(255, 0, 0, 0.15)'; // Correction: Boost Red
-      case 'Deutan': return 'rgba(0, 255, 0, 0.15)'; // Correction: Boost Green
-      case 'Tritan': return 'rgba(0, 0, 255, 0.15)'; // Correction: Boost Blue
-      default: return 'transparent';
+  // Apply real CVD simulation using Viénot matrices
+  const applyFilter = async (cvdMode) => {
+    setMode(cvdMode);
+    if (cvdMode === 'Off' || !originalUri) {
+      setDisplayUri(originalUri);
+      return;
+    }
+    setProcessing(true);
+    try {
+      const resized = await ImageManipulator.manipulateAsync(
+        originalUri,
+        [{ resize: { width: CAPTURE_SIZE } }],
+        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
+      );
+      const rawImage = decodeJpegBase64(resized.base64);
+      const m = getCVDColorMatrix(cvdMode);
+      const pixels = rawImage.data;
+      for (let i = 0; i < pixels.length; i += 4) {
+        const r = pixels[i] / 255, g = pixels[i+1] / 255, b = pixels[i+2] / 255;
+        pixels[i]   = Math.min(255, Math.max(0, Math.round((m[0]*r + m[1]*g + m[2]*b) * 255)));
+        pixels[i+1] = Math.min(255, Math.max(0, Math.round((m[5]*r + m[6]*g + m[7]*b) * 255)));
+        pixels[i+2] = Math.min(255, Math.max(0, Math.round((m[10]*r + m[11]*g + m[12]*b) * 255)));
+      }
+      const uri = encodeToDataUri(pixels, rawImage.width, rawImage.height);
+      setDisplayUri(uri);
+    } catch (e) {
+      console.warn('[CVDGallery] filter error:', e);
+    } finally {
+      setProcessing(false);
     }
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
       <SafeAreaView style={{ flex: 1 }}>
-        
+
         {/* Header */}
         <View style={styles.camTopBar}>
           <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back" size={24} color="#FFF" /></TouchableOpacity>
@@ -2237,11 +2371,15 @@ function CVDGalleryScreen({ navigation }) {
 
         {/* Main Content */}
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          {image ? (
+          {displayUri ? (
             <View style={{ width: width, height: width * 1.3 }}>
-              <Image source={{ uri: image }} style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
-              {/* THE FILTER OVERLAY */}
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: getFilterColor() }]} pointerEvents="none" />
+              <Image source={{ uri: displayUri }} style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
+              {processing && (
+                <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }]}>
+                  <ActivityIndicator size="large" color="#FFF" />
+                  <Text style={{ color: '#FFF', marginTop: 10 }}>Applying simulation...</Text>
+                </View>
+              )}
             </View>
           ) : (
             <TouchableOpacity onPress={pickImage} style={{ alignItems: 'center' }}>
@@ -2252,13 +2390,14 @@ function CVDGalleryScreen({ navigation }) {
         </View>
 
         {/* Controls */}
-        {image && (
+        {originalUri && (
           <View style={{ flexDirection: 'row', justifyContent: 'center', paddingBottom: 30, gap: 10 }}>
              {['Off', 'Protan', 'Deutan', 'Tritan'].map(m => (
-               <TouchableOpacity 
-                 key={m} 
-                 onPress={() => setMode(m)} 
-                 style={{ backgroundColor: mode === m ? COLORS.primary : '#333', padding: 10, borderRadius: 20, paddingHorizontal: 20 }}
+               <TouchableOpacity
+                 key={m}
+                 onPress={() => applyFilter(m)}
+                 disabled={processing}
+                 style={{ backgroundColor: mode === m ? COLORS.primary : '#333', padding: 10, borderRadius: 20, paddingHorizontal: 20, opacity: processing ? 0.5 : 1 }}
                >
                  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{m}</Text>
                </TouchableOpacity>
