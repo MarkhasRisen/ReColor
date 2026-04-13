@@ -133,6 +133,69 @@ Files: tensorHelper.js, App.js
    not compiled to JS in published package)
 
 
+───────────────────────────────────────────────────────────────────
+VERSION 6 — CNN 256×256 + Tile-Based Pipeline (Apr 13, 2026)
+Files: App.js, tensorHelper.js
+───────────────────────────────────────────────────────────────────
+MAJOR PIPELINE REWORK — removed real-time loop, added tile-based
+full-resolution processing:
+
+CNN changes:
+- CNN_SIZE upgraded from 128 to 256 (higher per-tile detail)
+- Model still uses same U-Net architecture and INT8 quantized
+  TFLite file (color_model.tflite)
+
+Pipeline changes (CameraSimScreen):
+- REMOVED: real-time frame processing loop (takePhoto every 100ms)
+- ADDED: freeze-and-process workflow:
+  1. Live camera preview (no CNN processing)
+  2. User presses Freeze button to capture full-res photo
+  3. Full-resolution image tiled into 256×256 patches
+     - Grid: ceil(width/256) × ceil(height/256) tiles
+     - Edge tiles zero-padded (black) to fill 256×256
+     - e.g., 4032×3024 = 16×12 = 192 tiles
+  4. Each tile fed through CNN individually
+  5. Tile masks stitched back into single full-res class mask
+     - Only valid region copied (padding discarded)
+  6. applyCVDSimulation() runs on full-res image + full-res mask
+  7. Result displayed as frozen overlay
+
+- ADDED: mask caching — CNN mask + decoded image cached in refs
+  - Switching CVD type (Protan/Deutan/Tritan) re-applies simulation
+    instantly from cached mask — NO CNN re-run needed
+  - CNN only runs once per capture
+
+- ADDED: progress indicator ("Processing tile 12/40...")
+- ADDED: UI yields to render thread every 4 tiles (setTimeout(0))
+
+UI changes:
+- Live mode: camera flip | freeze (snowflake icon) | gallery
+- Frozen mode: reset (refresh) | — | save to gallery (download)
+- Top-left: back arrow (live) → X close (frozen)
+- CVD type buttons dimmed during processing
+- Full-screen processing overlay with ActivityIndicator
+
+CameraSimScreen purpose clarified:
+- CameraSimScreen = CVD SIMULATION (shows what colorblind see)
+- Camera Enhance (future) = DALTONIZATION (color correction)
+- Previously CameraSimScreen was incorrectly calling
+  applyDaltonization() — fixed to applyCVDSimulation()
+- ModeSelector label corrected: "Enhancement" → "Simulation"
+
+Stability fixes:
+- ADDED: ScreenErrorBoundary wrapping CameraSimScreen
+  - Catches native module init crashes (e.g., TFLite failure)
+  - Shows "This screen crashed" UI with error + Go Back button
+- ADDED: AppLog file-based debug logger
+  - Writes to recolor_debug.log on device filesystem
+  - Logs: mount, permission, tflite state, pipeline errors
+  - Viewable from Settings > Debug Logs (works offline)
+- ADDED: guards in applyCVDSimulation/applyDaltonization for
+  invalid cvdType (returns unmodified pixels instead of crash)
+- ModeSelector navigation: 120ms delay before replace() to let
+  VisionCamera release before screen teardown
+
+
 ═══════════════════════════════════════════════════════════════════
                      END OF CHANGES HISTORY
 ═══════════════════════════════════════════════════════════════════

@@ -3,6 +3,7 @@ import { useTensorflowModel } from 'react-native-fast-tflite';
 import {
   getClassMask,
   applyDaltonization,
+  applyCVDSimulation,
   decodeJpegBase64,
   encodeToDataUri,
   getCVDColorMatrix,
@@ -22,7 +23,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from 'expo-image-picker';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Component, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -69,9 +70,9 @@ const { width, height: screenHeight } = Dimensions.get('window');
 // Display overlay scales with screen: half the short edge, capped at 512 for performance.
 // Capture uses full screen-width resolution for best saved photo quality.
 const CNN_SIZE     = 256;
-// Display overlay width: half the short screen edge, capped at 512px.
-// Larger = sharper overlay but slower daltonization; 512 is a good balance.
-const DISPLAY_SIZE = Math.min(512, Math.round(Math.min(width, screenHeight) * 0.5));
+// Display overlay width: match screen width for sharp full-screen overlay.
+// Capped at 720 for performance on high-res screens.
+const DISPLAY_SIZE = Math.min(720, width);
 const CAPTURE_SIZE = Math.min(1024, width);
 
 const COLORS = {
@@ -87,6 +88,94 @@ const COLORS = {
   danger: '#FF6B6B',
   darkOverlay: 'rgba(0,0,0,0.6)',
 };
+
+// ─────────────────────────────────────────────────────────────
+// AppLog — simple file-based logger that persists to device storage.
+// Logs are viewable from the Settings screen and survive app restarts.
+// ─────────────────────────────────────────────────────────────
+const LOG_FILE = `${FileSystem.documentDirectory}recolor_debug.log`;
+const MAX_LOG_LINES = 200;
+
+const AppLog = {
+  _buffer: [],
+
+  async _flush() {
+    if (this._buffer.length === 0) return;
+    const batch = this._buffer.splice(0);
+    try {
+      const existing = await FileSystem.readAsStringAsync(LOG_FILE).catch(() => '');
+      const lines = (existing + batch.join('\n') + '\n').split('\n');
+      // Keep only the last MAX_LOG_LINES to prevent unbounded growth
+      const trimmed = lines.slice(-MAX_LOG_LINES).join('\n');
+      await FileSystem.writeAsStringAsync(LOG_FILE, trimmed);
+    } catch (_) { /* can't log a log failure */ }
+  },
+
+  log(tag, message) {
+    const ts = new Date().toISOString().slice(11, 23); // HH:MM:SS.mmm
+    const line = `[${ts}] [${tag}] ${message}`;
+    this._buffer.push(line);
+    console.log(line);
+    // Debounced flush — batch nearby writes
+    clearTimeout(this._flushTimer);
+    this._flushTimer = setTimeout(() => this._flush(), 300);
+  },
+
+  async readAll() {
+    try {
+      return await FileSystem.readAsStringAsync(LOG_FILE);
+    } catch (_) {
+      return '(no logs yet)';
+    }
+  },
+
+  async clear() {
+    try { await FileSystem.deleteAsync(LOG_FILE, { idempotent: true }); } catch (_) {}
+  },
+};
+
+// ─────────────────────────────────────────────────────────────
+// ErrorBoundary — catches JS-side crashes (including native
+// module initialization failures) and shows a recovery UI
+// instead of crashing the entire app.
+// ─────────────────────────────────────────────────────────────
+class ScreenErrorBoundary extends Component {
+  state = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, info) {
+    AppLog.log('CRASH', `${error?.message || error}\n${info?.componentStack || ''}`);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', padding: 30 }}>
+          <Ionicons name="warning" size={48} color="#FF6B6B" />
+          <Text style={{ color: '#FFF', fontSize: 18, fontWeight: 'bold', marginTop: 15, textAlign: 'center' }}>
+            This screen crashed
+          </Text>
+          <Text style={{ color: '#AAA', fontSize: 13, marginTop: 10, textAlign: 'center' }}>
+            {this.state.error?.message || 'Unknown error'}
+          </Text>
+          <TouchableOpacity
+            style={{ marginTop: 25, backgroundColor: COLORS.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}
+            onPress={() => {
+              this.setState({ hasError: false, error: null });
+              this.props.navigation?.goBack?.();
+            }}
+          >
+            <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const RAW_PLATES = [
   // --- The 18 You Have ---
@@ -1036,6 +1125,8 @@ function SettingsScreen({ navigation }) {
   const userName = userEmail.split('@')[0];
   const [enhancement, setEnhancement] = useState(0);
   const [audio, setAudio] = useState(true);
+  const [showLogs, setShowLogs] = useState(false);
+  const [logText, setLogText] = useState('');
 
   return (
     <View style={styles.container}>
@@ -1117,6 +1208,44 @@ function SettingsScreen({ navigation }) {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#CCC" />
           </TouchableOpacity>
+        </Card>
+
+        {/* Debug Logs */}
+        <Card style={{ marginBottom: 20 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="bug-outline" size={20} color="#555" />
+              <Text style={{ marginLeft: 10, fontWeight: 'bold', fontSize: 16, color: '#333' }}>Debug Logs</Text>
+            </View>
+            <View style={{ flexDirection: 'row' }}>
+              <TouchableOpacity
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: COLORS.primary, marginRight: 8 }}
+                onPress={async () => {
+                  const logs = await AppLog.readAll();
+                  setLogText(logs);
+                  setShowLogs(!showLogs);
+                }}
+              >
+                <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '600' }}>{showLogs ? 'Hide' : 'View'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: '#D32F2F' }}
+                onPress={() => { AppLog.clear(); setLogText(''); setShowLogs(false); Alert.alert('Cleared', 'Debug logs cleared.'); }}
+              >
+                <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '600' }}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          <Text style={{ fontSize: 11, color: '#999', marginBottom: 5 }}>
+            Camera and pipeline logs are saved here for debugging crashes.
+          </Text>
+          {showLogs && (
+            <ScrollView style={{ maxHeight: 250, backgroundColor: '#1a1a2e', borderRadius: 8, padding: 10, marginTop: 8 }} nestedScrollEnabled>
+              <Text style={{ color: '#0f0', fontSize: 10, fontFamily: 'monospace' }}>
+                {logText || '(no logs yet)'}
+              </Text>
+            </ScrollView>
+          )}
         </Card>
 
         {/* Account Section - RED BUTTON */}
@@ -1620,160 +1749,238 @@ function SurveySuccessScreen({ navigation }) {
   );
 }
 
-function CameraSimScreen({ navigation }) {
+function CameraSimScreen(props) {
+  return (
+    <ScreenErrorBoundary navigation={props.navigation}>
+      <CameraSimScreenInner {...props} />
+    </ScreenErrorBoundary>
+  );
+}
+
+function CameraSimScreenInner({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
   const isFocused = useIsFocused();
   const [cameraPosition, setCameraPosition] = useState('back');
   const [cvdType, setCvdType]           = useState('Protan');
-  const [processedUri, setProcessedUri] = useState(null);
   const [showModal, setShowModal]       = useState(false);
   const [modelStatus, setModelStatus]   = useState('loading');
 
+  // Freeze/capture state
+  const [frozen, setFrozen]             = useState(false);   // true = showing frozen frame
+  const [frozenUri, setFrozenUri]       = useState(null);    // original captured photo URI
+  const [processedUri, setProcessedUri] = useState(null);    // simulated result URI
+  const [processing, setProcessing]     = useState(false);   // CNN is running
+  const [progress, setProgress]         = useState('');       // "Tile 3/40"
+
   const cameraRef    = useRef(null);
-  const isProcessing = useRef(false);
-  const timerRef     = useRef(null);
-  const cvdTypeRef   = useRef(cvdType);
-  const isFocusedRef = useRef(isFocused);
   const isMountedRef = useRef(true);
+  // Cache: full-res mask + decoded image survive CVD type switches
+  const cachedMaskRef  = useRef(null);  // Uint8Array full-res class mask
+  const cachedImageRef = useRef(null);  // { data, width, height } decoded RGBA
 
   const device = useCameraDevice(cameraPosition);
 
-  // Keep refs in sync with state so the pipeline worklet sees latest values
-  useEffect(() => { cvdTypeRef.current = cvdType; }, [cvdType]);
-  useEffect(() => { isFocusedRef.current = isFocused; }, [isFocused]);
-  useEffect(() => { isMountedRef.current = true; return () => { isMountedRef.current = false; }; }, []);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   // Auto-request camera permission once on mount
   useEffect(() => {
-    if (!hasPermission) requestPermission();
+    AppLog.log('CameraSim', 'mounted');
+    if (!hasPermission) {
+      AppLog.log('CameraSim', 'requesting camera permission');
+      requestPermission();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load TFLite model
   const tflite = useTensorflowModel(require('./assets/color_model.tflite'));
 
-  // Track model readiness
   useEffect(() => {
+    AppLog.log('CameraSim', `tflite state: ${tflite.state}${tflite.error ? ` error: ${tflite.error}` : ''}`);
     if (tflite.state === 'loaded')  setModelStatus('ready');
     else if (tflite.state === 'error') setModelStatus('error');
     else setModelStatus('loading');
   }, [tflite.state]);
 
-  // ── Frame processing loop ───────────────────────────────────
-  const runFramePipeline = useCallback(async () => {
-    if (!isMountedRef.current) return;
-    if (isProcessing.current)  return;
-    if (!isFocusedRef.current) return;
-    if (tflite.state !== 'loaded' || !tflite.model) return;
-    if (!cameraRef.current) {
-      // Camera not ready yet (e.g. mid-flip) — retry shortly
-      if (isMountedRef.current) timerRef.current = setTimeout(runFramePipeline, 200);
-      return;
-    }
-    if (cvdTypeRef.current === 'Off') {
-      setProcessedUri(null);
-      if (isMountedRef.current) timerRef.current = setTimeout(runFramePipeline, 200);
+  // ── Re-apply simulation instantly when CVD type changes (mask is cached) ──
+  useEffect(() => {
+    if (!frozen || !cachedMaskRef.current || !cachedImageRef.current) return;
+    if (cvdType === 'Off') { setProcessedUri(null); return; }
+
+    AppLog.log('CameraSim', `re-applying simulation for ${cvdType} (cached mask)`);
+    // Run in a microtask to avoid blocking the UI thread during type switch
+    const img = cachedImageRef.current;
+    const mask = cachedMaskRef.current;
+    setTimeout(() => {
+      try {
+        const simPixels = applyCVDSimulation(img, mask, cvdType);
+        const uri = encodeToDataUri(simPixels, img.width, img.height);
+        if (isMountedRef.current) setProcessedUri(uri);
+      } catch (e) {
+        AppLog.log('CameraSim', `re-apply error: ${e?.message || e}`);
+      }
+    }, 0);
+  }, [cvdType, frozen]);
+
+  // ── FREEZE: capture photo → tile → CNN → simulate ──
+  const handleFreeze = useCallback(async () => {
+    if (!cameraRef.current || tflite.state !== 'loaded' || !tflite.model) {
+      Alert.alert('Not ready', modelStatus === 'error'
+        ? 'CNN model failed to load. A native build is required.'
+        : 'Model is still loading, please wait...');
       return;
     }
 
-    isProcessing.current = true;
+    setProcessing(true);
+    setProgress('Capturing...');
+    AppLog.log('CameraSim', 'freeze: capturing photo');
+
     try {
-      // 1. Capture frame
+      // 1. Capture full-res photo
       const photo = await cameraRef.current.takePhoto({
-        qualityPrioritization: 'speed',
+        qualityPrioritization: 'quality',
         enableShutterSound: false,
       });
+      if (!photo?.path) throw new Error('takePhoto returned no path');
       const fileUri = `file://${photo.path}`;
+      setFrozenUri(fileUri);
+      setFrozen(true);
 
-      // 2a. Resize to DISPLAY_SIZE wide (aspect-ratio preserved) — for the output overlay.
-      //     Wider than CNN_SIZE so the displayed result is sharp, not stretched.
-      const displayResized = await ImageManipulator.manipulateAsync(
-        fileUri,
-        [{ resize: { width: DISPLAY_SIZE } }],
-        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.85 }
+      // 2. Get base64 of full-res image (no resize!)
+      const fullRes = await ImageManipulator.manipulateAsync(
+        fileUri, [],
+        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.95 }
       );
+      if (!isMountedRef.current) return;
 
-      // 2b. Resize to CNN_SIZE×CNN_SIZE (square squash matches training) — for inference only.
-      const cnnResized = await ImageManipulator.manipulateAsync(
-        fileUri,
-        [{ resize: { width: CNN_SIZE, height: CNN_SIZE } }],
-        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
-      );
+      // 3. Decode full-res image
+      const fullImage = decodeJpegBase64(fullRes.base64);
+      const imgW = fullImage.width;
+      const imgH = fullImage.height;
+      AppLog.log('CameraSim', `image decoded: ${imgW}x${imgH}`);
 
-      // 3. Decode both — display image for daltonization output, CNN image for tensor input
-      const displayImage = decodeJpegBase64(displayResized.base64);
-      const cnnImage     = decodeJpegBase64(cnnResized.base64);
+      // 4. Compute tile grid
+      const tilesX = Math.ceil(imgW / CNN_SIZE);
+      const tilesY = Math.ceil(imgH / CNN_SIZE);
+      const totalTiles = tilesX * tilesY;
+      AppLog.log('CameraSim', `tiling: ${tilesX}x${tilesY} = ${totalTiles} tiles`);
 
-      // 4. Build Float32Array input tensor from the 256×256 CNN image
-      const inputTensor = downscaleToTensor(cnnImage);
+      // 5. Allocate full-res mask
+      const fullMask = new Uint8Array(imgW * imgH);
 
-      // 5. Run U-Net inference → class mask at CNN_SIZE×CNN_SIZE
-      const outputs  = tflite.model.runSync([inputTensor]);
-      const cnnMask  = getClassMask(outputs[0]);
+      // 6. Process each tile
+      for (let ty = 0; ty < tilesY; ty++) {
+        for (let tx = 0; tx < tilesX; tx++) {
+          const tileIdx = ty * tilesX + tx + 1;
+          if (isMountedRef.current) setProgress(`Processing tile ${tileIdx}/${totalTiles}`);
 
-      // 6. Upscale the CNN mask to match the display image dimensions
-      const displayMask = upscaleMaskNearest(
-        cnnMask,
-        CNN_SIZE, CNN_SIZE,
-        displayImage.width, displayImage.height
-      );
+          const srcX = tx * CNN_SIZE;
+          const srcY = ty * CNN_SIZE;
+          // Actual tile dimensions (last col/row may be smaller)
+          const tileW = Math.min(CNN_SIZE, imgW - srcX);
+          const tileH = Math.min(CNN_SIZE, imgH - srcY);
 
-      // 7. Apply targeted daltonization at display resolution — sharp overlay
-      const daltonized = applyDaltonization(displayImage, displayMask, cvdTypeRef.current);
+          // Extract tile pixels into a CNN_SIZE×CNN_SIZE RGBA buffer (zero-padded)
+          const tileBuf = new Uint8Array(CNN_SIZE * CNN_SIZE * 4);
+          for (let row = 0; row < tileH; row++) {
+            const srcOff = ((srcY + row) * imgW + srcX) * 4;
+            const dstOff = row * CNN_SIZE * 4;
+            tileBuf.set(fullImage.data.subarray(srcOff, srcOff + tileW * 4), dstOff);
+            // Remaining columns in this row stay 0 (black padding)
+          }
 
-      // 8. Encode and push to overlay
-      const uri = encodeToDataUri(daltonized, displayImage.width, displayImage.height);
-      if (isMountedRef.current) setProcessedUri(uri);
+          // Build tensor from tile
+          const tensor = new Float32Array(CNN_SIZE * CNN_SIZE * 3);
+          for (let i = 0; i < CNN_SIZE * CNN_SIZE; i++) {
+            tensor[i * 3 + 0] = tileBuf[i * 4 + 0] / 255.0;
+            tensor[i * 3 + 1] = tileBuf[i * 4 + 1] / 255.0;
+            tensor[i * 3 + 2] = tileBuf[i * 4 + 2] / 255.0;
+          }
+
+          // Run CNN
+          const outputs = tflite.model.runSync([tensor]);
+          const tileMask = getClassMask(outputs[0]);
+
+          // Copy tile mask into full-res mask (only the valid region, not padding)
+          for (let row = 0; row < tileH; row++) {
+            for (let col = 0; col < tileW; col++) {
+              fullMask[(srcY + row) * imgW + (srcX + col)] = tileMask[row * CNN_SIZE + col];
+            }
+          }
+
+          // Yield to UI thread every few tiles so progress updates render
+          if (tileIdx % 4 === 0) await new Promise(r => setTimeout(r, 0));
+        }
+      }
+
+      if (!isMountedRef.current) return;
+
+      // 7. Cache mask + image for instant CVD type switching
+      cachedMaskRef.current = fullMask;
+      cachedImageRef.current = fullImage;
+
+      // 8. Apply CVD simulation
+      setProgress('Applying simulation...');
+      await new Promise(r => setTimeout(r, 0)); // let UI update
+
+      const simPixels = applyCVDSimulation(fullImage, fullMask, cvdType);
+      const uri = encodeToDataUri(simPixels, imgW, imgH);
+
+      if (isMountedRef.current) {
+        setProcessedUri(uri);
+        setProcessing(false);
+        setProgress('');
+        AppLog.log('CameraSim', 'freeze pipeline complete');
+      }
     } catch (e) {
-      // Silently ignore frame errors
-    } finally {
-      isProcessing.current = false;
-      // Schedule next frame — only if still mounted and screen still focused
-      if (isMountedRef.current && isFocusedRef.current) {
-        timerRef.current = setTimeout(runFramePipeline, 50);
+      AppLog.log('CameraSim', `freeze error: ${e?.message || e}`);
+      if (isMountedRef.current) {
+        setProcessing(false);
+        setProgress('');
+        Alert.alert('Error', `Simulation failed: ${e?.message || 'unknown error'}`);
       }
     }
-  }, [tflite.state, tflite.model]);
+  }, [tflite.state, tflite.model, cvdType, modelStatus]);
 
-  // Start / stop pipeline when model is ready, screen is focused, CVD type, or camera changes
-  useEffect(() => {
-    clearTimeout(timerRef.current);
-    if (tflite.state === 'loaded' && isFocused) {
-      // Small delay on camera flip to let the new device warm up
-      timerRef.current = setTimeout(runFramePipeline, 300);
-    }
-    return () => clearTimeout(timerRef.current);
-  }, [tflite.state, cvdType, isFocused, cameraPosition, runFramePipeline]);
+  // ── RESET: back to live preview ──
+  const handleReset = useCallback(() => {
+    setFrozen(false);
+    setFrozenUri(null);
+    setProcessedUri(null);
+    setProcessing(false);
+    setProgress('');
+    cachedMaskRef.current = null;
+    cachedImageRef.current = null;
+    AppLog.log('CameraSim', 'reset to live preview');
+  }, []);
 
-  // handleCapture: pause pipeline → save full-res photo → resume
-  const handleCapture = async () => {
-    clearTimeout(timerRef.current);
-    // Wait for any in-flight frame to finish — max 1.5 s to avoid hanging forever
-    let waited = 0;
-    while (isProcessing.current && waited < 1500) {
-      await new Promise(r => setTimeout(r, 30));
-      waited += 30;
-    }
-    clearTimeout(timerRef.current);
+  // ── SAVE: save current simulated image to gallery ──
+  const handleSave = useCallback(async () => {
+    const uriToSave = processedUri || frozenUri;
+    if (!uriToSave) return;
     try {
-      if (!cameraRef.current) return;
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission needed', 'Please allow access to save photos.');
         return;
       }
-      const photo = await cameraRef.current.takePhoto({
-        qualityPrioritization: 'quality',
-        enableShutterSound: false,
-      });
-      await MediaLibrary.saveToLibraryAsync(`file://${photo.path}`);
+      if (uriToSave.startsWith('data:')) {
+        // Data URI → write to temp file first
+        const b64 = uriToSave.split(',')[1];
+        const tmpPath = `${FileSystem.cacheDirectory}recolor_sim_${Date.now()}.jpg`;
+        await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: FileSystem.EncodingType.Base64 });
+        await MediaLibrary.saveToLibraryAsync(tmpPath);
+      } else {
+        await MediaLibrary.saveToLibraryAsync(uriToSave);
+      }
       Alert.alert('Saved', 'Photo saved to your gallery.');
     } catch (e) {
       Alert.alert('Error', 'Could not save photo.');
-    } finally {
-      if (isMountedRef.current) timerRef.current = setTimeout(runFramePipeline, 50);
     }
-  };
+  }, [processedUri, frozenUri]);
 
   // ── Permission gates ──
   if (!hasPermission) {
@@ -1792,20 +1999,30 @@ function CameraSimScreen({ navigation }) {
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
 
-      {/* VisionCamera — no shutter sound, no preview freeze */}
-      {device && (
+      {/* Live camera preview — hidden when frozen */}
+      {device && !frozen && (
         <Camera
           ref={cameraRef}
           style={StyleSheet.absoluteFill}
           device={device}
-          isActive={isFocused}
+          isActive={isFocused && !frozen}
           photo={true}
           enableShutterSound={false}
         />
       )}
 
-      {/* Daltonized frame overlay */}
-      {processedUri && cvdType !== 'Off' && (
+      {/* Frozen original frame (shown while processing or if CVD is Off) */}
+      {frozen && frozenUri && (!processedUri || cvdType === 'Off') && (
+        <Image
+          source={{ uri: frozenUri }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+          fadeDuration={0}
+        />
+      )}
+
+      {/* CVD simulation result overlay */}
+      {frozen && processedUri && cvdType !== 'Off' && (
         <Image
           source={{ uri: processedUri }}
           style={StyleSheet.absoluteFill}
@@ -1815,12 +2032,23 @@ function CameraSimScreen({ navigation }) {
         />
       )}
 
+      {/* Processing overlay with progress */}
+      {processing && (
+        <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)',
+          justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
+          <ActivityIndicator size="large" color="#FFF" />
+          <Text style={{ color: '#FFF', fontSize: 14, marginTop: 12, fontWeight: '600' }}>
+            {progress}
+          </Text>
+        </View>
+      )}
+
       <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
 
         {/* Top Bar */}
         <View style={styles.camTopBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 5 }}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
+          <TouchableOpacity onPress={() => { if (frozen) handleReset(); else navigation.goBack(); }} style={{ padding: 5 }}>
+            <Ionicons name={frozen ? 'close' : 'arrow-back'} size={24} color="#FFF" />
           </TouchableOpacity>
 
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -1830,39 +2058,44 @@ function CameraSimScreen({ navigation }) {
               textShadowOffset: { width: -1, height: 1 },
               textShadowRadius: 10,
             }}>
-              {cvdType === 'Off' ? 'Normal' : `${cvdType} Mode`}
+              {frozen ? (cvdType === 'Off' ? 'Original' : `${cvdType} Simulation`)
+                      : (cvdType === 'Off' ? 'Normal' : `${cvdType} Mode`)}
             </Text>
-            <TouchableOpacity onPress={() => setShowModal(true)}>
-              <Ionicons name="menu" size={28} color="#FFF" />
-            </TouchableOpacity>
+            {!frozen && (
+              <TouchableOpacity onPress={() => setShowModal(true)}>
+                <Ionicons name="menu" size={28} color="#FFF" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
-        {/* Model status indicator */}
-        {modelStatus === 'loading' && (
+        {/* Model status indicator (live preview only) */}
+        {!frozen && modelStatus === 'loading' && (
           <View style={{ position: 'absolute', top: 70, alignSelf: 'center',
             backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
             <Text style={{ color: '#FFF', fontSize: 12 }}>Loading model...</Text>
           </View>
         )}
-        {modelStatus === 'error' && (
+        {!frozen && modelStatus === 'error' && (
           <View style={{ position: 'absolute', top: 70, alignSelf: 'center',
             backgroundColor: 'rgba(200,0,0,0.7)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
             <Text style={{ color: '#FFF', fontSize: 12 }}>Model failed - native build required</Text>
           </View>
         )}
 
-        {/* CVD type selector (right side) */}
+        {/* CVD type selector (right side) — visible in both live and frozen */}
         <View style={{ position: 'absolute', top: 100, right: 20, alignItems: 'center' }}>
           {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
             <TouchableOpacity
               key={m}
               onPress={() => setCvdType(m)}
+              disabled={processing}
               style={[
                 styles.filterBtn,
                 {
                   backgroundColor: cvdType === m ? COLORS.primary : 'rgba(0,0,0,0.5)',
                   marginBottom: 15,
+                  opacity: processing ? 0.4 : 1,
                 },
               ]}
             >
@@ -1876,17 +2109,44 @@ function CameraSimScreen({ navigation }) {
         {/* Bottom controls */}
         <View style={{ flex: 1, justifyContent: 'flex-end', paddingBottom: 30 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
-            <TouchableOpacity onPress={() => setCameraPosition(p => p === 'back' ? 'front' : 'back')}>
-              <Ionicons name="camera-reverse" size={30} color="#FFF" />
-            </TouchableOpacity>
 
-            <TouchableOpacity style={styles.shutterBtn} onPress={handleCapture}>
-              <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFF' }} />
-            </TouchableOpacity>
+            {frozen ? (
+              <>
+                {/* Reset button */}
+                <TouchableOpacity onPress={handleReset} disabled={processing}>
+                  <Ionicons name="refresh" size={30} color={processing ? '#666' : '#FFF'} />
+                </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => navigation.navigate('CVDGallery')}>
-              <Ionicons name="images" size={30} color="#FFF" />
-            </TouchableOpacity>
+                {/* Placeholder for center alignment */}
+                <View style={{ width: 70 }} />
+
+                {/* Save to gallery */}
+                <TouchableOpacity onPress={handleSave} disabled={processing || !processedUri}>
+                  <Ionicons name="download-outline" size={30}
+                    color={processing || !processedUri ? '#666' : '#FFF'} />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                {/* Flip camera */}
+                <TouchableOpacity onPress={() => setCameraPosition(p => p === 'back' ? 'front' : 'back')}>
+                  <Ionicons name="camera-reverse" size={30} color="#FFF" />
+                </TouchableOpacity>
+
+                {/* Freeze / Capture button */}
+                <TouchableOpacity style={styles.shutterBtn} onPress={handleFreeze}>
+                  <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFF',
+                    justifyContent: 'center', alignItems: 'center' }}>
+                    <Ionicons name="snow" size={24} color="#333" />
+                  </View>
+                </TouchableOpacity>
+
+                {/* Gallery */}
+                <TouchableOpacity onPress={() => navigation.navigate('CVDGallery')}>
+                  <Ionicons name="images" size={30} color="#FFF" />
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
 
@@ -1894,7 +2154,7 @@ function CameraSimScreen({ navigation }) {
           visible={showModal}
           onClose={() => setShowModal(false)}
           navigation={navigation}
-          currentMode="Enhancement"
+          currentMode="Simulation"
         />
       </SafeAreaView>
     </View>
@@ -2607,10 +2867,13 @@ const DisclaimerBanner = () => (
 // --- Global Camera Mode Switcher ---
 const ModeSelector = ({ visible, onClose, navigation, currentMode }) => {
   if (!visible) return null;
-  
+
   const navigateTo = (screen) => {
+    AppLog.log('ModeSelector', `switching from ${currentMode} to ${screen}`);
     onClose();
-    navigation.replace(screen); // Use replace to switch modes without stacking
+    // Small delay lets the camera release before the screen is torn down,
+    // preventing native VisionCamera crashes during active capture.
+    setTimeout(() => navigation.replace(screen), 120);
   };
 
   return (

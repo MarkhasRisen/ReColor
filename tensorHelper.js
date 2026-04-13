@@ -455,6 +455,7 @@ export function applyCVDSimulation(rawImageData, mask, cvdType) {
   const pixels       = new Uint8Array(rawImageData.data); // copy
   const confusionSet = CONFUSION_CLASSES[cvdType];
   const SIM          = CVD_SIM[cvdType];
+  if (!confusionSet || !SIM) return pixels; // invalid cvdType — return unmodified
   const numPixels    = rawImageData.width * rawImageData.height;
 
   for (let i = 0; i < numPixels; i++) {
@@ -493,6 +494,7 @@ export function applyDaltonization(rawImageData, mask, cvdType) {
   const confusionSet = CONFUSION_CLASSES[cvdType];
   const SIM          = CVD_SIM[cvdType];
   const ERR          = CVD_ERR_SHIFT[cvdType];
+  if (!confusionSet || !SIM || !ERR) return pixels; // invalid cvdType — return unmodified
 
   const numPixels = rawImageData.width * rawImageData.height;
 
