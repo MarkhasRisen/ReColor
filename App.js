@@ -3,7 +3,6 @@ import { useTensorflowModel } from 'react-native-fast-tflite';
 import {
   getClassMask,
   applyDaltonization,
-  applyCVDSimulation,
   decodeJpegBase64,
   encodeToDataUri,
   getCVDColorMatrix,
@@ -13,7 +12,7 @@ import {
 } from './tensorHelper';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { useSkiaFrameProcessor } from 'react-native-vision-camera';
-import { Skia } from '@shopify/react-native-skia';
+import { Skia, Canvas, Image as SkiaImage, ColorMatrix, useImage, useCanvasRef } from '@shopify/react-native-skia';
 
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
@@ -1763,29 +1762,29 @@ function CameraSimScreenInner({ navigation }) {
   const [cameraPosition, setCameraPosition] = useState('back');
   const [cvdType, setCvdType]           = useState('Protan');
   const [showModal, setShowModal]       = useState(false);
-  const [modelStatus, setModelStatus]   = useState('loading');
 
   // Freeze/capture state
-  const [frozen, setFrozen]             = useState(false);   // true = showing frozen frame
-  const [frozenUri, setFrozenUri]       = useState(null);    // original captured photo URI
-  const [processedUri, setProcessedUri] = useState(null);    // simulated result URI
-  const [processing, setProcessing]     = useState(false);   // CNN is running
-  const [progress, setProgress]         = useState('');       // "Tile 3/40"
+  const [frozen, setFrozen]             = useState(false);
+  const [frozenUri, setFrozenUri]       = useState(null);    // resized photo file URI
+  const [processing, setProcessing]     = useState(false);
 
   const cameraRef    = useRef(null);
   const isMountedRef = useRef(true);
-  // Cache: full-res mask + decoded image survive CVD type switches
-  const cachedMaskRef  = useRef(null);  // Uint8Array full-res class mask
-  const cachedImageRef = useRef(null);  // { data, width, height } decoded RGBA
+  const canvasRef    = useCanvasRef();
 
   const device = useCameraDevice(cameraPosition);
+
+  // Load frozen image into Skia — GPU-resident, no JS pixel decoding
+  const skImage = useImage(frozenUri);
+
+  // CVD color matrix — changes instantly when cvdType changes
+  const cvdMatrix = useMemo(() => getCVDColorMatrix(cvdType), [cvdType]);
 
   useEffect(() => {
     isMountedRef.current = true;
     return () => { isMountedRef.current = false; };
   }, []);
 
-  // Auto-request camera permission once on mount
   useEffect(() => {
     AppLog.log('CameraSim', 'mounted');
     if (!hasPermission) {
@@ -1795,194 +1794,80 @@ function CameraSimScreenInner({ navigation }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load TFLite model
-  const tflite = useTensorflowModel(require('./assets/color_model.tflite'));
-
-  useEffect(() => {
-    AppLog.log('CameraSim', `tflite state: ${tflite.state}${tflite.error ? ` error: ${tflite.error}` : ''}`);
-    if (tflite.state === 'loaded')  setModelStatus('ready');
-    else if (tflite.state === 'error') setModelStatus('error');
-    else setModelStatus('loading');
-  }, [tflite.state]);
-
-  // ── Re-apply simulation instantly when CVD type changes (mask is cached) ──
-  useEffect(() => {
-    if (!frozen || !cachedMaskRef.current || !cachedImageRef.current) return;
-    if (cvdType === 'Off') { setProcessedUri(null); return; }
-
-    AppLog.log('CameraSim', `re-applying simulation for ${cvdType} (cached mask)`);
-    // Run in a microtask to avoid blocking the UI thread during type switch
-    const img = cachedImageRef.current;
-    const mask = cachedMaskRef.current;
-    setTimeout(() => {
-      try {
-        const simPixels = applyCVDSimulation(img, mask, cvdType);
-        const uri = encodeToDataUri(simPixels, img.width, img.height);
-        if (isMountedRef.current) setProcessedUri(uri);
-      } catch (e) {
-        AppLog.log('CameraSim', `re-apply error: ${e?.message || e}`);
-      }
-    }, 0);
-  }, [cvdType, frozen]);
-
-  // ── FREEZE: capture photo → tile → CNN → simulate ──
+  // ── FREEZE: capture → resize to 1040p → display via Skia ──
   const handleFreeze = useCallback(async () => {
-    if (!cameraRef.current || tflite.state !== 'loaded' || !tflite.model) {
-      Alert.alert('Not ready', modelStatus === 'error'
-        ? 'CNN model failed to load. A native build is required.'
-        : 'Model is still loading, please wait...');
-      return;
-    }
+    if (!cameraRef.current) return;
 
     setProcessing(true);
-    setProgress('Capturing...');
     AppLog.log('CameraSim', 'freeze: capturing photo');
 
     try {
-      // 1. Capture full-res photo
       const photo = await cameraRef.current.takePhoto({
         qualityPrioritization: 'quality',
         enableShutterSound: false,
       });
       if (!photo?.path) throw new Error('takePhoto returned no path');
       const fileUri = `file://${photo.path}`;
-      setFrozenUri(fileUri);
-      setFrozen(true);
 
-      // 2. Get base64 of full-res image (no resize!)
-      const fullRes = await ImageManipulator.manipulateAsync(
-        fileUri, [],
-        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.95 }
+      // Resize longest edge to 1040px max, preserve aspect ratio
+      const SIM_MAX = 1040;
+      const resized = await ImageManipulator.manipulateAsync(
+        fileUri,
+        [{ resize: photo.width >= photo.height
+            ? { width: Math.min(SIM_MAX, photo.width) }
+            : { height: Math.min(SIM_MAX, photo.height) }
+        }],
+        { format: ImageManipulator.SaveFormat.JPEG, compress: 0.92 }
       );
       if (!isMountedRef.current) return;
 
-      // 3. Decode full-res image
-      const fullImage = decodeJpegBase64(fullRes.base64);
-      const imgW = fullImage.width;
-      const imgH = fullImage.height;
-      AppLog.log('CameraSim', `image decoded: ${imgW}x${imgH}`);
-
-      // 4. Compute tile grid
-      const tilesX = Math.ceil(imgW / CNN_SIZE);
-      const tilesY = Math.ceil(imgH / CNN_SIZE);
-      const totalTiles = tilesX * tilesY;
-      AppLog.log('CameraSim', `tiling: ${tilesX}x${tilesY} = ${totalTiles} tiles`);
-
-      // 5. Allocate full-res mask
-      const fullMask = new Uint8Array(imgW * imgH);
-
-      // 6. Process each tile
-      for (let ty = 0; ty < tilesY; ty++) {
-        for (let tx = 0; tx < tilesX; tx++) {
-          const tileIdx = ty * tilesX + tx + 1;
-          if (isMountedRef.current) setProgress(`Processing tile ${tileIdx}/${totalTiles}`);
-
-          const srcX = tx * CNN_SIZE;
-          const srcY = ty * CNN_SIZE;
-          // Actual tile dimensions (last col/row may be smaller)
-          const tileW = Math.min(CNN_SIZE, imgW - srcX);
-          const tileH = Math.min(CNN_SIZE, imgH - srcY);
-
-          // Extract tile pixels into a CNN_SIZE×CNN_SIZE RGBA buffer (zero-padded)
-          const tileBuf = new Uint8Array(CNN_SIZE * CNN_SIZE * 4);
-          for (let row = 0; row < tileH; row++) {
-            const srcOff = ((srcY + row) * imgW + srcX) * 4;
-            const dstOff = row * CNN_SIZE * 4;
-            tileBuf.set(fullImage.data.subarray(srcOff, srcOff + tileW * 4), dstOff);
-            // Remaining columns in this row stay 0 (black padding)
-          }
-
-          // Build tensor from tile
-          const tensor = new Float32Array(CNN_SIZE * CNN_SIZE * 3);
-          for (let i = 0; i < CNN_SIZE * CNN_SIZE; i++) {
-            tensor[i * 3 + 0] = tileBuf[i * 4 + 0] / 255.0;
-            tensor[i * 3 + 1] = tileBuf[i * 4 + 1] / 255.0;
-            tensor[i * 3 + 2] = tileBuf[i * 4 + 2] / 255.0;
-          }
-
-          // Run CNN
-          const outputs = tflite.model.runSync([tensor]);
-          const tileMask = getClassMask(outputs[0]);
-
-          // Copy tile mask into full-res mask (only the valid region, not padding)
-          for (let row = 0; row < tileH; row++) {
-            for (let col = 0; col < tileW; col++) {
-              fullMask[(srcY + row) * imgW + (srcX + col)] = tileMask[row * CNN_SIZE + col];
-            }
-          }
-
-          // Yield to UI thread every few tiles so progress updates render
-          if (tileIdx % 4 === 0) await new Promise(r => setTimeout(r, 0));
-        }
-      }
-
-      if (!isMountedRef.current) return;
-
-      // 7. Cache mask + image for instant CVD type switching
-      cachedMaskRef.current = fullMask;
-      cachedImageRef.current = fullImage;
-
-      // 8. Apply CVD simulation
-      setProgress('Applying simulation...');
-      await new Promise(r => setTimeout(r, 0)); // let UI update
-
-      const simPixels = applyCVDSimulation(fullImage, fullMask, cvdType);
-      const uri = encodeToDataUri(simPixels, imgW, imgH);
-
-      if (isMountedRef.current) {
-        setProcessedUri(uri);
-        setProcessing(false);
-        setProgress('');
-        AppLog.log('CameraSim', 'freeze pipeline complete');
-      }
+      AppLog.log('CameraSim', `resized: ${resized.width}x${resized.height}`);
+      setFrozenUri(resized.uri);
+      setFrozen(true);
+      setProcessing(false);
     } catch (e) {
       AppLog.log('CameraSim', `freeze error: ${e?.message || e}`);
       if (isMountedRef.current) {
         setProcessing(false);
-        setProgress('');
-        Alert.alert('Error', `Simulation failed: ${e?.message || 'unknown error'}`);
+        Alert.alert('Error', `Capture failed: ${e?.message || 'unknown error'}`);
       }
     }
-  }, [tflite.state, tflite.model, cvdType, modelStatus]);
+  }, []);
 
   // ── RESET: back to live preview ──
   const handleReset = useCallback(() => {
     setFrozen(false);
     setFrozenUri(null);
-    setProcessedUri(null);
     setProcessing(false);
-    setProgress('');
-    cachedMaskRef.current = null;
-    cachedImageRef.current = null;
     AppLog.log('CameraSim', 'reset to live preview');
   }, []);
 
-  // ── SAVE: save current simulated image to gallery ──
+  // ── SAVE: snapshot the Skia canvas (includes CVD filter) ──
   const handleSave = useCallback(async () => {
-    const uriToSave = processedUri || frozenUri;
-    if (!uriToSave) return;
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission needed', 'Please allow access to save photos.');
         return;
       }
-      if (uriToSave.startsWith('data:')) {
-        // Data URI → write to temp file first
-        const b64 = uriToSave.split(',')[1];
-        const tmpPath = `${FileSystem.cacheDirectory}recolor_sim_${Date.now()}.jpg`;
-        await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: FileSystem.EncodingType.Base64 });
-        await MediaLibrary.saveToLibraryAsync(tmpPath);
-      } else {
-        await MediaLibrary.saveToLibraryAsync(uriToSave);
+      // Snapshot the Skia canvas — captures the image WITH the color filter applied
+      const snapshot = canvasRef.current?.makeImageSnapshot();
+      if (!snapshot) {
+        Alert.alert('Error', 'Nothing to save.');
+        return;
       }
+      const b64 = snapshot.encodeToBase64();
+      const tmpPath = `${FileSystem.cacheDirectory}recolor_sim_${Date.now()}.png`;
+      await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: FileSystem.EncodingType.Base64 });
+      await MediaLibrary.saveToLibraryAsync(tmpPath);
       Alert.alert('Saved', 'Photo saved to your gallery.');
     } catch (e) {
+      AppLog.log('CameraSim', `save error: ${e?.message || e}`);
       Alert.alert('Error', 'Could not save photo.');
     }
-  }, [processedUri, frozenUri]);
+  }, []);
 
-  // ── Permission gates ──
+  // ── Permission gate ──
   if (!hasPermission) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -2011,34 +1896,28 @@ function CameraSimScreenInner({ navigation }) {
         />
       )}
 
-      {/* Frozen original frame (shown while processing or if CVD is Off) */}
-      {frozen && frozenUri && (!processedUri || cvdType === 'Off') && (
-        <Image
-          source={{ uri: frozenUri }}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-          fadeDuration={0}
-        />
+      {/* Frozen frame rendered via Skia with GPU color matrix filter */}
+      {frozen && skImage && (
+        <Canvas ref={canvasRef} style={StyleSheet.absoluteFill}>
+          <SkiaImage
+            image={skImage}
+            x={0} y={0}
+            width={width}
+            height={screenHeight}
+            fit="cover"
+          >
+            {cvdType !== 'Off' && <ColorMatrix matrix={cvdMatrix} />}
+          </SkiaImage>
+        </Canvas>
       )}
 
-      {/* CVD simulation result overlay */}
-      {frozen && processedUri && cvdType !== 'Off' && (
-        <Image
-          source={{ uri: processedUri }}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-          fadeDuration={0}
-          pointerEvents="none"
-        />
-      )}
-
-      {/* Processing overlay with progress */}
-      {processing && (
+      {/* Processing spinner */}
+      {(processing || (frozen && !skImage)) && (
         <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)',
           justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
           <ActivityIndicator size="large" color="#FFF" />
           <Text style={{ color: '#FFF', fontSize: 14, marginTop: 12, fontWeight: '600' }}>
-            {progress}
+            {processing ? 'Capturing...' : 'Loading image...'}
           </Text>
         </View>
       )}
@@ -2069,21 +1948,7 @@ function CameraSimScreenInner({ navigation }) {
           </View>
         </View>
 
-        {/* Model status indicator (live preview only) */}
-        {!frozen && modelStatus === 'loading' && (
-          <View style={{ position: 'absolute', top: 70, alignSelf: 'center',
-            backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
-            <Text style={{ color: '#FFF', fontSize: 12 }}>Loading model...</Text>
-          </View>
-        )}
-        {!frozen && modelStatus === 'error' && (
-          <View style={{ position: 'absolute', top: 70, alignSelf: 'center',
-            backgroundColor: 'rgba(200,0,0,0.7)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
-            <Text style={{ color: '#FFF', fontSize: 12 }}>Model failed - native build required</Text>
-          </View>
-        )}
-
-        {/* CVD type selector (right side) — visible in both live and frozen */}
+        {/* CVD type selector (right side) */}
         <View style={{ position: 'absolute', top: 100, right: 20, alignItems: 'center' }}>
           {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
             <TouchableOpacity
@@ -2112,18 +1977,18 @@ function CameraSimScreenInner({ navigation }) {
 
             {frozen ? (
               <>
-                {/* Reset button */}
-                <TouchableOpacity onPress={handleReset} disabled={processing}>
-                  <Ionicons name="refresh" size={30} color={processing ? '#666' : '#FFF'} />
+                {/* Reset */}
+                <TouchableOpacity onPress={handleReset}>
+                  <Ionicons name="refresh" size={30} color="#FFF" />
                 </TouchableOpacity>
 
-                {/* Placeholder for center alignment */}
+                {/* Center spacer */}
                 <View style={{ width: 70 }} />
 
                 {/* Save to gallery */}
-                <TouchableOpacity onPress={handleSave} disabled={processing || !processedUri}>
+                <TouchableOpacity onPress={handleSave} disabled={!skImage}>
                   <Ionicons name="download-outline" size={30}
-                    color={processing || !processedUri ? '#666' : '#FFF'} />
+                    color={!skImage ? '#666' : '#FFF'} />
                 </TouchableOpacity>
               </>
             ) : (
@@ -2133,7 +1998,7 @@ function CameraSimScreenInner({ navigation }) {
                   <Ionicons name="camera-reverse" size={30} color="#FFF" />
                 </TouchableOpacity>
 
-                {/* Freeze / Capture button */}
+                {/* Freeze / Capture */}
                 <TouchableOpacity style={styles.shutterBtn} onPress={handleFreeze}>
                   <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFF',
                     justifyContent: 'center', alignItems: 'center' }}>

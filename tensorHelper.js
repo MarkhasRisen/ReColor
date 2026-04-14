@@ -41,47 +41,6 @@ export const CONFUSION_CLASSES = {
 };
 
 // ─────────────────────────────────────────────────────────────
-// LMS matrices – Hunt-Pointer-Estevez adapted to D65
-// Operate on linear (gamma-decoded) RGB in [0, 1]
-// ─────────────────────────────────────────────────────────────
-const RGB_TO_LMS = [
-  [0.31399022, 0.63951294, 0.04649755],
-  [0.15537241, 0.75789446, 0.08670142],
-  [0.01775239, 0.10944209, 0.87256922],
-];
-
-const LMS_TO_RGB = [
-  [ 5.47221206, -4.64196010,  0.16963708],
-  [-1.12524190,  2.29317094, -0.16789520],
-  [ 0.02980165, -0.19318073,  1.16364789],
-];
-
-// ─────────────────────────────────────────────────────────────
-// CVD simulation matrices (in LMS space)
-// Reconstruct the missing cone channel from the surviving two.
-// ─────────────────────────────────────────────────────────────
-const CVD_SIM = {
-  // Protanopia – L cone absent, L reconstructed from M and S
-  Protan: [
-    [0.00000,  2.02344, -2.52581],
-    [0.00000,  1.00000,  0.00000],
-    [0.00000,  0.00000,  1.00000],
-  ],
-  // Deuteranopia – M cone absent, M reconstructed from L and S
-  Deutan: [
-    [1.00000,  0.00000,  0.00000],
-    [0.49421,  0.00000,  1.24827],
-    [0.00000,  0.00000,  1.00000],
-  ],
-  // Tritanopia – S cone absent, S reconstructed from L and M
-  Tritan: [
-    [ 1.00000,  0.00000,  0.00000],
-    [ 0.00000,  1.00000,  0.00000],
-    [-0.86744,  1.86744,  0.00000],
-  ],
-};
-
-// ─────────────────────────────────────────────────────────────
 // Combined CVD simulation matrices (Viénot 1999)
 // Pre-validated sRGB-domain matrices — work directly on gamma-
 // encoded pixel values without LMS conversion.
@@ -150,10 +109,6 @@ function srgbToLinear(c) {
   return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
 }
 
-function linearToSrgb(c) {
-  return c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1.0 / 2.4) - 0.055;
-}
-
 // ─────────────────────────────────────────────────────────────
 // Color Identifier — CIELAB + Delta-E nearest-neighbor
 // ─────────────────────────────────────────────────────────────
@@ -184,11 +139,14 @@ function rgbToLab(r, g, b) {
 }
 
 /**
- * CIE76 Delta-E distance between two CIELAB colors.
+ * Weighted Delta-E distance between two CIELAB colors.
+ * L* (lightness) is down-weighted so dark red and bright red both match "Red".
+ * a* and b* (chroma/hue) are full-weight since they determine color name.
  */
+const L_WEIGHT = 0.5; // lightness matters less for color naming
 function deltaE(lab1, lab2) {
   return Math.sqrt(
-    (lab1[0] - lab2[0]) ** 2 +
+    L_WEIGHT * (lab1[0] - lab2[0]) ** 2 +
     (lab1[1] - lab2[1]) ** 2 +
     (lab1[2] - lab2[2]) ** 2
   );
@@ -199,83 +157,113 @@ function deltaE(lab1, lab2) {
  * Multiple entries per class cover common shades for robust matching.
  * LAB values are pre-computed from the RGB values.
  */
+// Chroma threshold: pixels with C* below this are truly achromatic (Neutral).
+// Pixels above this are forced to match chromatic classes only.
+const NEUTRAL_CHROMA_THRESHOLD = 12;
+
 const IDENTIFIER_DB = [
-  // Neutral (black, dark gray, gray, light gray, white)
+  // ── Neutral (only matched when chroma < threshold) ──
   { name: 'Neutral', hex: '#000000', lab: rgbToLab(0, 0, 0) },
   { name: 'Neutral', hex: '#404040', lab: rgbToLab(64, 64, 64) },
   { name: 'Neutral', hex: '#808080', lab: rgbToLab(128, 128, 128) },
   { name: 'Neutral', hex: '#C0C0C0', lab: rgbToLab(192, 192, 192) },
   { name: 'Neutral', hex: '#FFFFFF', lab: rgbToLab(255, 255, 255) },
-  { name: 'Neutral', hex: '#F5F5DC', lab: rgbToLab(245, 245, 220) }, // beige
 
-  // Red
+  // ── Red (saturated + muted) ──
   { name: 'Red', hex: '#FF0000', lab: rgbToLab(255, 0, 0) },
   { name: 'Red', hex: '#CC0000', lab: rgbToLab(204, 0, 0) },
   { name: 'Red', hex: '#8B0000', lab: rgbToLab(139, 0, 0) },
   { name: 'Red', hex: '#DC143C', lab: rgbToLab(220, 20, 60) },      // crimson
   { name: 'Red', hex: '#B22222', lab: rgbToLab(178, 34, 34) },      // firebrick
   { name: 'Red', hex: '#FF3333', lab: rgbToLab(255, 51, 51) },
+  { name: 'Red', hex: '#CD5C5C', lab: rgbToLab(205, 92, 92) },      // indian red (muted)
+  { name: 'Red', hex: '#8B3A3A', lab: rgbToLab(139, 58, 58) },      // dark muted red
+  { name: 'Red', hex: '#E06060', lab: rgbToLab(224, 96, 96) },      // soft red
 
-  // Orange
+  // ── Orange (saturated + muted) ──
   { name: 'Orange', hex: '#FF8C00', lab: rgbToLab(255, 140, 0) },   // dark orange
   { name: 'Orange', hex: '#FFA500', lab: rgbToLab(255, 165, 0) },   // orange
   { name: 'Orange', hex: '#FF7F50', lab: rgbToLab(255, 127, 80) },  // coral
   { name: 'Orange', hex: '#E8751A', lab: rgbToLab(232, 117, 26) },
   { name: 'Orange', hex: '#CC7000', lab: rgbToLab(204, 112, 0) },
+  { name: 'Orange', hex: '#C48040', lab: rgbToLab(196, 128, 64) },  // muted orange
+  { name: 'Orange', hex: '#E0976E', lab: rgbToLab(224, 151, 110) }, // peach/salmon
+  { name: 'Orange', hex: '#B8743A', lab: rgbToLab(184, 116, 58) },  // dusty orange
 
-  // Yellow
+  // ── Yellow (saturated + muted) ──
   { name: 'Yellow', hex: '#FFFF00', lab: rgbToLab(255, 255, 0) },
   { name: 'Yellow', hex: '#FFD700', lab: rgbToLab(255, 215, 0) },   // gold
   { name: 'Yellow', hex: '#FFEC8B', lab: rgbToLab(255, 236, 139) }, // light goldenrod
   { name: 'Yellow', hex: '#DAA520', lab: rgbToLab(218, 165, 32) },  // goldenrod
   { name: 'Yellow', hex: '#F0E68C', lab: rgbToLab(240, 230, 140) }, // khaki
+  { name: 'Yellow', hex: '#BDB76B', lab: rgbToLab(189, 183, 107) }, // dark khaki (muted)
+  { name: 'Yellow', hex: '#D4CC6A', lab: rgbToLab(212, 204, 106) }, // muted yellow
 
-  // Green
+  // ── Green (saturated + muted) ──
   { name: 'Green', hex: '#008000', lab: rgbToLab(0, 128, 0) },
   { name: 'Green', hex: '#00FF00', lab: rgbToLab(0, 255, 0) },      // lime
   { name: 'Green', hex: '#228B22', lab: rgbToLab(34, 139, 34) },    // forest green
   { name: 'Green', hex: '#006400', lab: rgbToLab(0, 100, 0) },      // dark green
   { name: 'Green', hex: '#32CD32', lab: rgbToLab(50, 205, 50) },    // lime green
   { name: 'Green', hex: '#90EE90', lab: rgbToLab(144, 238, 144) },  // light green
+  { name: 'Green', hex: '#6B8E23', lab: rgbToLab(107, 142, 35) },   // olive drab (muted)
+  { name: 'Green', hex: '#556B2F', lab: rgbToLab(85, 107, 47) },    // dark olive green
+  { name: 'Green', hex: '#8FBC8F', lab: rgbToLab(143, 188, 143) },  // dark sea green (muted)
+  { name: 'Green', hex: '#4A7A4A', lab: rgbToLab(74, 122, 74) },    // muted green
 
-  // Cyan
+  // ── Cyan (saturated + muted) ──
   { name: 'Cyan', hex: '#00FFFF', lab: rgbToLab(0, 255, 255) },
   { name: 'Cyan', hex: '#008B8B', lab: rgbToLab(0, 139, 139) },    // dark cyan
   { name: 'Cyan', hex: '#20B2AA', lab: rgbToLab(32, 178, 170) },   // light sea green
   { name: 'Cyan', hex: '#00CED1', lab: rgbToLab(0, 206, 209) },    // dark turquoise
   { name: 'Cyan', hex: '#40E0D0', lab: rgbToLab(64, 224, 208) },   // turquoise
+  { name: 'Cyan', hex: '#5F9EA0', lab: rgbToLab(95, 158, 160) },   // cadet blue (muted)
+  { name: 'Cyan', hex: '#6B9B9B', lab: rgbToLab(107, 155, 155) },  // muted teal
 
-  // Blue
+  // ── Blue (saturated + muted) ──
   { name: 'Blue', hex: '#0000FF', lab: rgbToLab(0, 0, 255) },
   { name: 'Blue', hex: '#000080', lab: rgbToLab(0, 0, 128) },      // navy
   { name: 'Blue', hex: '#1E90FF', lab: rgbToLab(30, 144, 255) },   // dodger blue
   { name: 'Blue', hex: '#4169E1', lab: rgbToLab(65, 105, 225) },   // royal blue
   { name: 'Blue', hex: '#87CEEB', lab: rgbToLab(135, 206, 235) },  // sky blue
   { name: 'Blue', hex: '#4682B4', lab: rgbToLab(70, 130, 180) },   // steel blue
+  { name: 'Blue', hex: '#6A7B8D', lab: rgbToLab(106, 123, 141) },  // slate (muted blue)
+  { name: 'Blue', hex: '#4A6A8A', lab: rgbToLab(74, 106, 138) },   // denim (muted)
+  { name: 'Blue', hex: '#B0C4DE', lab: rgbToLab(176, 196, 222) },  // light steel blue
 
-  // Violet
+  // ── Violet (saturated + muted) ──
   { name: 'Violet', hex: '#8B00FF', lab: rgbToLab(139, 0, 255) },
   { name: 'Violet', hex: '#800080', lab: rgbToLab(128, 0, 128) },   // purple
   { name: 'Violet', hex: '#9400D3', lab: rgbToLab(148, 0, 211) },   // dark violet
   { name: 'Violet', hex: '#BA55D3', lab: rgbToLab(186, 85, 211) },  // medium orchid
   { name: 'Violet', hex: '#4B0082', lab: rgbToLab(75, 0, 130) },    // indigo
   { name: 'Violet', hex: '#663399', lab: rgbToLab(102, 51, 153) },  // rebecca purple
+  { name: 'Violet', hex: '#9370DB', lab: rgbToLab(147, 112, 219) }, // medium purple (muted)
+  { name: 'Violet', hex: '#7B68A5', lab: rgbToLab(123, 104, 165) }, // muted lavender
+  { name: 'Violet', hex: '#5D4E7A', lab: rgbToLab(93, 78, 122) },   // dusty purple
 
-  // Pink
+  // ── Pink (saturated + muted) ──
   { name: 'Pink', hex: '#FFC0CB', lab: rgbToLab(255, 192, 203) },
   { name: 'Pink', hex: '#FF69B4', lab: rgbToLab(255, 105, 180) },   // hot pink
   { name: 'Pink', hex: '#FF1493', lab: rgbToLab(255, 20, 147) },    // deep pink
   { name: 'Pink', hex: '#DB7093', lab: rgbToLab(219, 112, 147) },   // pale violet red
   { name: 'Pink', hex: '#FFB6C1', lab: rgbToLab(255, 182, 193) },   // light pink
   { name: 'Pink', hex: '#FF00FF', lab: rgbToLab(255, 0, 255) },     // magenta
+  { name: 'Pink', hex: '#C48A9A', lab: rgbToLab(196, 138, 154) },   // dusty rose (muted)
+  { name: 'Pink', hex: '#D4A0A0', lab: rgbToLab(212, 160, 160) },   // muted pink
+  { name: 'Pink', hex: '#B07080', lab: rgbToLab(176, 112, 128) },   // mauve
 
-  // Brown
+  // ── Brown (saturated + muted) ──
   { name: 'Brown', hex: '#8B4513', lab: rgbToLab(139, 69, 19) },    // saddle brown
   { name: 'Brown', hex: '#A0522D', lab: rgbToLab(160, 82, 45) },    // sienna
   { name: 'Brown', hex: '#D2691E', lab: rgbToLab(210, 105, 30) },   // chocolate
   { name: 'Brown', hex: '#654321', lab: rgbToLab(101, 67, 33) },    // dark brown
   { name: 'Brown', hex: '#A52A2A', lab: rgbToLab(165, 42, 42) },    // brown
   { name: 'Brown', hex: '#DEB887', lab: rgbToLab(222, 184, 135) },  // burlywood
+  { name: 'Brown', hex: '#8B7355', lab: rgbToLab(139, 115, 85) },   // muted tan
+  { name: 'Brown', hex: '#6B4F3A', lab: rgbToLab(107, 79, 58) },    // muted brown
+  { name: 'Brown', hex: '#C4A882', lab: rgbToLab(196, 168, 130) },  // sand/beige-brown
+  { name: 'Brown', hex: '#806040', lab: rgbToLab(128, 96, 64) },    // medium brown
 ];
 
 /**
@@ -289,11 +277,18 @@ const IDENTIFIER_DB = [
  */
 export function identifyColor(r, g, b) {
   const lab = rgbToLab(r, g, b);
+
+  // Chroma gate: C* = sqrt(a² + b²). Low chroma = truly achromatic → Neutral
+  const chroma = Math.sqrt(lab[1] * lab[1] + lab[2] * lab[2]);
+  const isChromatic = chroma >= NEUTRAL_CHROMA_THRESHOLD;
+
   let bestName = 'Neutral';
   let bestHex = '#808080';
   let bestDist = Infinity;
 
   for (const entry of IDENTIFIER_DB) {
+    // If pixel has color, skip Neutral entries; if achromatic, allow all
+    if (isChromatic && entry.name === 'Neutral') continue;
     const dist = deltaE(lab, entry.lab);
     if (dist < bestDist) {
       bestDist = dist;
@@ -444,55 +439,10 @@ export function encodeToDataUri(rgbaPixels, width, height, quality = 85) {
   return `data:image/jpeg;base64,${b64}`;
 }
 
-// ─────────────────────────────────────────────────────────────
-// applyCVDSimulation
-//
-// Like applyDaltonization but stops at simulation — shows what
-// a colorblind person actually sees (no error redistribution).
-// Used by CVDSimulationScreen.
-// ─────────────────────────────────────────────────────────────
-export function applyCVDSimulation(rawImageData, mask, cvdType) {
-  const pixels       = new Uint8Array(rawImageData.data); // copy
-  const confusionSet = CONFUSION_CLASSES[cvdType];
-  const SIM          = CVD_SIM[cvdType];
-  if (!confusionSet || !SIM) return pixels; // invalid cvdType — return unmodified
-  const numPixels    = rawImageData.width * rawImageData.height;
-
-  for (let i = 0; i < numPixels; i++) {
-    if (!confusionSet.has(mask[i])) continue;
-
-    const rIdx = i * 4;
-    const rLin = srgbToLinear(pixels[rIdx]     / 255.0);
-    const gLin = srgbToLinear(pixels[rIdx + 1] / 255.0);
-    const bLin = srgbToLinear(pixels[rIdx + 2] / 255.0);
-
-    // RGB → LMS
-    const L = RGB_TO_LMS[0][0] * rLin + RGB_TO_LMS[0][1] * gLin + RGB_TO_LMS[0][2] * bLin;
-    const M = RGB_TO_LMS[1][0] * rLin + RGB_TO_LMS[1][1] * gLin + RGB_TO_LMS[1][2] * bLin;
-    const S = RGB_TO_LMS[2][0] * rLin + RGB_TO_LMS[2][1] * gLin + RGB_TO_LMS[2][2] * bLin;
-
-    // Simulate CVD (just show what they see — NO error redistribution)
-    const Ls = SIM[0][0] * L + SIM[0][1] * M + SIM[0][2] * S;
-    const Ms = SIM[1][0] * L + SIM[1][1] * M + SIM[1][2] * S;
-    const Ss = SIM[2][0] * L + SIM[2][1] * M + SIM[2][2] * S;
-
-    // LMS → RGB (simulated values directly)
-    const rOut = LMS_TO_RGB[0][0] * Ls + LMS_TO_RGB[0][1] * Ms + LMS_TO_RGB[0][2] * Ss;
-    const gOut = LMS_TO_RGB[1][0] * Ls + LMS_TO_RGB[1][1] * Ms + LMS_TO_RGB[1][2] * Ss;
-    const bOut = LMS_TO_RGB[2][0] * Ls + LMS_TO_RGB[2][1] * Ms + LMS_TO_RGB[2][2] * Ss;
-
-    pixels[rIdx]     = Math.round(linearToSrgb(Math.max(0, Math.min(1, rOut))) * 255);
-    pixels[rIdx + 1] = Math.round(linearToSrgb(Math.max(0, Math.min(1, gOut))) * 255);
-    pixels[rIdx + 2] = Math.round(linearToSrgb(Math.max(0, Math.min(1, bOut))) * 255);
-  }
-
-  return pixels;
-}
-
 export function applyDaltonization(rawImageData, mask, cvdType) {
   const pixels       = new Uint8Array(rawImageData.data); // copy
   const confusionSet = CONFUSION_CLASSES[cvdType];
-  const SIM          = CVD_SIM[cvdType];
+  const SIM          = CVD_COMBINED[cvdType];
   const ERR          = CVD_ERR_SHIFT[cvdType];
   if (!confusionSet || !SIM || !ERR) return pixels; // invalid cvdType — return unmodified
 
@@ -502,42 +452,28 @@ export function applyDaltonization(rawImageData, mask, cvdType) {
     if (!confusionSet.has(mask[i])) continue; // Leave non-confused pixels untouched
 
     const rIdx = i * 4;
+    const r = pixels[rIdx]     / 255.0;
+    const g = pixels[rIdx + 1] / 255.0;
+    const b = pixels[rIdx + 2] / 255.0;
 
-    // Normalize to [0,1] and gamma-decode (sRGB → linear)
-    const rLin = srgbToLinear(pixels[rIdx]     / 255.0);
-    const gLin = srgbToLinear(pixels[rIdx + 1] / 255.0);
-    const bLin = srgbToLinear(pixels[rIdx + 2] / 255.0);
-
-    // RGB → LMS
-    const L = RGB_TO_LMS[0][0] * rLin + RGB_TO_LMS[0][1] * gLin + RGB_TO_LMS[0][2] * bLin;
-    const M = RGB_TO_LMS[1][0] * rLin + RGB_TO_LMS[1][1] * gLin + RGB_TO_LMS[1][2] * bLin;
-    const S = RGB_TO_LMS[2][0] * rLin + RGB_TO_LMS[2][1] * gLin + RGB_TO_LMS[2][2] * bLin;
-
-    // Simulate what the CVD user sees (missing cone reconstructed)
-    const Lsim = SIM[0][0] * L + SIM[0][1] * M + SIM[0][2] * S;
-    const Msim = SIM[1][0] * L + SIM[1][1] * M + SIM[1][2] * S;
-    const Ssim = SIM[2][0] * L + SIM[2][1] * M + SIM[2][2] * S;
+    // Simulate what the CVD user sees (Viénot 1999 combined sRGB matrix)
+    const rSim = SIM[0][0]*r + SIM[0][1]*g + SIM[0][2]*b;
+    const gSim = SIM[1][0]*r + SIM[1][1]*g + SIM[1][2]*b;
+    const bSim = SIM[2][0]*r + SIM[2][1]*g + SIM[2][2]*b;
 
     // Error = original − simulated (what the user cannot perceive)
-    const Lerr = L - Lsim;
-    const Merr = M - Msim;
-    const Serr = S - Ssim;
+    const rErr = r - rSim;
+    const gErr = g - gSim;
+    const bErr = b - bSim;
 
     // Redistribute error to surviving channels
-    const Ldalt = L + ERR[0][0] * Lerr + ERR[0][1] * Merr + ERR[0][2] * Serr;
-    const Mdalt = M + ERR[1][0] * Lerr + ERR[1][1] * Merr + ERR[1][2] * Serr;
-    const Sdalt = S + ERR[2][0] * Lerr + ERR[2][1] * Merr + ERR[2][2] * Serr;
+    const rOut = r + ERR[0][0]*rErr + ERR[0][1]*gErr + ERR[0][2]*bErr;
+    const gOut = g + ERR[1][0]*rErr + ERR[1][1]*gErr + ERR[1][2]*bErr;
+    const bOut = b + ERR[2][0]*rErr + ERR[2][1]*gErr + ERR[2][2]*bErr;
 
-    // LMS → RGB (linear)
-    const rOut = LMS_TO_RGB[0][0] * Ldalt + LMS_TO_RGB[0][1] * Mdalt + LMS_TO_RGB[0][2] * Sdalt;
-    const gOut = LMS_TO_RGB[1][0] * Ldalt + LMS_TO_RGB[1][1] * Mdalt + LMS_TO_RGB[1][2] * Sdalt;
-    const bOut = LMS_TO_RGB[2][0] * Ldalt + LMS_TO_RGB[2][1] * Mdalt + LMS_TO_RGB[2][2] * Sdalt;
-
-    // Gamma re-encode (linear → sRGB), clamp, write back
-    pixels[rIdx]     = Math.round(linearToSrgb(Math.max(0, Math.min(1, rOut))) * 255);
-    pixels[rIdx + 1] = Math.round(linearToSrgb(Math.max(0, Math.min(1, gOut))) * 255);
-    pixels[rIdx + 2] = Math.round(linearToSrgb(Math.max(0, Math.min(1, bOut))) * 255);
-    // Alpha (pixels[rIdx + 3]) stays unchanged
+    pixels[rIdx]     = Math.min(255, Math.max(0, Math.round(rOut * 255)));
+    pixels[rIdx + 1] = Math.min(255, Math.max(0, Math.round(gOut * 255)));
+    pixels[rIdx + 2] = Math.min(255, Math.max(0, Math.round(bOut * 255)));
   }
 
   return pixels; // modified RGBA Uint8Array
