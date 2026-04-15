@@ -8,18 +8,21 @@ import {
   getCVDColorMatrix,
   downscaleToTensor,
   upscaleMaskNearest,
+  identifyColor,
 } from './tensorHelper';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
+import { useSkiaFrameProcessor } from 'react-native-vision-camera';
+import { Skia, Canvas, Image as SkiaImage, ColorMatrix, useImage, useCanvasRef } from '@shopify/react-native-skia';
 
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer, useNavigation } from '@react-navigation/native';
+import { NavigationContainer, useNavigation, useIsFocused } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from 'expo-image-picker';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { Component, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -40,10 +43,12 @@ import {
 } from 'react-native';
 // 1. Import Firestore Tools (Standard Library)
 import {
+  addDoc,
   collection,
   onSnapshot,
   orderBy,
-  query
+  query,
+  serverTimestamp
 } from 'firebase/firestore';
 
 // 2. Import Your Config & Auth Functions (Local File)
@@ -51,12 +56,24 @@ import {
   auth,
   createUserWithEmailAndPassword,
   db,
-  saveExamResult, // <--- ADDED: Critical for connecting to the database
-  signInWithEmailAndPassword
+  saveExamResult,
+  signInWithEmailAndPassword,
+  signOut
 } from './firebaseConfig';
 
 // --- Configuration & Constants ---
-const { width } = Dimensions.get('window');
+const { width, height: screenHeight } = Dimensions.get('window');
+
+// Device-adaptive processing sizes.
+// CNN runs at CNN_SIZE x CNN_SIZE (update this when retraining at a new resolution).
+// Display overlay scales with screen: half the short edge, capped at 512 for performance.
+// Capture uses full screen-width resolution for best saved photo quality.
+const CNN_SIZE     = 256;
+// Display overlay width: match screen width for sharp full-screen overlay.
+// Capped at 720 for performance on high-res screens.
+const DISPLAY_SIZE = Math.min(720, width);
+const CAPTURE_SIZE = Math.min(1024, width);
+
 const COLORS = {
   primary: '#6C63FF', // Purple
   secondary: '#FF4081', // Pink
@@ -70,6 +87,130 @@ const COLORS = {
   danger: '#FF6B6B',
   darkOverlay: 'rgba(0,0,0,0.6)',
 };
+
+// ─────────────────────────────────────────────────────────────
+// AppLog — simple file-based logger that persists to device storage.
+// Logs are viewable from the Settings screen and survive app restarts.
+// ─────────────────────────────────────────────────────────────
+const LOG_FILE = `${FileSystem.documentDirectory}recolor_debug.log`;
+const MAX_LOG_LINES = 200;
+
+const AppLog = {
+  _buffer: [],
+
+  async _flush() {
+    if (this._buffer.length === 0) return;
+    const batch = this._buffer.splice(0);
+    try {
+      const existing = await FileSystem.readAsStringAsync(LOG_FILE).catch(() => '');
+      const lines = (existing + batch.join('\n') + '\n').split('\n');
+      // Keep only the last MAX_LOG_LINES to prevent unbounded growth
+      const trimmed = lines.slice(-MAX_LOG_LINES).join('\n');
+      await FileSystem.writeAsStringAsync(LOG_FILE, trimmed);
+    } catch (_) { /* can't log a log failure */ }
+  },
+
+  log(tag, message) {
+    const ts = new Date().toISOString().slice(11, 23); // HH:MM:SS.mmm
+    const line = `[${ts}] [${tag}] ${message}`;
+    this._buffer.push(line);
+    console.log(line);
+    // Debounced flush — batch nearby writes
+    clearTimeout(this._flushTimer);
+    this._flushTimer = setTimeout(() => this._flush(), 300);
+  },
+
+  async readAll() {
+    try {
+      return await FileSystem.readAsStringAsync(LOG_FILE);
+    } catch (_) {
+      return '(no logs yet)';
+    }
+  },
+
+  async clear() {
+    try { await FileSystem.deleteAsync(LOG_FILE, { idempotent: true }); } catch (_) {}
+  },
+};
+
+// ─────────────────────────────────────────────────────────────
+// Global error handlers — catch crashes OUTSIDE React render:
+//   - Unhandled JS exceptions (e.g., TypeError in callbacks)
+//   - Unhandled promise rejections (e.g., async without try/catch)
+// These log to AppLog so the user can view them in Settings > Debug Logs.
+// ─────────────────────────────────────────────────────────────
+const _defaultHandler = ErrorUtils.getGlobalHandler();
+ErrorUtils.setGlobalHandler((error, isFatal) => {
+  AppLog.log('FATAL', `${isFatal ? '[FATAL] ' : ''}${error?.message || error}\n${error?.stack || ''}`);
+  // Flush immediately — app may die after this
+  AppLog._flush();
+  if (_defaultHandler) _defaultHandler(error, isFatal);
+});
+
+// Unhandled promise rejections (async crashes without try/catch)
+const _origWarn = console.warn;
+const _rejectionTracker = (id, rejection) => {
+  if (rejection && rejection instanceof Error) {
+    AppLog.log('PROMISE', `Unhandled rejection: ${rejection.message}\n${rejection.stack || ''}`);
+    AppLog._flush();
+  } else if (rejection) {
+    AppLog.log('PROMISE', `Unhandled rejection: ${JSON.stringify(rejection)}`);
+    AppLog._flush();
+  }
+};
+if (typeof global?.HermesInternal !== 'undefined') {
+  // Hermes engine — use the tracking API if available
+  const tracking = require('promise/setimmediate/rejection-tracking');
+  tracking.enable({ allRejections: true, onUnhandled: _rejectionTracker });
+}
+
+// ─────────────────────────────────────────────────────────────
+// ErrorBoundary — catches JS-side crashes (including native
+// module initialization failures) and shows a recovery UI
+// instead of crashing the entire app.
+// ─────────────────────────────────────────────────────────────
+class ScreenErrorBoundary extends Component {
+  state = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, info) {
+    AppLog.log('CRASH', `${error?.message || error}\n${info?.componentStack || ''}`);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', padding: 30 }}>
+          <Ionicons name="warning" size={48} color="#FF6B6B" />
+          <Text style={{ color: '#FFF', fontSize: 18, fontWeight: 'bold', marginTop: 15, textAlign: 'center' }}>
+            This screen crashed
+          </Text>
+          <Text style={{ color: '#AAA', fontSize: 13, marginTop: 10, textAlign: 'center' }}>
+            {this.state.error?.message || 'Unknown error'}
+          </Text>
+          <TouchableOpacity
+            style={{ marginTop: 25, backgroundColor: COLORS.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}
+            onPress={() => {
+              this.setState({ hasError: false, error: null });
+              if (this.props.navigation?.goBack) {
+                this.props.navigation.goBack();
+              }
+              // If no navigation prop (top-level boundary), just clear the error to re-render
+            }}
+          >
+            <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+              {this.props.navigation ? 'Go Back' : 'Retry'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const RAW_PLATES = [
   // --- The 18 You Have ---
@@ -113,18 +254,6 @@ const RAW_PLATES = [
   { id: 36, img: require('./assets/plate_18.png'), answer: '26' },
   { id: 37, img: require('./assets/plate_1.png'), answer: '12' },
   { id: 38, img: require('./assets/plate_2.png'), answer: '8' },
-];
-// --- Mock Data ---
-const MOCK_HISTORY = [
-  { type: 'Protanomaly', date: 'October 24, 2025', severity: 'Mild', score: 64 },
-  { type: 'Deuteranomaly', date: 'October 24, 2025', severity: 'Severe', score: 0 },
-  { type: 'Deuteranomaly', date: 'October 24, 2025', severity: 'Severe', score: 0 },
-];
-
-const EDU_ARTICLES = [
-  { id: 1, title: 'What is Color Vision Deficiency?', image: 'https://placehold.co/300x150/FF9F43/FFFFFF?text=CVD+Info', desc: 'Learn about the science behind color vision.' },
-  { id: 2, title: 'Types of Color Blindness', image: 'https://placehold.co/300x150/FF6B6B/FFFFFF?text=Eye+Anatomy', desc: 'Understand Protanomaly, Deuteranomaly, and Tritanomaly.' },
-  { id: 3, title: 'Designing for Accessibility', image: 'https://placehold.co/300x150/2ECC71/FFFFFF?text=Accessibility', desc: 'Best practices for creating accessible content.' },
 ];
 
 // --- Components ---
@@ -335,9 +464,8 @@ function LoginScreen({ navigation }) {
       console.log("Login Success");
       navigation.replace('MainTabs');
     } catch (error) {
-      // 2. Emergency "Auto-Signup" for Defense Demo
-      // If user doesn't exist, we create them on the fly so you don't get stuck.
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+      // 2. Auto-signup only for genuinely non-existent users
+      if (error.code === 'auth/user-not-found') {
         try {
           await createUserWithEmailAndPassword(auth, email, password);
           console.log("Account Created on the fly");
@@ -345,6 +473,8 @@ function LoginScreen({ navigation }) {
         } catch (regError) {
           Alert.alert("Registration Error", regError.message);
         }
+      } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+        Alert.alert("Login Failed", "Incorrect email or password.");
       } else {
         Alert.alert("Login Failed", error.message);
       }
@@ -403,12 +533,32 @@ function LoginScreen({ navigation }) {
 }
 
 function AdminLoginScreen({ navigation }) {
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPass, setAdminPass]   = useState('');
+  const [adminLoading, setAdminLoading] = useState(false);
+
+  const handleAdminLogin = async () => {
+    if (!adminEmail || !adminPass) {
+      Alert.alert("Error", "Please enter email and password.");
+      return;
+    }
+    setAdminLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+      navigation.navigate('AdminHub', { role: 'admin' });
+    } catch (e) {
+      Alert.alert("Login Failed", "Incorrect email or password.");
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Header title="Admin Portal" subtitle="Secure Access" back />
       <BackgroundBubbles />
-      
-      <ScrollView contentContainerStyle={{ padding: 20 }}showsVerticalScrollIndicator={false}>
+
+      <ScrollView contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
         <View style={{ alignItems: 'center', marginVertical: 30 }}>
           <View style={styles.iconCircleGradient}>
             <Ionicons name="lock-closed-outline" size={40} color="#FFF" />
@@ -427,18 +577,22 @@ function AdminLoginScreen({ navigation }) {
         <Text style={styles.label}>Email Address</Text>
         <View style={styles.inputContainer}>
           <Ionicons name="mail-outline" size={20} color="#999" />
-          <TextInput style={styles.input} placeholder="admin@recolor.app" />
+          <TextInput style={styles.input} placeholder="admin@recolor.app" value={adminEmail} onChangeText={setAdminEmail} autoCapitalize="none" />
         </View>
 
         <Text style={styles.label}>Password</Text>
         <View style={styles.inputContainer}>
           <Ionicons name="key-outline" size={20} color="#999" />
-          <TextInput style={styles.input} placeholder="••••••••" secureTextEntry />
+          <TextInput style={styles.input} placeholder="••••••••" secureTextEntry value={adminPass} onChangeText={setAdminPass} />
         </View>
 
-        <TouchableOpacity style={[styles.btnPrimary, { marginTop: 20, backgroundColor: '#8E24AA' }]}>
-          <Ionicons name="lock-open-outline" size={20} color="#FFF" style={{ marginRight: 10 }} />
-          <Text style={styles.btnText}>Sign In Securely</Text>
+        <TouchableOpacity style={[styles.btnPrimary, { marginTop: 20, backgroundColor: '#8E24AA' }]} onPress={handleAdminLogin}>
+          {adminLoading ? <ActivityIndicator color="#FFF" /> : (
+            <>
+              <Ionicons name="lock-open-outline" size={20} color="#FFF" style={{ marginRight: 10 }} />
+              <Text style={styles.btnText}>Sign In Securely</Text>
+            </>
+          )}
         </TouchableOpacity>
 
         {/* DEMO CREDENTIALS - CLICKABLE */}
@@ -578,9 +732,9 @@ function AdminHubScreen({ route, navigation }) {
         )}
 
         {/* Logout - RED BUTTON */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={{ marginTop: 30, backgroundColor: '#D32F2F', padding: 15, borderRadius: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
-          onPress={() => navigation.navigate('Login')}
+          onPress={() => { signOut(auth).catch(() => {}); navigation.navigate('Login'); }}
         >
           <Ionicons name="log-out-outline" size={20} color="#FFF" style={{ marginRight: 10 }} />
           <Text style={{ fontWeight: 'bold', color: '#FFF' }}>Logout from Admin Portal</Text>
@@ -805,14 +959,16 @@ function ResearchDashboardScreen({ navigation }) {
 // --- Screens: User Main Tabs ---
 
 function HomeScreen({ navigation }) {
+  const userName = (auth.currentUser?.email || 'Guest').split('@')[0];
+
   return (
     <View style={styles.container}>
       {/* ADD BUBBLES HERE */}
       <BackgroundBubbles />
 
-      <ScrollView contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}style={{ backgroundColor: 'transparent' }}>
+      <ScrollView contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false} style={{ backgroundColor: 'transparent' }}>
         <View style={{ marginTop: 10, marginBottom: 20 }}>
-          <Text style={{ color: '#666', marginBottom: 5 }}>Hello, Demo User</Text>
+          <Text style={{ color: '#666', marginBottom: 5 }}>Hello, {userName}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={{ fontSize: 28, fontWeight: 'bold', flex: 1, marginRight: 10 }}>
               Welcome to ReColor
@@ -893,6 +1049,7 @@ function HistoryScreen() {
           // Handle missing fields safely
           type: data.diagnosis || "Unknown",
           score: data.score !== undefined ? data.score : "?",
+          total: data.total || 14,
           severity: data.severity || "N/A",
           // Convert Firebase Timestamp to readable text
           date: data.date?.toDate ? data.date.toDate().toLocaleDateString() : "Just now"
@@ -932,7 +1089,7 @@ function HistoryScreen() {
                   <Text style={{ fontSize: 12, color: '#888' }}>{item.date}</Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={{ fontSize: 20, fontWeight: 'bold', color: COLORS.primary }}>{item.score}/14</Text>
+                  <Text style={{ fontSize: 20, fontWeight: 'bold', color: COLORS.primary }}>{item.score}/{item.total}</Text>
                   <Text style={{ fontSize: 11, fontWeight: 'bold', color: item.severity === 'Severe' ? COLORS.danger : COLORS.warning }}>
                     {item.severity}
                   </Text>
@@ -947,17 +1104,19 @@ function HistoryScreen() {
 }
 
 function ProfileScreen({ navigation }) {
+  const userEmail = auth.currentUser?.email || 'Guest';
+  const userName = userEmail.split('@')[0];
+
   return (
     <View style={styles.container}>
       <BackgroundBubbles />
       <ScrollView contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
-        
+
         {/* Header */}
         <View style={{ marginTop: 20, marginBottom: 20, flexDirection: 'row', alignItems: 'center' }}>
-          
-          {/* Text Container: flex: 1 pushes the image to the right, but respects the image's margin */}
+
           <View style={{ flex: 1 }}>
-            <Text style={{ color: '#666', fontSize: 16 }}>Hello, Demo User</Text>
+            <Text style={{ color: '#666', fontSize: 16 }}>Hello, {userName}</Text>
             <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#333' }}>Welcome to ReColor</Text>
           </View>
           
@@ -978,8 +1137,8 @@ function ProfileScreen({ navigation }) {
             <Ionicons name="person" size={40} color="#FFF" />
           </View>
           
-          <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#333' }}>Demo User</Text>
-          <Text style={{ color: '#888', marginBottom: 25 }}>demo@recolor.app</Text>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#333' }}>{userName}</Text>
+          <Text style={{ color: '#888', marginBottom: 25 }}>{userEmail}</Text>
 
           {/* Manage Settings Button */}
           <TouchableOpacity 
@@ -997,8 +1156,12 @@ function ProfileScreen({ navigation }) {
 // --- Screens: User Feature Flows ---
 
 function SettingsScreen({ navigation }) {
+  const userEmail = auth.currentUser?.email || 'Guest';
+  const userName = userEmail.split('@')[0];
   const [enhancement, setEnhancement] = useState(0);
   const [audio, setAudio] = useState(true);
+  const [showLogs, setShowLogs] = useState(false);
+  const [logText, setLogText] = useState('');
 
   return (
     <View style={styles.container}>
@@ -1015,11 +1178,11 @@ function SettingsScreen({ navigation }) {
           </View>
           <View style={{ marginBottom: 10 }}>
             <Text style={{ color: '#999', fontSize: 12 }}>Name</Text>
-            <Text style={{ fontSize: 16, color: '#333', fontWeight: '500' }}>Demo User</Text>
+            <Text style={{ fontSize: 16, color: '#333', fontWeight: '500' }}>{userName}</Text>
           </View>
           <View>
             <Text style={{ color: '#999', fontSize: 12 }}>Email</Text>
-            <Text style={{ fontSize: 16, color: '#333', fontWeight: '500' }}>demo@recolor.app</Text>
+            <Text style={{ fontSize: 16, color: '#333', fontWeight: '500' }}>{userEmail}</Text>
           </View>
         </Card>
 
@@ -1082,12 +1245,50 @@ function SettingsScreen({ navigation }) {
           </TouchableOpacity>
         </Card>
 
+        {/* Debug Logs */}
+        <Card style={{ marginBottom: 20 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="bug-outline" size={20} color="#555" />
+              <Text style={{ marginLeft: 10, fontWeight: 'bold', fontSize: 16, color: '#333' }}>Debug Logs</Text>
+            </View>
+            <View style={{ flexDirection: 'row' }}>
+              <TouchableOpacity
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: COLORS.primary, marginRight: 8 }}
+                onPress={async () => {
+                  const logs = await AppLog.readAll();
+                  setLogText(logs);
+                  setShowLogs(!showLogs);
+                }}
+              >
+                <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '600' }}>{showLogs ? 'Hide' : 'View'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: '#D32F2F' }}
+                onPress={() => { AppLog.clear(); setLogText(''); setShowLogs(false); Alert.alert('Cleared', 'Debug logs cleared.'); }}
+              >
+                <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '600' }}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          <Text style={{ fontSize: 11, color: '#999', marginBottom: 5 }}>
+            Camera and pipeline logs are saved here for debugging crashes.
+          </Text>
+          {showLogs && (
+            <ScrollView style={{ maxHeight: 250, backgroundColor: '#1a1a2e', borderRadius: 8, padding: 10, marginTop: 8 }} nestedScrollEnabled>
+              <Text style={{ color: '#0f0', fontSize: 10, fontFamily: 'monospace' }}>
+                {logText || '(no logs yet)'}
+              </Text>
+            </ScrollView>
+          )}
+        </Card>
+
         {/* Account Section - RED BUTTON */}
         <Card>
           <Text style={{ marginBottom: 15, fontWeight: 'bold', fontSize: 16, color: '#333' }}>Account</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.btnPrimary, { backgroundColor: '#D32F2F', height: 45 }]}
-            onPress={() => navigation.replace('Login')}
+            onPress={() => { signOut(auth).catch(() => {}); navigation.replace('Login'); }}
           >
             <Ionicons name="log-out-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
             <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Log Out</Text>
@@ -1235,24 +1436,37 @@ function IshiharaTestScreen({ route, navigation }) {
       const finalScore = newScore;
       const total = queue.length;
       
-      // Simple Diagnosis Logic
+      // Diagnosis logic based on Ishihara screening guidelines
+      // Standard Ishihara plates primarily detect red-green deficiency.
+      // Severity is graded by the percentage of correctly identified plates.
       let diagnosis = "Normal Vision";
       let severity = "None";
       const percentage = (finalScore / total) * 100;
 
       if (percentage < 80) {
-        diagnosis = "Deuteranomaly (Simulated)";
-        severity = percentage < 40 ? "Severe" : "Moderate";
+        if (percentage >= 60) {
+          diagnosis = "Mild Red-Green Deficiency";
+          severity = "Mild";
+        } else if (percentage >= 40) {
+          diagnosis = "Moderate Red-Green Deficiency";
+          severity = "Moderate";
+        } else {
+          diagnosis = "Strong Red-Green Deficiency";
+          severity = "Severe";
+        }
       }
 
-      // SAVE TO FIREBASE (The "Miracle" Part)
+      // SAVE TO FIREBASE — wrapped so a network failure doesn't block navigation
       if (auth.currentUser) {
-        // This function handles the Dual Write (User Profile + Research Data)
-        await saveExamResult(auth.currentUser.uid, finalScore, diagnosis, severity);
+        try {
+          await saveExamResult(auth.currentUser.uid, finalScore, diagnosis, severity, total);
+        } catch (fbErr) {
+          console.warn('[Ishihara] Firebase save failed:', fbErr);
+        }
       }
 
-      // NAVIGATE
-      navigation.replace('IshiharaResult', { score: newScore, total: total, type: testType });
+      // NAVIGATE — always reached, even if Firebase save failed
+      navigation.replace('IshiharaResult', { score: newScore, total: total, type: testType, diagnosis, severity });
     }
   }; 
 
@@ -1374,19 +1588,36 @@ function IshiharaTestScreen({ route, navigation }) {
   );
 }
 
-function IshiharaResultScreen({ navigation }) {
+function IshiharaResultScreen({ route, navigation }) {
+  const { score = 0, total = 14, diagnosis = 'Unknown', severity = 'N/A' } = route.params || {};
+  const percentage = Math.round((score / total) * 100);
+  const isNormal = diagnosis === 'Normal Vision';
+
+  const getDescription = () => {
+    if (isNormal) return 'Your color vision appears to be within the normal range based on this screening.';
+    if (diagnosis.includes('Protan')) return 'Red-green color vision deficiency. Red colors appear less bright and may be confused with greens and browns.';
+    if (diagnosis.includes('Deutan')) return 'Red-green color vision deficiency. Green colors appear less bright and may be confused with reds and browns.';
+    if (diagnosis.includes('Tritan')) return 'Blue-yellow color vision deficiency. Blue colors may be confused with greens, and yellows with violets.';
+    return 'Possible color vision deficiency detected. Consider consulting an eye care professional for a comprehensive assessment.';
+  };
+
+  const severityColor = severity === 'Severe' ? '#D50000' : severity === 'Moderate' ? '#FF9800' : '#4CAF50';
+  const cardBg = isNormal ? '#E8F5E9' : '#FFF3E0';
+  const iconColor = isNormal ? '#4CAF50' : '#FF9800';
+  const iconName = isNormal ? 'checkmark-circle' : 'alert-circle';
+
   return (
     <ScrollView style={styles.container}>
       <Header title="Your Results" back />
       <View style={{ padding: 20 }}>
-        
-        <Card style={{ backgroundColor: '#FFF3E0', alignItems: 'center', paddingVertical: 30 }}>
-           <Ionicons name="alert-circle" size={40} color="#FF9800" />
+
+        <Card style={{ backgroundColor: cardBg, alignItems: 'center', paddingVertical: 30 }}>
+           <Ionicons name={iconName} size={40} color={iconColor} />
            <Text style={{ color: '#E65100', marginTop: 10 }}>Classification</Text>
-           <Text style={{ color: '#E65100', fontSize: 12 }}>Likely</Text>
-           <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#3E2723', marginVertical: 5 }}>Deuteranomaly</Text>
-           <View style={{ backgroundColor: '#D50000', paddingHorizontal: 15, paddingVertical: 5, borderRadius: 15 }}>
-             <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>Severity: Severe</Text>
+           <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#3E2723', marginVertical: 5 }}>{diagnosis}</Text>
+           <Text style={{ color: '#555', fontSize: 14, marginBottom: 10 }}>Score: {score}/{total} ({percentage}%)</Text>
+           <View style={{ backgroundColor: severityColor, paddingHorizontal: 15, paddingVertical: 5, borderRadius: 15 }}>
+             <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>Severity: {severity}</Text>
            </View>
         </Card>
 
@@ -1396,15 +1627,14 @@ function IshiharaResultScreen({ navigation }) {
             <Text style={{ marginLeft: 10, fontWeight: 'bold', color: '#0D47A1' }}>What This Means</Text>
           </View>
           <Text style={{ color: '#1565C0', lineHeight: 20 }}>
-            Red-green color vision deficiency. Green colors appear less bright.
+            {getDescription()}
           </Text>
-          <Text style={{ color: '#2196F3', marginTop: 10, fontWeight: 'bold' }}>Learn More {'>'}</Text>
         </Card>
 
         <Card style={{ marginTop: 20 }}>
           <Text style={{ fontWeight: 'bold', color: '#6C63FF', marginBottom: 15 }}>Recommendations</Text>
-          
-          <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+
+          <TouchableOpacity onPress={() => navigation.navigate('CameraSim')} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
              <View style={[styles.iconCircle, { backgroundColor: '#F3E5F5', width: 40, height: 40 }]}>
                 <Ionicons name="color-wand" size={20} color="#9C27B0" />
              </View>
@@ -1427,7 +1657,7 @@ function IshiharaResultScreen({ navigation }) {
           </TouchableOpacity>
         </Card>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.btnPrimary, { marginTop: 20, backgroundColor: '#1A237E' }]}
           onPress={() => navigation.navigate('MainTabs')}
         >
@@ -1444,17 +1674,45 @@ function IshiharaResultScreen({ navigation }) {
 function SurveyScreen({ navigation }) {
   const [selectedCause, setSelectedCause] = useState(null);
   const [selectedSex, setSelectedSex] = useState(null);
-  
+  const [submitting, setSubmitting] = useState(false);
+  const causes = ['Medical Intake', 'Genetics', 'Ageing', 'Others'];
+
+  const handleSubmit = async () => {
+    if (selectedCause === null || !selectedSex) {
+      Alert.alert("Incomplete", "Please answer all questions before submitting.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const surveyData = {
+        cause: causes[selectedCause],
+        sex: selectedSex,
+        userId: auth.currentUser?.uid || 'anonymous',
+        timestamp: serverTimestamp(),
+      };
+      await addDoc(collection(db, "surveys"), surveyData);
+      if (auth.currentUser) {
+        await addDoc(collection(db, "users", auth.currentUser.uid, "surveys"), surveyData);
+      }
+      navigation.replace('SurveySuccess');
+    } catch (e) {
+      console.warn('[Survey] save failed:', e);
+      navigation.replace('SurveySuccess');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Header title="Quick Survey" back />
-      <ScrollView contentContainerStyle={{ padding: 20 }}showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
         <Text style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 18, marginBottom: 5 }}>Help Us Understand</Text>
         <Text style={{ textAlign: 'center', color: '#777', marginBottom: 25 }}>What do you think are the causes of your CVD?</Text>
 
         {/* Causes Grid */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 }}>
-           {['Medical Intake', 'Genetics', 'Ageing', 'Others'].map((item, idx) => (
+           {causes.map((item, idx) => (
              <TouchableOpacity 
                key={idx} 
                onPress={() => setSelectedCause(idx)}
@@ -1494,11 +1752,12 @@ function SurveyScreen({ navigation }) {
           </View>
         </Card>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.btnPrimary, { marginTop: 30, backgroundColor: '#111' }]}
-          onPress={() => navigation.replace('SurveySuccess')}
+          onPress={handleSubmit}
+          disabled={submitting}
         >
-          <Text style={styles.btnText}>Submit Survey</Text>
+          {submitting ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Submit Survey</Text>}
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -1525,146 +1784,126 @@ function SurveySuccessScreen({ navigation }) {
   );
 }
 
-function CameraSimScreen({ navigation }) {
+function CameraSimScreen(props) {
+  return (
+    <ScreenErrorBoundary navigation={props.navigation}>
+      <CameraSimScreenInner {...props} />
+    </ScreenErrorBoundary>
+  );
+}
+
+function CameraSimScreenInner({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
+  const isFocused = useIsFocused();
   const [cameraPosition, setCameraPosition] = useState('back');
   const [cvdType, setCvdType]           = useState('Protan');
-  const [processedUri, setProcessedUri] = useState(null);
   const [showModal, setShowModal]       = useState(false);
-  const [modelStatus, setModelStatus]   = useState('loading');
 
-  const cameraRef      = useRef(null);
-  const isProcessing   = useRef(false);
-  const timerRef       = useRef(null);
-  const cvdTypeRef     = useRef(cvdType);
+  // Freeze/capture state
+  const [frozen, setFrozen]             = useState(false);
+  const [frozenUri, setFrozenUri]       = useState(null);    // resized photo file URI
+  const [processing, setProcessing]     = useState(false);
+
+  const cameraRef    = useRef(null);
+  const isMountedRef = useRef(true);
+  const canvasRef    = useCanvasRef();
 
   const device = useCameraDevice(cameraPosition);
 
-  // Load TFLite model
-  const tflite = useTensorflowModel(require('./assets/color_model.tflite'));
+  // Load frozen image into Skia — GPU-resident, no JS pixel decoding
+  const skImage = useImage(frozenUri);
 
-  // Keep ref in sync with state
-  useEffect(() => { cvdTypeRef.current = cvdType; }, [cvdType]);
+  // CVD color matrix — changes instantly when cvdType changes
+  const cvdMatrix = useMemo(() => getCVDColorMatrix(cvdType), [cvdType]);
 
-  // Track model readiness
   useEffect(() => {
-    if (tflite.state === 'loaded') setModelStatus('ready');
-    if (tflite.state === 'error')  setModelStatus('error');
-  }, [tflite.state]);
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
 
-  const DISPLAY_SIZE = 384;
-  const CNN_SIZE = 128;
+  useEffect(() => {
+    AppLog.log('CameraSim', 'mounted');
+    if (!hasPermission) {
+      AppLog.log('CameraSim', 'requesting camera permission');
+      requestPermission();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // ── Self-scheduling frame pipeline (no setInterval spam) ──
-  const runFramePipeline = useCallback(async () => {
-    if (isProcessing.current) return;
-    if (!cameraRef.current) { timerRef.current = setTimeout(runFramePipeline, 200); return; }
-    if (tflite.state !== 'loaded' || !tflite.model) { timerRef.current = setTimeout(runFramePipeline, 200); return; }
-    if (cvdTypeRef.current === 'Off') { setProcessedUri(null); timerRef.current = setTimeout(runFramePipeline, 200); return; }
+  // ── FREEZE: capture → resize to 1040p → display via Skia ──
+  const handleFreeze = useCallback(async () => {
+    if (!cameraRef.current) return;
 
-    isProcessing.current = true;
+    setProcessing(true);
+    AppLog.log('CameraSim', 'freeze: capturing photo');
+
     try {
-      // 1. VisionCamera takePhoto — no preview freeze, no shutter sound
       const photo = await cameraRef.current.takePhoto({
-        qualityPrioritization: 'speed',
+        qualityPrioritization: 'quality',
         enableShutterSound: false,
       });
+      if (!photo?.path) throw new Error('takePhoto returned no path');
       const fileUri = `file://${photo.path}`;
 
-      // 2. Single async resize to display resolution (384x384)
-      const displayResized = await ImageManipulator.manipulateAsync(
+      // Resize longest edge to 1040px max, preserve aspect ratio
+      const SIM_MAX = 1040;
+      const resized = await ImageManipulator.manipulateAsync(
         fileUri,
-        [{ resize: { width: DISPLAY_SIZE, height: DISPLAY_SIZE } }],
-        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.8 }
+        [{ resize: photo.width >= photo.height
+            ? { width: Math.min(SIM_MAX, photo.width) }
+            : { height: Math.min(SIM_MAX, photo.height) }
+        }],
+        { format: ImageManipulator.SaveFormat.JPEG, compress: 0.92 }
       );
+      if (!isMountedRef.current) return;
 
-      // 3. Decode to RGBA at display resolution
-      const rawImage = decodeJpegBase64(displayResized.base64);
-
-      // 4. Downscale RGBA → CNN tensor in JS (fast, synchronous — no second async call)
-      const inputTensor = downscaleToTensor(rawImage.data, DISPLAY_SIZE, DISPLAY_SIZE, CNN_SIZE, CNN_SIZE);
-
-      // 5. Run U-Net inference at 128x128
-      const outputs = tflite.model.runSync([inputTensor]);
-      const mask128 = getClassMask(outputs[0]);
-
-      // 6. Upscale mask to display resolution (nearest-neighbor)
-      const mask = upscaleMaskNearest(mask128, CNN_SIZE, CNN_SIZE, DISPLAY_SIZE, DISPLAY_SIZE);
-
-      // 7. Apply daltonization at display resolution (9x more pixels than 128x128)
-      const daltonized = applyDaltonization(rawImage, mask, cvdTypeRef.current);
-
-      // 8. Re-encode to data URI for display
-      const uri = encodeToDataUri(daltonized, DISPLAY_SIZE, DISPLAY_SIZE);
-      setProcessedUri(uri);
+      AppLog.log('CameraSim', `resized: ${resized.width}x${resized.height}`);
+      setFrozenUri(resized.uri);
+      setFrozen(true);
+      setProcessing(false);
     } catch (e) {
-      // Silently ignore frame errors
-    } finally {
-      isProcessing.current = false;
-      // Schedule next frame immediately after current finishes
-      timerRef.current = setTimeout(runFramePipeline, 50);
+      AppLog.log('CameraSim', `freeze error: ${e?.message || e}`);
+      if (isMountedRef.current) {
+        setProcessing(false);
+        Alert.alert('Error', `Capture failed: ${e?.message || 'unknown error'}`);
+      }
     }
-  }, [tflite.state, tflite.model]);
+  }, []);
 
-  // Start pipeline when model is ready, stop on unmount
-  useEffect(() => {
-    if (tflite.state === 'loaded') {
-      timerRef.current = setTimeout(runFramePipeline, 200);
-    }
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [tflite.state, runFramePipeline]);
+  // ── RESET: back to live preview ──
+  const handleReset = useCallback(() => {
+    setFrozen(false);
+    setFrozenUri(null);
+    setProcessing(false);
+    AppLog.log('CameraSim', 'reset to live preview');
+  }, []);
 
-  // Clear overlay when CVD type changes to Off
-  useEffect(() => {
-    if (cvdType === 'Off') setProcessedUri(null);
-  }, [cvdType]);
-
-  // ── Capture to gallery ──
-  const handleCapture = async () => {
+  // ── SAVE: snapshot the Skia canvas (includes CVD filter) ──
+  const handleSave = useCallback(async () => {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permission needed', 'Allow access to save photos.'); return; }
-      if (!cameraRef.current) return;
-
-      const photo = await cameraRef.current.takePhoto({
-        qualityPrioritization: 'balanced',
-        enableShutterSound: false,
-      });
-      const fileUri = `file://${photo.path}`;
-
-      if (cvdType !== 'Off' && tflite.state === 'loaded' && tflite.model) {
-        // Save daltonized version at higher resolution
-        const CAPTURE_SIZE = 512;
-        const captureResized = await ImageManipulator.manipulateAsync(
-          fileUri, [{ resize: { width: CAPTURE_SIZE, height: CAPTURE_SIZE } }],
-          { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
-        );
-        const rawImage = decodeJpegBase64(captureResized.base64);
-        const inputTensor = downscaleToTensor(rawImage.data, CAPTURE_SIZE, CAPTURE_SIZE, CNN_SIZE, CNN_SIZE);
-        const outputs = tflite.model.runSync([inputTensor]);
-        const mask128 = getClassMask(outputs[0]);
-        const mask = upscaleMaskNearest(mask128, CNN_SIZE, CNN_SIZE, CAPTURE_SIZE, CAPTURE_SIZE);
-        const daltonized = applyDaltonization(rawImage, mask, cvdType);
-        const uri = encodeToDataUri(daltonized, CAPTURE_SIZE, CAPTURE_SIZE);
-        const filename = `daltonized_${Date.now()}.jpg`;
-        const saveUri = FileSystem.documentDirectory + filename;
-        await FileSystem.writeAsStringAsync(saveUri, uri.split(',')[1], { encoding: FileSystem.EncodingType.Base64 });
-        await MediaLibrary.saveToLibraryAsync(saveUri);
-        Alert.alert('Saved', 'Enhanced photo saved to gallery.');
-      } else {
-        await MediaLibrary.saveToLibraryAsync(fileUri);
-        Alert.alert('Saved', 'Photo saved to gallery.');
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please allow access to save photos.');
+        return;
       }
+      // Snapshot the Skia canvas — captures the image WITH the color filter applied
+      const snapshot = canvasRef.current?.makeImageSnapshot();
+      if (!snapshot) {
+        Alert.alert('Error', 'Nothing to save.');
+        return;
+      }
+      const b64 = snapshot.encodeToBase64();
+      const tmpPath = `${FileSystem.cacheDirectory}recolor_sim_${Date.now()}.png`;
+      await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: FileSystem.EncodingType.Base64 });
+      await MediaLibrary.saveToLibraryAsync(tmpPath);
+      Alert.alert('Saved', 'Photo saved to your gallery.');
     } catch (e) {
-      console.warn('[CameraSim] capture error:', e);
-      Alert.alert('Error', 'Could not save the photo.');
+      AppLog.log('CameraSim', `save error: ${e?.message || e}`);
+      Alert.alert('Error', 'Could not save photo.');
     }
-  };
+  }, []);
 
-  // ── Permission gates ──
-  if (hasPermission === null) return <View />;
+  // ── Permission gate ──
   if (!hasPermission) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -1681,35 +1920,50 @@ function CameraSimScreen({ navigation }) {
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
 
-      {/* VisionCamera — no shutter sound, no preview freeze */}
-      {device && (
+      {/* Live camera preview — hidden when frozen */}
+      {device && !frozen && (
         <Camera
           ref={cameraRef}
           style={StyleSheet.absoluteFill}
           device={device}
-          isActive={true}
+          isActive={isFocused && !frozen}
           photo={true}
           enableShutterSound={false}
         />
       )}
 
-      {/* Daltonized frame overlay */}
-      {processedUri && cvdType !== 'Off' && (
-        <Image
-          source={{ uri: processedUri }}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-          fadeDuration={0}
-          pointerEvents="none"
-        />
+      {/* Frozen frame rendered via Skia with GPU color matrix filter */}
+      {frozen && skImage && (
+        <Canvas ref={canvasRef} style={StyleSheet.absoluteFill}>
+          <SkiaImage
+            image={skImage}
+            x={0} y={0}
+            width={width}
+            height={screenHeight}
+            fit="cover"
+          >
+            {cvdType !== 'Off' && <ColorMatrix matrix={cvdMatrix} />}
+          </SkiaImage>
+        </Canvas>
+      )}
+
+      {/* Processing spinner */}
+      {(processing || (frozen && !skImage)) && (
+        <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)',
+          justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
+          <ActivityIndicator size="large" color="#FFF" />
+          <Text style={{ color: '#FFF', fontSize: 14, marginTop: 12, fontWeight: '600' }}>
+            {processing ? 'Capturing...' : 'Loading image...'}
+          </Text>
+        </View>
       )}
 
       <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
 
         {/* Top Bar */}
         <View style={styles.camTopBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 5 }}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
+          <TouchableOpacity onPress={() => { if (frozen) handleReset(); else navigation.goBack(); }} style={{ padding: 5 }}>
+            <Ionicons name={frozen ? 'close' : 'arrow-back'} size={24} color="#FFF" />
           </TouchableOpacity>
 
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -1719,27 +1973,16 @@ function CameraSimScreen({ navigation }) {
               textShadowOffset: { width: -1, height: 1 },
               textShadowRadius: 10,
             }}>
-              {cvdType === 'Off' ? 'Normal' : `${cvdType} Mode`}
+              {frozen ? (cvdType === 'Off' ? 'Original' : `${cvdType} Simulation`)
+                      : (cvdType === 'Off' ? 'Normal' : `${cvdType} Mode`)}
             </Text>
-            <TouchableOpacity onPress={() => setShowModal(true)}>
-              <Ionicons name="menu" size={28} color="#FFF" />
-            </TouchableOpacity>
+            {!frozen && (
+              <TouchableOpacity onPress={() => setShowModal(true)}>
+                <Ionicons name="menu" size={28} color="#FFF" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
-
-        {/* Model status indicator */}
-        {modelStatus === 'loading' && (
-          <View style={{ position: 'absolute', top: 70, alignSelf: 'center',
-            backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
-            <Text style={{ color: '#FFF', fontSize: 12 }}>Loading model...</Text>
-          </View>
-        )}
-        {modelStatus === 'error' && (
-          <View style={{ position: 'absolute', top: 70, alignSelf: 'center',
-            backgroundColor: 'rgba(200,0,0,0.7)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
-            <Text style={{ color: '#FFF', fontSize: 12 }}>Model failed - native build required</Text>
-          </View>
-        )}
 
         {/* CVD type selector (right side) */}
         <View style={{ position: 'absolute', top: 100, right: 20, alignItems: 'center' }}>
@@ -1747,11 +1990,13 @@ function CameraSimScreen({ navigation }) {
             <TouchableOpacity
               key={m}
               onPress={() => setCvdType(m)}
+              disabled={processing}
               style={[
                 styles.filterBtn,
                 {
                   backgroundColor: cvdType === m ? COLORS.primary : 'rgba(0,0,0,0.5)',
                   marginBottom: 15,
+                  opacity: processing ? 0.4 : 1,
                 },
               ]}
             >
@@ -1765,17 +2010,44 @@ function CameraSimScreen({ navigation }) {
         {/* Bottom controls */}
         <View style={{ flex: 1, justifyContent: 'flex-end', paddingBottom: 30 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
-            <TouchableOpacity onPress={() => setCameraPosition(p => p === 'back' ? 'front' : 'back')}>
-              <Ionicons name="camera-reverse" size={30} color="#FFF" />
-            </TouchableOpacity>
 
-            <TouchableOpacity style={styles.shutterBtn} onPress={handleCapture}>
-              <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFF' }} />
-            </TouchableOpacity>
+            {frozen ? (
+              <>
+                {/* Reset */}
+                <TouchableOpacity onPress={handleReset}>
+                  <Ionicons name="refresh" size={30} color="#FFF" />
+                </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => navigation.navigate('CVDGallery')}>
-              <Ionicons name="images" size={30} color="#FFF" />
-            </TouchableOpacity>
+                {/* Center spacer */}
+                <View style={{ width: 70 }} />
+
+                {/* Save to gallery */}
+                <TouchableOpacity onPress={handleSave} disabled={!skImage}>
+                  <Ionicons name="download-outline" size={30}
+                    color={!skImage ? '#666' : '#FFF'} />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                {/* Flip camera */}
+                <TouchableOpacity onPress={() => setCameraPosition(p => p === 'back' ? 'front' : 'back')}>
+                  <Ionicons name="camera-reverse" size={30} color="#FFF" />
+                </TouchableOpacity>
+
+                {/* Freeze / Capture */}
+                <TouchableOpacity style={styles.shutterBtn} onPress={handleFreeze}>
+                  <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFF',
+                    justifyContent: 'center', alignItems: 'center' }}>
+                    <Ionicons name="snow" size={24} color="#333" />
+                  </View>
+                </TouchableOpacity>
+
+                {/* Gallery */}
+                <TouchableOpacity onPress={() => navigation.navigate('CVDGallery')}>
+                  <Ionicons name="images" size={30} color="#FFF" />
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
 
@@ -1783,53 +2055,49 @@ function CameraSimScreen({ navigation }) {
           visible={showModal}
           onClose={() => setShowModal(false)}
           navigation={navigation}
-          currentMode="Enhancement"
+          currentMode="Simulation"
         />
       </SafeAreaView>
     </View>
   );
 }
 
-// --- THE REAL LOGIC: Euclidean Color Classifier ---
-// This replaces the TFLite model for the Expo Go environment.
-// It calculates the geometric distance between the camera pixel and known colors.
-const CLASSIFIER_DB = {
-  'Red': { r: 255, g: 0, b: 0, hex: '#FF0000' },
-  'Green': { r: 0, g: 128, b: 0, hex: '#008000' },
-  'Blue': { r: 0, g: 0, b: 255, hex: '#0000FF' },
-  'Yellow': { r: 255, g: 255, b: 0, hex: '#FFFF00' },
-  'Cyan': { r: 0, g: 255, b: 255, hex: '#00FFFF' },
-  'Magenta': { r: 255, g: 0, b: 255, hex: '#FF00FF' },
-  'White': { r: 255, g: 255, b: 255, hex: '#FFFFFF' },
-  'Black': { r: 0, g: 0, b: 0, hex: '#000000' },
-  'Gray': { r: 128, g: 128, b: 128, hex: '#808080' },
-  'Orange': { r: 255, g: 165, b: 0, hex: '#FFA500' },
-  'Purple': { r: 128, g: 0, b: 128, hex: '#800080' },
-  'Brown': { r: 165, g: 42, b: 42, hex: '#A52A2A' },
-  'Beige': { r: 245, g: 245, b: 220, hex: '#F5F5DC' },
-  'Gold': { r: 255, g: 215, b: 0, hex: '#FFD700' },
-  'Silver': { r: 192, g: 192, b: 192, hex: '#C0C0C0' },
-  'Pink': { r: 255, g: 192, b: 203, hex: '#FFC0CB' },
-  'Navy': { r: 0, g: 0, b: 128, hex: '#000080' },
-  'Teal': { r: 0, g: 128, b: 128, hex: '#008080' },
-  'Lime': { r: 0, g: 255, b: 0, hex: '#00FF00' }
-};
+function ColorIdentifierScreen(props) {
+  return (
+    <ScreenErrorBoundary navigation={props.navigation}>
+      <ColorIdentifierScreenInner {...props} />
+    </ScreenErrorBoundary>
+  );
+}
 
-function ColorIdentifierScreen({ navigation }) {
+function ColorIdentifierScreenInner({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
+  const isFocused = useIsFocused();
   const [cameraPosition, setCameraPosition] = useState('back');
   const [audio, setAudio] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
-  const [cursorPosition, setCursorPosition] = useState({ x: width / 2, y: 300 });
+  const [cursorPosition, setCursorPosition] = useState({ x: width / 2, y: screenHeight / 2 });
   const [identifiedColor, setIdentifiedColor] = useState({ name: 'Ready to Scan', hex: '#333', conf: '' });
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isDetecting, setIsDetecting] = useState(false); // UI-only indicator
 
-  const cameraRef = useRef(null);
+  const cameraRef       = useRef(null);
+  const isProcessingRef = useRef(false); // ref not state — avoids race conditions
+  const isMountedRef    = useRef(true);
   const device = useCameraDevice(cameraPosition);
 
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
+  // Auto-request camera permission once on mount
+  useEffect(() => {
+    if (!hasPermission) requestPermission();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // --- PERMISSION CHECK ---
-  if (hasPermission === null) return <View />;
   if (!hasPermission) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -1841,86 +2109,118 @@ function ColorIdentifierScreen({ navigation }) {
     );
   }
 
-  // --- Color detection using center pixel sampling ---
-  const runDetection = async () => {
-    if (!cameraRef.current || isProcessing) return;
-    setIsProcessing(true);
+  // Color detection: takes photo, decodes full image, reads pixels directly at cursor position
+  const runDetection = async (cx, cy) => {
+    if (!cameraRef.current || isProcessingRef.current) return;
+    isProcessingRef.current = true;
+    setIsDetecting(true);
 
     try {
-      // 1. Take photo — no shutter sound, no preview freeze
+      // 1. Take photo silently
       const photo = await cameraRef.current.takePhoto({
         qualityPrioritization: 'speed',
         enableShutterSound: false,
       });
       const fileUri = `file://${photo.path}`;
 
-      // 2. Crop center 20x20 pixels then resize to 1x1 for average color
-      const cropResult = await ImageManipulator.manipulateAsync(
+      // 2. Resize to manageable size & get base64 (ImageManipulator applies EXIF rotation)
+      const resized = await ImageManipulator.manipulateAsync(
         fileUri,
-        [
-          { crop: { originX: photo.width / 2 - 10, originY: photo.height / 2 - 10, width: 20, height: 20 } },
-          { resize: { width: 1, height: 1 } },
-        ],
-        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 1.0 }
+        [{ resize: { width: 640 } }],
+        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.95 }
       );
+      const imgW = resized.width;
+      const imgH = resized.height;
 
-      // 3. Decode the 1x1 JPEG to get actual RGB values
-      const pixelData = decodeJpegBase64(cropResult.base64);
-      const r = pixelData.data[0];
-      const g = pixelData.data[1];
-      const b = pixelData.data[2];
+      // 3. Decode the full resized image — read pixels directly from the RGBA buffer
+      const decoded = decodeJpegBase64(resized.base64);
 
-      // 4. Find nearest color by Euclidean distance
-      let bestName = 'Unknown';
-      let bestHex = '#333';
-      let bestDist = Infinity;
-      for (const [name, col] of Object.entries(CLASSIFIER_DB)) {
-        const dist = Math.sqrt((r - col.r) ** 2 + (g - col.g) ** 2 + (b - col.b) ** 2);
-        if (dist < bestDist) {
-          bestDist = dist;
-          bestName = name;
-          bestHex = col.hex;
-        }
+      // 4. Cover-mode coordinate mapping
+      //    Camera preview fills the screen (cover) — must account for crop offset
+      const screenAspect = width / screenHeight;
+      const photoAspect  = imgW / imgH;
+
+      let pixX, pixY;
+      if (photoAspect > screenAspect) {
+        // Photo wider than screen → height fills, sides cropped
+        const visibleW = screenAspect * imgH;
+        const offsetX  = (imgW - visibleW) / 2;
+        pixX = Math.round(offsetX + (cx / width) * visibleW);
+        pixY = Math.round((cy / screenHeight) * imgH);
+      } else {
+        // Photo taller than screen → width fills, top/bottom cropped
+        const visibleH = imgW / screenAspect;
+        const offsetY  = (imgH - visibleH) / 2;
+        pixX = Math.round((cx / width) * imgW);
+        pixY = Math.round(offsetY + (cy / screenHeight) * visibleH);
       }
 
-      // Confidence: inverse of distance (max RGB distance is ~441)
-      const confidence = Math.max(0, Math.round((1 - bestDist / 441) * 100));
+      // 5. Average a 10×10 neighborhood around the mapped pixel
+      const half = 5;
+      const x0 = Math.max(0, pixX - half);
+      const y0 = Math.max(0, pixY - half);
+      const x1 = Math.min(imgW, pixX + half);
+      const y1 = Math.min(imgH, pixY + half);
 
-      setIdentifiedColor({ name: bestName, hex: bestHex, conf: `${confidence}%` });
+      let avgR = 0, avgG = 0, avgB = 0, count = 0;
+      for (let py = y0; py < y1; py++) {
+        for (let px = x0; px < x1; px++) {
+          const idx = (py * imgW + px) * 4;
+          avgR += decoded.data[idx];
+          avgG += decoded.data[idx + 1];
+          avgB += decoded.data[idx + 2];
+          count++;
+        }
+      }
+      avgR = Math.round(avgR / count);
+      avgG = Math.round(avgG / count);
+      avgB = Math.round(avgB / count);
+
+      // 6. Identify via CIELAB Delta-E nearest-neighbor
+      const result = identifyColor(avgR, avgG, avgB);
+      // Show actual sampled hex in swatch so user can verify mapping
+      const sampledHex = '#' + [avgR, avgG, avgB].map(c => c.toString(16).padStart(2, '0')).join('');
+      if (isMountedRef.current) {
+        setIdentifiedColor({ name: result.className, hex: sampledHex, conf: `${result.confidence}%` });
+      }
     } catch (e) {
       console.log('[ColorID] detection error:', e);
     } finally {
-      setIsProcessing(false);
+      isProcessingRef.current = false;
+      if (isMountedRef.current) setIsDetecting(false);
     }
   };
 
-  const handleTouch = (evt) => {
+  const handleTouchMove = (evt) => {
     const { locationX, locationY } = evt.nativeEvent;
     setCursorPosition({ x: locationX, y: locationY });
-    runDetection();
+  };
+
+  const handleTouchEnd = (evt) => {
+    const { locationX, locationY } = evt.nativeEvent;
+    setCursorPosition({ x: locationX, y: locationY });
+    runDetection(locationX, locationY);
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
-
-      {/* VisionCamera — no shutter sound, no freeze */}
       {device && (
         <Camera
           ref={cameraRef}
           style={StyleSheet.absoluteFill}
           device={device}
-          isActive={true}
+          isActive={isFocused}
           photo={true}
           enableShutterSound={false}
         />
       )}
-
-      <View
-        style={StyleSheet.absoluteFill}
-        onStartShouldSetResponder={() => true}
-        onResponderMove={handleTouch}
-        onResponderGrant={handleTouch}
-      />
+        <View
+          style={StyleSheet.absoluteFill}
+          onStartShouldSetResponder={() => true}
+          onResponderMove={handleTouchMove}
+          onResponderGrant={handleTouchMove}
+          onResponderRelease={handleTouchEnd}
+        />
 
       <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
         <View style={styles.camTopBar}>
@@ -1933,7 +2233,7 @@ function ColorIdentifierScreen({ navigation }) {
               </View>
           </View>
           <View style={{flexDirection:'row', alignItems:'center'}}>
-             <TouchableOpacity onPress={() => setAudio(!audio)} style={{ marginRight: 15 }}>
+             <TouchableOpacity onPress={() => { setAudio(a => !a); Alert.alert('Audio', audio ? 'Audio off (feature coming soon)' : 'Audio on (feature coming soon)'); }} style={{ marginRight: 15 }}>
                 <Ionicons name={audio ? "volume-high" : "volume-mute"} size={24} color="#FFF" />
              </TouchableOpacity>
              <TouchableOpacity onPress={() => setShowModal(true)}>
@@ -1955,7 +2255,7 @@ function ColorIdentifierScreen({ navigation }) {
               <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: identifiedColor.hex, marginBottom: 5, borderWidth: 2, borderColor:'#FFF' }} />
               <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>{identifiedColor.name}</Text>
               <Text style={{ color: '#CCC', fontSize: 12 }}>
-                 {isProcessing ? "Calculating..." : `RGB Match: ${identifiedColor.conf}`}
+                 {isDetecting ? "Calculating..." : `Delta-E Match: ${identifiedColor.conf}`}
               </Text>
            </View>
         </View>
@@ -1981,77 +2281,47 @@ function ColorIdentifierScreen({ navigation }) {
   );
 }
 
-function CVDSimulationScreen({ navigation }) {
+function CVDSimulationScreen(props) {
+  return (
+    <ScreenErrorBoundary navigation={props.navigation}>
+      <CVDSimulationScreenInner {...props} />
+    </ScreenErrorBoundary>
+  );
+}
+
+function CVDSimulationScreenInner({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
+  const isFocused = useIsFocused();
   const [mode, setMode]                 = useState('Off');
   const [showModal, setShowModal]       = useState(false);
   const [cameraPosition, setCameraPosition] = useState('back');
-  const [processedUri, setProcessedUri] = useState(null);
 
   const cameraRef = useRef(null);
   const device = useCameraDevice(cameraPosition);
-  const isProcessing = useRef(false);
-  const timerRef     = useRef(null);
-  const modeRef      = useRef(mode);
 
-  // Keep ref in sync with state
-  useEffect(() => { modeRef.current = mode; }, [mode]);
-
-  // ── Self-scheduling CVD simulation loop ──
-  const runSimLoop = useCallback(async () => {
-    if (isProcessing.current) return;
-    if (!cameraRef.current) { timerRef.current = setTimeout(runSimLoop, 200); return; }
-    if (modeRef.current === 'Off') { setProcessedUri(null); timerRef.current = setTimeout(runSimLoop, 200); return; }
-
-    isProcessing.current = true;
-    try {
-      const photo = await cameraRef.current.takePhoto({
-        qualityPrioritization: 'speed',
-        enableShutterSound: false,
-      });
-      const fileUri = `file://${photo.path}`;
-
-      // Resize for fast JS-side processing (no CNN — just matrix multiply)
-      const resized = await ImageManipulator.manipulateAsync(
-        fileUri,
-        [{ resize: { width: 384, height: 384 } }],
-        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.8 }
-      );
-      const rawImage = decodeJpegBase64(resized.base64);
-
-      // Apply CVD color matrix to every pixel (no CNN needed — simple matrix multiply)
-      const m = getCVDColorMatrix(modeRef.current);
-      const pixels = rawImage.data;
-      for (let i = 0; i < pixels.length; i += 4) {
-        const r = pixels[i] / 255, g = pixels[i+1] / 255, b = pixels[i+2] / 255;
-        pixels[i]   = Math.min(255, Math.max(0, (m[0]*r + m[1]*g + m[2]*b) * 255));
-        pixels[i+1] = Math.min(255, Math.max(0, (m[5]*r + m[6]*g + m[7]*b) * 255));
-        pixels[i+2] = Math.min(255, Math.max(0, (m[10]*r + m[11]*g + m[12]*b) * 255));
-      }
-
-      const uri = encodeToDataUri(rawImage, rawImage.width, rawImage.height);
-      setProcessedUri(uri);
-    } catch (e) {
-      // Silently ignore frame errors
-    } finally {
-      isProcessing.current = false;
-      timerRef.current = setTimeout(runSimLoop, 50); // Faster than Enhancement — no CNN overhead
-    }
+  // Auto-request camera permission once on mount
+  useEffect(() => {
+    if (!hasPermission) requestPermission();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Start loop on mount, stop on unmount
-  useEffect(() => {
-    timerRef.current = setTimeout(runSimLoop, 200);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [runSimLoop]);
-
-  // Clear overlay when mode is Off
-  useEffect(() => {
-    if (mode === 'Off') setProcessedUri(null);
+  // Build Paint object outside the worklet — Skia objects must not be
+  // constructed inside worklets in react-native-skia 2.x
+  const paint = useMemo(() => {
+    const p = Skia.Paint();
+    if (mode !== 'Off') {
+      p.setColorFilter(Skia.ColorFilter.MakeMatrix(getCVDColorMatrix(mode)));
+    }
+    return p;
   }, [mode]);
 
+  // Skia frame processor — runs on GPU for every video frame
+  const frameProcessor = useSkiaFrameProcessor((frame) => {
+    'worklet';
+    frame.render(paint);
+  }, [paint]);
+
   // --- PERMISSION CHECK ---
-  if (hasPermission === null) return <View />;
   if (!hasPermission) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -2081,7 +2351,7 @@ function CVDSimulationScreen({ navigation }) {
         if (mode !== 'Off') {
           const resized = await ImageManipulator.manipulateAsync(
             fileUri,
-            [{ resize: { width: 512, height: 512 } }],
+            [{ resize: { width: CAPTURE_SIZE } }],
             { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
           );
           const rawImage = decodeJpegBase64(resized.base64);
@@ -2093,7 +2363,7 @@ function CVDSimulationScreen({ navigation }) {
             pixels[i+1] = Math.min(255, Math.max(0, (m[5]*r + m[6]*g + m[7]*b) * 255));
             pixels[i+2] = Math.min(255, Math.max(0, (m[10]*r + m[11]*g + m[12]*b) * 255));
           }
-          const uri = encodeToDataUri(rawImage, rawImage.width, rawImage.height);
+          const uri = encodeToDataUri(pixels, rawImage.width, rawImage.height);
           const filename = `cvd_sim_${Date.now()}.jpg`;
           const saveUri = FileSystem.documentDirectory + filename;
           await FileSystem.writeAsStringAsync(saveUri, uri.split(',')[1], {
@@ -2126,26 +2396,16 @@ function CVDSimulationScreen({ navigation }) {
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
 
-      {/* VisionCamera — live feed, no frame processor (avoids Skia crash) */}
+      {/* VisionCamera + Skia GPU frame processor — only active when a CVD mode is selected */}
       {device && (
         <Camera
           ref={cameraRef}
           style={StyleSheet.absoluteFill}
           device={device}
-          isActive={true}
+          isActive={isFocused}
           photo={true}
-          enableShutterSound={false}
-        />
-      )}
-
-      {/* CVD-simulated overlay */}
-      {processedUri && mode !== 'Off' && (
-        <Image
-          source={{ uri: processedUri }}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-          fadeDuration={0}
-          pointerEvents="none"
+          pixelFormat="native"
+          frameProcessor={mode !== 'Off' ? frameProcessor : undefined}
         />
       )}
 
@@ -2224,36 +2484,61 @@ function CVDSimulationScreen({ navigation }) {
   );
 }
 function CVDGalleryScreen({ navigation }) {
-  const [image, setImage] = useState(null);
-  const [mode, setMode] = useState('Off');
+  const [originalUri, setOriginalUri] = useState(null);
+  const [displayUri, setDisplayUri]   = useState(null);
+  const [mode, setMode]               = useState('Off');
+  const [processing, setProcessing]   = useState(false);
 
-  // 1. Pick Image Logic
   const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 1,
     });
-
     if (!result.canceled) {
-      setImage(result.assets[0].uri);
+      const uri = result.assets[0].uri;
+      setOriginalUri(uri);
+      setDisplayUri(uri);
+      setMode('Off');
     }
   };
 
-  // 2. Filter Logic (Overlay)
-  const getFilterColor = () => {
-    switch (mode) {
-      case 'Protan': return 'rgba(255, 0, 0, 0.15)'; // Correction: Boost Red
-      case 'Deutan': return 'rgba(0, 255, 0, 0.15)'; // Correction: Boost Green
-      case 'Tritan': return 'rgba(0, 0, 255, 0.15)'; // Correction: Boost Blue
-      default: return 'transparent';
+  // Apply real CVD simulation using Viénot matrices
+  const applyFilter = async (cvdMode) => {
+    setMode(cvdMode);
+    if (cvdMode === 'Off' || !originalUri) {
+      setDisplayUri(originalUri);
+      return;
+    }
+    setProcessing(true);
+    try {
+      const resized = await ImageManipulator.manipulateAsync(
+        originalUri,
+        [{ resize: { width: CAPTURE_SIZE } }],
+        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
+      );
+      const rawImage = decodeJpegBase64(resized.base64);
+      const m = getCVDColorMatrix(cvdMode);
+      const pixels = rawImage.data;
+      for (let i = 0; i < pixels.length; i += 4) {
+        const r = pixels[i] / 255, g = pixels[i+1] / 255, b = pixels[i+2] / 255;
+        pixels[i]   = Math.min(255, Math.max(0, Math.round((m[0]*r + m[1]*g + m[2]*b) * 255)));
+        pixels[i+1] = Math.min(255, Math.max(0, Math.round((m[5]*r + m[6]*g + m[7]*b) * 255)));
+        pixels[i+2] = Math.min(255, Math.max(0, Math.round((m[10]*r + m[11]*g + m[12]*b) * 255)));
+      }
+      const uri = encodeToDataUri(pixels, rawImage.width, rawImage.height);
+      setDisplayUri(uri);
+    } catch (e) {
+      console.warn('[CVDGallery] filter error:', e);
+    } finally {
+      setProcessing(false);
     }
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
       <SafeAreaView style={{ flex: 1 }}>
-        
+
         {/* Header */}
         <View style={styles.camTopBar}>
           <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back" size={24} color="#FFF" /></TouchableOpacity>
@@ -2263,11 +2548,15 @@ function CVDGalleryScreen({ navigation }) {
 
         {/* Main Content */}
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          {image ? (
+          {displayUri ? (
             <View style={{ width: width, height: width * 1.3 }}>
-              <Image source={{ uri: image }} style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
-              {/* THE FILTER OVERLAY */}
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: getFilterColor() }]} pointerEvents="none" />
+              <Image source={{ uri: displayUri }} style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
+              {processing && (
+                <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }]}>
+                  <ActivityIndicator size="large" color="#FFF" />
+                  <Text style={{ color: '#FFF', marginTop: 10 }}>Applying simulation...</Text>
+                </View>
+              )}
             </View>
           ) : (
             <TouchableOpacity onPress={pickImage} style={{ alignItems: 'center' }}>
@@ -2278,13 +2567,14 @@ function CVDGalleryScreen({ navigation }) {
         </View>
 
         {/* Controls */}
-        {image && (
+        {originalUri && (
           <View style={{ flexDirection: 'row', justifyContent: 'center', paddingBottom: 30, gap: 10 }}>
              {['Off', 'Protan', 'Deutan', 'Tritan'].map(m => (
-               <TouchableOpacity 
-                 key={m} 
-                 onPress={() => setMode(m)} 
-                 style={{ backgroundColor: mode === m ? COLORS.primary : '#333', padding: 10, borderRadius: 20, paddingHorizontal: 20 }}
+               <TouchableOpacity
+                 key={m}
+                 onPress={() => applyFilter(m)}
+                 disabled={processing}
+                 style={{ backgroundColor: mode === m ? COLORS.primary : '#333', padding: 10, borderRadius: 20, paddingHorizontal: 20, opacity: processing ? 0.5 : 1 }}
                >
                  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{m}</Text>
                </TouchableOpacity>
@@ -2494,10 +2784,25 @@ const DisclaimerBanner = () => (
 // --- Global Camera Mode Switcher ---
 const ModeSelector = ({ visible, onClose, navigation, currentMode }) => {
   if (!visible) return null;
-  
+
+  // Map mode labels to screen names for same-screen detection
+  const MODE_TO_SCREEN = {
+    Enhancement: 'CameraSim',
+    Identifier: 'ColorIdentifier',
+    Simulation: 'CVDSimulation',
+  };
+
   const navigateTo = (screen) => {
+    // Don't navigate to the screen we're already on — causes native crash
+    if (screen === MODE_TO_SCREEN[currentMode]) {
+      onClose();
+      return;
+    }
+    AppLog.log('ModeSelector', `switching from ${currentMode} to ${screen}`);
     onClose();
-    navigation.replace(screen); // Use replace to switch modes without stacking
+    // Delay lets VisionCamera fully release the device before the new screen
+    // tries to acquire it. 300ms is safer than 120ms on slower devices.
+    setTimeout(() => navigation.replace(screen), 300);
   };
 
   return (
@@ -2553,6 +2858,7 @@ export default function App() {
       
       {/* 1. THE APP CONTENT */}
       <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+        <ScreenErrorBoundary>
         <NavigationContainer
           onStateChange={(state) => {
             const currentRouteName = getActiveRouteName(state);
@@ -2580,6 +2886,7 @@ export default function App() {
             <Stack.Screen name="CVDGallery" component={CVDGalleryScreen} />
           </Stack.Navigator>
         </NavigationContainer>
+        </ScreenErrorBoundary>
       </View>
 
       {/* 2. THE DISCLAIMER (Sits safely below everything) */}

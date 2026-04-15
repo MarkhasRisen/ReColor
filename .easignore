@@ -1,0 +1,11 @@
+# Python / ML training environment — must not be uploaded to EAS
+venv/
+__pycache__/
+*.pyc
+
+# Training notebooks and algo folder (not needed for the app build)
+algo/
+
+# Generated native folders (EAS generates these itself)
+/ios
+/android

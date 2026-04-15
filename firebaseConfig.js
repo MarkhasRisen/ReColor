@@ -48,12 +48,13 @@ const db = initializeFirestore(app, {
 // --- 5. HELPER: DUAL WRITE FOR PRIVACY ---
 // This satisfies the Ethical Consideration for Data Privacy (Slide 56).
 // It splits data into two streams: Private (User) and Anonymized (Research).
-const saveExamResult = async (userId, score, diagnosis, severity) => {
+const saveExamResult = async (userId, score, diagnosis, severity, total = 14) => {
   try {
     // WRITE 1: Private User History (Linked to User ID)
     // Visible only to the user in the "History" tab.
     await addDoc(collection(db, "users", userId, "history"), {
       score: score,
+      total: total,
       diagnosis: diagnosis,
       severity: severity,
       date: serverTimestamp()
@@ -65,6 +66,7 @@ const saveExamResult = async (userId, score, diagnosis, severity) => {
       diagnosis: diagnosis,
       severity: severity,
       score: score,
+      total: total,
       device: "Mobile_Client", // Generic device tag
       timestamp: serverTimestamp()
     });

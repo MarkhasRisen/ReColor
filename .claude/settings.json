@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(eas build:list --platform android --limit 3 --json)",
+      "Bash(eas build:list --platform android --limit 3 --json --non-interactive)",
+      "WebFetch(domain:job-logs.eascdn.net)",
+      "Bash(npm ci:*)"
+    ]
+  }
+}
