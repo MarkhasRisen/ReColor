@@ -134,6 +134,37 @@ const AppLog = {
 };
 
 // ─────────────────────────────────────────────────────────────
+// Global error handlers — catch crashes OUTSIDE React render:
+//   - Unhandled JS exceptions (e.g., TypeError in callbacks)
+//   - Unhandled promise rejections (e.g., async without try/catch)
+// These log to AppLog so the user can view them in Settings > Debug Logs.
+// ─────────────────────────────────────────────────────────────
+const _defaultHandler = ErrorUtils.getGlobalHandler();
+ErrorUtils.setGlobalHandler((error, isFatal) => {
+  AppLog.log('FATAL', `${isFatal ? '[FATAL] ' : ''}${error?.message || error}\n${error?.stack || ''}`);
+  // Flush immediately — app may die after this
+  AppLog._flush();
+  if (_defaultHandler) _defaultHandler(error, isFatal);
+});
+
+// Unhandled promise rejections (async crashes without try/catch)
+const _origWarn = console.warn;
+const _rejectionTracker = (id, rejection) => {
+  if (rejection && rejection instanceof Error) {
+    AppLog.log('PROMISE', `Unhandled rejection: ${rejection.message}\n${rejection.stack || ''}`);
+    AppLog._flush();
+  } else if (rejection) {
+    AppLog.log('PROMISE', `Unhandled rejection: ${JSON.stringify(rejection)}`);
+    AppLog._flush();
+  }
+};
+if (typeof global?.HermesInternal !== 'undefined') {
+  // Hermes engine — use the tracking API if available
+  const tracking = require('promise/setimmediate/rejection-tracking');
+  tracking.enable({ allRejections: true, onUnhandled: _rejectionTracker });
+}
+
+// ─────────────────────────────────────────────────────────────
 // ErrorBoundary — catches JS-side crashes (including native
 // module initialization failures) and shows a recovery UI
 // instead of crashing the entire app.
@@ -164,10 +195,15 @@ class ScreenErrorBoundary extends Component {
             style={{ marginTop: 25, backgroundColor: COLORS.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}
             onPress={() => {
               this.setState({ hasError: false, error: null });
-              this.props.navigation?.goBack?.();
+              if (this.props.navigation?.goBack) {
+                this.props.navigation.goBack();
+              }
+              // If no navigation prop (top-level boundary), just clear the error to re-render
             }}
           >
-            <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Go Back</Text>
+            <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+              {this.props.navigation ? 'Go Back' : 'Retry'}
+            </Text>
           </TouchableOpacity>
         </View>
       );
@@ -2026,7 +2062,15 @@ function CameraSimScreenInner({ navigation }) {
   );
 }
 
-function ColorIdentifierScreen({ navigation }) {
+function ColorIdentifierScreen(props) {
+  return (
+    <ScreenErrorBoundary navigation={props.navigation}>
+      <ColorIdentifierScreenInner {...props} />
+    </ScreenErrorBoundary>
+  );
+}
+
+function ColorIdentifierScreenInner({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
   const isFocused = useIsFocused();
   const [cameraPosition, setCameraPosition] = useState('back');
@@ -2237,7 +2281,15 @@ function ColorIdentifierScreen({ navigation }) {
   );
 }
 
-function CVDSimulationScreen({ navigation }) {
+function CVDSimulationScreen(props) {
+  return (
+    <ScreenErrorBoundary navigation={props.navigation}>
+      <CVDSimulationScreenInner {...props} />
+    </ScreenErrorBoundary>
+  );
+}
+
+function CVDSimulationScreenInner({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
   const isFocused = useIsFocused();
   const [mode, setMode]                 = useState('Off');
@@ -2733,12 +2785,24 @@ const DisclaimerBanner = () => (
 const ModeSelector = ({ visible, onClose, navigation, currentMode }) => {
   if (!visible) return null;
 
+  // Map mode labels to screen names for same-screen detection
+  const MODE_TO_SCREEN = {
+    Enhancement: 'CameraSim',
+    Identifier: 'ColorIdentifier',
+    Simulation: 'CVDSimulation',
+  };
+
   const navigateTo = (screen) => {
+    // Don't navigate to the screen we're already on — causes native crash
+    if (screen === MODE_TO_SCREEN[currentMode]) {
+      onClose();
+      return;
+    }
     AppLog.log('ModeSelector', `switching from ${currentMode} to ${screen}`);
     onClose();
-    // Small delay lets the camera release before the screen is torn down,
-    // preventing native VisionCamera crashes during active capture.
-    setTimeout(() => navigation.replace(screen), 120);
+    // Delay lets VisionCamera fully release the device before the new screen
+    // tries to acquire it. 300ms is safer than 120ms on slower devices.
+    setTimeout(() => navigation.replace(screen), 300);
   };
 
   return (
@@ -2794,6 +2858,7 @@ export default function App() {
       
       {/* 1. THE APP CONTENT */}
       <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+        <ScreenErrorBoundary>
         <NavigationContainer
           onStateChange={(state) => {
             const currentRouteName = getActiveRouteName(state);
@@ -2821,6 +2886,7 @@ export default function App() {
             <Stack.Screen name="CVDGallery" component={CVDGalleryScreen} />
           </Stack.Navigator>
         </NavigationContainer>
+        </ScreenErrorBoundary>
       </View>
 
       {/* 2. THE DISCLAIMER (Sits safely below everything) */}
