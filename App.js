@@ -5,14 +5,14 @@ import {
   applyDaltonization,
   decodeJpegBase64,
   encodeToDataUri,
-  getCVDColorMatrix,
+  getCVDRows,
   downscaleToTensor,
   upscaleMaskNearest,
   identifyColor,
 } from './tensorHelper';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { useSkiaFrameProcessor } from 'react-native-vision-camera';
-import { Skia, Canvas, Image as SkiaImage, ColorMatrix, useImage, useCanvasRef } from '@shopify/react-native-skia';
+import { Skia, Canvas, Image as SkiaImage, useImage, useCanvasRef, RuntimeShader } from '@shopify/react-native-skia';
 
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
@@ -73,6 +73,31 @@ const CNN_SIZE     = 256;
 // Capped at 720 for performance on high-res screens.
 const DISPLAY_SIZE = Math.min(720, width);
 const CAPTURE_SIZE = Math.min(1024, width);
+
+// ─────────────────────────────────────────────────────────────
+// Gamma-aware CVD simulation shader (SkSL).
+// Applies sRGB → linear → CVD matrix → linear → sRGB on the GPU.
+// Without this, the Machado 2009 matrices are applied to gamma-encoded
+// values which weakens the simulation (especially protanopia & tritanopia).
+// ─────────────────────────────────────────────────────────────
+const CVD_SHADER_SOURCE = `
+uniform shader contents;
+uniform half3 row0;
+uniform half3 row1;
+uniform half3 row2;
+
+half4 main(float2 coord) {
+  half4 c = contents.eval(coord);
+  // sRGB gamma decode (power-law approximation, <1% error vs exact)
+  half3 lin = pow(c.rgb, half3(2.2));
+  // Apply CVD simulation matrix
+  half3 sim = half3(dot(row0, lin), dot(row1, lin), dot(row2, lin));
+  sim = clamp(sim, half3(0.0), half3(1.0));
+  // sRGB gamma encode
+  return half4(pow(sim, half3(0.4545)), c.a);
+}
+`;
+const CVD_EFFECT = Skia.RuntimeEffect.Make(CVD_SHADER_SOURCE);
 
 const COLORS = {
   primary: '#6C63FF', // Purple
@@ -1813,8 +1838,8 @@ function CameraSimScreenInner({ navigation }) {
   // Load frozen image into Skia — GPU-resident, no JS pixel decoding
   const skImage = useImage(frozenUri);
 
-  // CVD color matrix — changes instantly when cvdType changes
-  const cvdMatrix = useMemo(() => getCVDColorMatrix(cvdType), [cvdType]);
+  // CVD shader uniforms — changes instantly when cvdType changes
+  const cvdUniforms = useMemo(() => getCVDRows(cvdType), [cvdType]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -1942,7 +1967,9 @@ function CameraSimScreenInner({ navigation }) {
             height={screenHeight}
             fit="cover"
           >
-            {cvdType !== 'Off' && <ColorMatrix matrix={cvdMatrix} />}
+            {cvdType !== 'Off' && CVD_EFFECT && (
+              <RuntimeShader source={CVD_EFFECT} uniforms={cvdUniforms} />
+            )}
           </SkiaImage>
         </Canvas>
       )}
@@ -2076,6 +2103,7 @@ function ColorIdentifierScreenInner({ navigation }) {
   const [cameraPosition, setCameraPosition] = useState('back');
   const [audio, setAudio] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [cameraReady, setCameraReady]       = useState(false);
 
   const [cursorPosition, setCursorPosition] = useState({ x: width / 2, y: screenHeight / 2 });
   const [identifiedColor, setIdentifiedColor] = useState({ name: 'Ready to Scan', hex: '#333', conf: '' });
@@ -2089,6 +2117,15 @@ function ColorIdentifierScreenInner({ navigation }) {
   useEffect(() => {
     isMountedRef.current = true;
     return () => { isMountedRef.current = false; };
+  }, []);
+
+  // Delay camera activation so VisionCamera has time to initialize
+  // after the previous screen's camera releases.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isMountedRef.current) setCameraReady(true);
+    }, 500);
+    return () => clearTimeout(timer);
   }, []);
 
   // Auto-request camera permission once on mount
@@ -2204,7 +2241,7 @@ function ColorIdentifierScreenInner({ navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
-      {device && (
+      {device && cameraReady && (
         <Camera
           ref={cameraRef}
           style={StyleSheet.absoluteFill}
@@ -2295,9 +2332,25 @@ function CVDSimulationScreenInner({ navigation }) {
   const [mode, setMode]                 = useState('Off');
   const [showModal, setShowModal]       = useState(false);
   const [cameraPosition, setCameraPosition] = useState('back');
+  const [cameraReady, setCameraReady]   = useState(false);
 
-  const cameraRef = useRef(null);
+  const cameraRef    = useRef(null);
+  const isMountedRef = useRef(true);
   const device = useCameraDevice(cameraPosition);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
+  // Delay camera activation so VisionCamera + Skia frame processor
+  // have time to initialize after the previous screen's camera releases.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isMountedRef.current) setCameraReady(true);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Auto-request camera permission once on mount
   useEffect(() => {
@@ -2305,12 +2358,18 @@ function CVDSimulationScreenInner({ navigation }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Build Paint object outside the worklet — Skia objects must not be
-  // constructed inside worklets in react-native-skia 2.x
+  // Build Paint with gamma-aware CVD shader as image filter.
+  // Objects must be constructed outside the worklet in react-native-skia 2.x.
   const paint = useMemo(() => {
     const p = Skia.Paint();
-    if (mode !== 'Off') {
-      p.setColorFilter(Skia.ColorFilter.MakeMatrix(getCVDColorMatrix(mode)));
+    if (mode !== 'Off' && CVD_EFFECT) {
+      const rows = getCVDRows(mode);
+      const builder = Skia.RuntimeShaderBuilder(CVD_EFFECT);
+      builder.setUniform('row0', rows.row0);
+      builder.setUniform('row1', rows.row1);
+      builder.setUniform('row2', rows.row2);
+      const imgFilter = Skia.ImageFilter.MakeRuntimeShader(builder, null, null);
+      p.setImageFilter(imgFilter);
     }
     return p;
   }, [mode]);
@@ -2355,13 +2414,21 @@ function CVDSimulationScreenInner({ navigation }) {
             { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
           );
           const rawImage = decodeJpegBase64(resized.base64);
-          const m = getCVDColorMatrix(mode);
+          const { row0, row1, row2 } = getCVDRows(mode);
           const pixels = rawImage.data;
           for (let i = 0; i < pixels.length; i += 4) {
-            const r = pixels[i] / 255, g = pixels[i+1] / 255, b = pixels[i+2] / 255;
-            pixels[i]   = Math.min(255, Math.max(0, (m[0]*r + m[1]*g + m[2]*b) * 255));
-            pixels[i+1] = Math.min(255, Math.max(0, (m[5]*r + m[6]*g + m[7]*b) * 255));
-            pixels[i+2] = Math.min(255, Math.max(0, (m[10]*r + m[11]*g + m[12]*b) * 255));
+            // sRGB → linear (gamma decode)
+            const r = Math.pow(pixels[i] / 255, 2.2);
+            const g = Math.pow(pixels[i+1] / 255, 2.2);
+            const b = Math.pow(pixels[i+2] / 255, 2.2);
+            // Apply CVD matrix in linear space
+            const sr = Math.max(0, Math.min(1, row0[0]*r + row0[1]*g + row0[2]*b));
+            const sg = Math.max(0, Math.min(1, row1[0]*r + row1[1]*g + row1[2]*b));
+            const sb = Math.max(0, Math.min(1, row2[0]*r + row2[1]*g + row2[2]*b));
+            // linear → sRGB (gamma encode)
+            pixels[i]   = Math.round(Math.pow(sr, 1/2.2) * 255);
+            pixels[i+1] = Math.round(Math.pow(sg, 1/2.2) * 255);
+            pixels[i+2] = Math.round(Math.pow(sb, 1/2.2) * 255);
           }
           const uri = encodeToDataUri(pixels, rawImage.width, rawImage.height);
           const filename = `cvd_sim_${Date.now()}.jpg`;
@@ -2397,14 +2464,13 @@ function CVDSimulationScreenInner({ navigation }) {
     <View style={{ flex: 1, backgroundColor: '#000' }}>
 
       {/* VisionCamera + Skia GPU frame processor — only active when a CVD mode is selected */}
-      {device && (
+      {device && cameraReady && (
         <Camera
           ref={cameraRef}
           style={StyleSheet.absoluteFill}
           device={device}
           isActive={isFocused}
           photo={true}
-          pixelFormat="native"
           frameProcessor={mode !== 'Off' ? frameProcessor : undefined}
         />
       )}
@@ -2518,13 +2584,21 @@ function CVDGalleryScreen({ navigation }) {
         { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
       );
       const rawImage = decodeJpegBase64(resized.base64);
-      const m = getCVDColorMatrix(cvdMode);
+      const { row0, row1, row2 } = getCVDRows(cvdMode);
       const pixels = rawImage.data;
       for (let i = 0; i < pixels.length; i += 4) {
-        const r = pixels[i] / 255, g = pixels[i+1] / 255, b = pixels[i+2] / 255;
-        pixels[i]   = Math.min(255, Math.max(0, Math.round((m[0]*r + m[1]*g + m[2]*b) * 255)));
-        pixels[i+1] = Math.min(255, Math.max(0, Math.round((m[5]*r + m[6]*g + m[7]*b) * 255)));
-        pixels[i+2] = Math.min(255, Math.max(0, Math.round((m[10]*r + m[11]*g + m[12]*b) * 255)));
+        // sRGB → linear (gamma decode)
+        const r = Math.pow(pixels[i] / 255, 2.2);
+        const g = Math.pow(pixels[i+1] / 255, 2.2);
+        const b = Math.pow(pixels[i+2] / 255, 2.2);
+        // Apply CVD matrix in linear space
+        const sr = Math.max(0, Math.min(1, row0[0]*r + row0[1]*g + row0[2]*b));
+        const sg = Math.max(0, Math.min(1, row1[0]*r + row1[1]*g + row1[2]*b));
+        const sb = Math.max(0, Math.min(1, row2[0]*r + row2[1]*g + row2[2]*b));
+        // linear → sRGB (gamma encode)
+        pixels[i]   = Math.round(Math.pow(sr, 1/2.2) * 255);
+        pixels[i+1] = Math.round(Math.pow(sg, 1/2.2) * 255);
+        pixels[i+2] = Math.round(Math.pow(sb, 1/2.2) * 255);
       }
       const uri = encodeToDataUri(pixels, rawImage.width, rawImage.height);
       setDisplayUri(uri);

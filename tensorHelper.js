@@ -67,6 +67,8 @@ const CVD_COMBINED = {
 /**
  * Returns a 20-element array for Skia.ColorFilter.MakeMatrix()
  * Format: 4x5 row-major [R_row, G_row, B_row, A_row] with offsets
+ * NOTE: This applies the matrix directly to sRGB (gamma-encoded) values.
+ * For accurate simulation, use getCVDMatrixFlat() with a gamma-aware shader.
  */
 export function getCVDColorMatrix(cvdType) {
   const m = CVD_COMBINED[cvdType];
@@ -77,6 +79,17 @@ export function getCVDColorMatrix(cvdType) {
     m[2][0], m[2][1], m[2][2], 0, 0,
     0,       0,       0,       1, 0,
   ];
+}
+
+/**
+ * Returns the 3 rows of the CVD simulation matrix as separate arrays,
+ * for use as SkSL float3 uniforms (row0, row1, row2).
+ * Returns identity rows if cvdType is invalid or 'Off'.
+ */
+export function getCVDRows(cvdType) {
+  const m = CVD_COMBINED[cvdType];
+  if (!m) return { row0: [1,0,0], row1: [0,1,0], row2: [0,0,1] };
+  return { row0: [...m[0]], row1: [...m[1]], row2: [...m[2]] };
 }
 
 // ─────────────────────────────────────────────────────────────
