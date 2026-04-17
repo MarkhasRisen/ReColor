@@ -12,7 +12,7 @@ import {
 } from './tensorHelper';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { useSkiaFrameProcessor } from 'react-native-vision-camera';
-import { Skia, Canvas, Image as SkiaImage, useImage, useCanvasRef, RuntimeShader } from '@shopify/react-native-skia';
+import { Skia } from '@shopify/react-native-skia';
 
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
@@ -1025,7 +1025,7 @@ function HomeScreen({ navigation }) {
           </View>
         </Card>
 
-        <Card style={styles.featureCard} onPress={() => navigation.navigate('CameraSim')}>
+        <Card style={styles.featureCard} onPress={() => navigation.navigate('CameraEnhance')}>
           <View style={[styles.featureIcon, { backgroundColor: '#F3E5F5' }]}>
             <Ionicons name="color-wand" size={28} color="#9C27B0" />
           </View>
@@ -1659,7 +1659,7 @@ function IshiharaResultScreen({ route, navigation }) {
         <Card style={{ marginTop: 20 }}>
           <Text style={{ fontWeight: 'bold', color: '#6C63FF', marginBottom: 15 }}>Recommendations</Text>
 
-          <TouchableOpacity onPress={() => navigation.navigate('CameraSim')} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+          <TouchableOpacity onPress={() => navigation.navigate('CameraEnhance')} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
              <View style={[styles.iconCircle, { backgroundColor: '#F3E5F5', width: 40, height: 40 }]}>
                 <Ionicons name="color-wand" size={20} color="#9C27B0" />
              </View>
@@ -1805,286 +1805,6 @@ function SurveySuccessScreen({ navigation }) {
       >
         <Text style={{ color: COLORS.primary, fontWeight: 'bold' }}>Back to Home</Text>
       </TouchableOpacity>
-    </View>
-  );
-}
-
-function CameraSimScreen(props) {
-  return (
-    <ScreenErrorBoundary navigation={props.navigation}>
-      <CameraSimScreenInner {...props} />
-    </ScreenErrorBoundary>
-  );
-}
-
-function CameraSimScreenInner({ navigation }) {
-  const { hasPermission, requestPermission } = useCameraPermission();
-  const isFocused = useIsFocused();
-  const [cameraPosition, setCameraPosition] = useState('back');
-  const [cvdType, setCvdType]           = useState('Protan');
-  const [showModal, setShowModal]       = useState(false);
-
-  // Freeze/capture state
-  const [frozen, setFrozen]             = useState(false);
-  const [frozenUri, setFrozenUri]       = useState(null);    // resized photo file URI
-  const [processing, setProcessing]     = useState(false);
-
-  const cameraRef    = useRef(null);
-  const isMountedRef = useRef(true);
-  const canvasRef    = useCanvasRef();
-
-  const device = useCameraDevice(cameraPosition);
-
-  // Load frozen image into Skia — GPU-resident, no JS pixel decoding
-  const skImage = useImage(frozenUri);
-
-  // CVD shader uniforms — changes instantly when cvdType changes
-  const cvdUniforms = useMemo(() => getCVDRows(cvdType), [cvdType]);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => { isMountedRef.current = false; };
-  }, []);
-
-  useEffect(() => {
-    AppLog.log('CameraSim', 'mounted');
-    if (!hasPermission) {
-      AppLog.log('CameraSim', 'requesting camera permission');
-      requestPermission();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── FREEZE: capture → resize to 1040p → display via Skia ──
-  const handleFreeze = useCallback(async () => {
-    if (!cameraRef.current) return;
-
-    setProcessing(true);
-    AppLog.log('CameraSim', 'freeze: capturing photo');
-
-    try {
-      const photo = await cameraRef.current.takePhoto({
-        qualityPrioritization: 'quality',
-        enableShutterSound: false,
-      });
-      if (!photo?.path) throw new Error('takePhoto returned no path');
-      const fileUri = `file://${photo.path}`;
-
-      // Resize longest edge to 1040px max, preserve aspect ratio
-      const SIM_MAX = 1040;
-      const resized = await ImageManipulator.manipulateAsync(
-        fileUri,
-        [{ resize: photo.width >= photo.height
-            ? { width: Math.min(SIM_MAX, photo.width) }
-            : { height: Math.min(SIM_MAX, photo.height) }
-        }],
-        { format: ImageManipulator.SaveFormat.JPEG, compress: 0.92 }
-      );
-      if (!isMountedRef.current) return;
-
-      AppLog.log('CameraSim', `resized: ${resized.width}x${resized.height}`);
-      setFrozenUri(resized.uri);
-      setFrozen(true);
-      setProcessing(false);
-    } catch (e) {
-      AppLog.log('CameraSim', `freeze error: ${e?.message || e}`);
-      if (isMountedRef.current) {
-        setProcessing(false);
-        Alert.alert('Error', `Capture failed: ${e?.message || 'unknown error'}`);
-      }
-    }
-  }, []);
-
-  // ── RESET: back to live preview ──
-  const handleReset = useCallback(() => {
-    setFrozen(false);
-    setFrozenUri(null);
-    setProcessing(false);
-    AppLog.log('CameraSim', 'reset to live preview');
-  }, []);
-
-  // ── SAVE: snapshot the Skia canvas (includes CVD filter) ──
-  const handleSave = useCallback(async () => {
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please allow access to save photos.');
-        return;
-      }
-      // Snapshot the Skia canvas — captures the image WITH the color filter applied
-      const snapshot = canvasRef.current?.makeImageSnapshot();
-      if (!snapshot) {
-        Alert.alert('Error', 'Nothing to save.');
-        return;
-      }
-      const b64 = snapshot.encodeToBase64();
-      const tmpPath = `${FileSystem.cacheDirectory}recolor_sim_${Date.now()}.png`;
-      await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: FileSystem.EncodingType.Base64 });
-      await MediaLibrary.saveToLibraryAsync(tmpPath);
-      Alert.alert('Saved', 'Photo saved to your gallery.');
-    } catch (e) {
-      AppLog.log('CameraSim', `save error: ${e?.message || e}`);
-      Alert.alert('Error', 'Could not save photo.');
-    }
-  }, []);
-
-  // ── Permission gate ──
-  if (!hasPermission) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ textAlign: 'center', marginBottom: 20 }}>
-          We need camera access for ReColor.
-        </Text>
-        <TouchableOpacity style={styles.btnPrimary} onPress={requestPermission}>
-          <Text style={styles.btnText}>Grant Permission</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
-
-      {/* Live camera preview — hidden when frozen */}
-      {device && !frozen && (
-        <Camera
-          ref={cameraRef}
-          style={StyleSheet.absoluteFill}
-          device={device}
-          isActive={isFocused && !frozen}
-          photo={true}
-          enableShutterSound={false}
-        />
-      )}
-
-      {/* Frozen frame rendered via Skia with GPU color matrix filter */}
-      {frozen && skImage && (
-        <Canvas ref={canvasRef} style={StyleSheet.absoluteFill}>
-          <SkiaImage
-            image={skImage}
-            x={0} y={0}
-            width={width}
-            height={screenHeight}
-            fit="cover"
-          >
-            {cvdType !== 'Off' && CVD_EFFECT && (
-              <RuntimeShader source={CVD_EFFECT} uniforms={cvdUniforms} />
-            )}
-          </SkiaImage>
-        </Canvas>
-      )}
-
-      {/* Processing spinner */}
-      {(processing || (frozen && !skImage)) && (
-        <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)',
-          justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
-          <ActivityIndicator size="large" color="#FFF" />
-          <Text style={{ color: '#FFF', fontSize: 14, marginTop: 12, fontWeight: '600' }}>
-            {processing ? 'Capturing...' : 'Loading image...'}
-          </Text>
-        </View>
-      )}
-
-      <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
-
-        {/* Top Bar */}
-        <View style={styles.camTopBar}>
-          <TouchableOpacity onPress={() => { if (frozen) handleReset(); else navigation.goBack(); }} style={{ padding: 5 }}>
-            <Ionicons name={frozen ? 'close' : 'arrow-back'} size={24} color="#FFF" />
-          </TouchableOpacity>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{
-              color: '#FFF', fontWeight: 'bold', marginRight: 10,
-              textShadowColor: 'rgba(0,0,0,0.75)',
-              textShadowOffset: { width: -1, height: 1 },
-              textShadowRadius: 10,
-            }}>
-              {frozen ? (cvdType === 'Off' ? 'Original' : `${cvdType} Simulation`)
-                      : (cvdType === 'Off' ? 'Normal' : `${cvdType} Mode`)}
-            </Text>
-            {!frozen && (
-              <TouchableOpacity onPress={() => setShowModal(true)}>
-                <Ionicons name="menu" size={28} color="#FFF" />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
-        {/* CVD type selector (right side) */}
-        <View style={{ position: 'absolute', top: 100, right: 20, alignItems: 'center' }}>
-          {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
-            <TouchableOpacity
-              key={m}
-              onPress={() => setCvdType(m)}
-              disabled={processing}
-              style={[
-                styles.filterBtn,
-                {
-                  backgroundColor: cvdType === m ? COLORS.primary : 'rgba(0,0,0,0.5)',
-                  marginBottom: 15,
-                  opacity: processing ? 0.4 : 1,
-                },
-              ]}
-            >
-              <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 10 }}>
-                {m === 'Off' ? 'Off' : m.charAt(0)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Bottom controls */}
-        <View style={{ flex: 1, justifyContent: 'flex-end', paddingBottom: 30 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
-
-            {frozen ? (
-              <>
-                {/* Reset */}
-                <TouchableOpacity onPress={handleReset}>
-                  <Ionicons name="refresh" size={30} color="#FFF" />
-                </TouchableOpacity>
-
-                {/* Center spacer */}
-                <View style={{ width: 70 }} />
-
-                {/* Save to gallery */}
-                <TouchableOpacity onPress={handleSave} disabled={!skImage}>
-                  <Ionicons name="download-outline" size={30}
-                    color={!skImage ? '#666' : '#FFF'} />
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                {/* Flip camera */}
-                <TouchableOpacity onPress={() => setCameraPosition(p => p === 'back' ? 'front' : 'back')}>
-                  <Ionicons name="camera-reverse" size={30} color="#FFF" />
-                </TouchableOpacity>
-
-                {/* Freeze / Capture */}
-                <TouchableOpacity style={styles.shutterBtn} onPress={handleFreeze}>
-                  <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFF',
-                    justifyContent: 'center', alignItems: 'center' }}>
-                    <Ionicons name="snow" size={24} color="#333" />
-                  </View>
-                </TouchableOpacity>
-
-                {/* Gallery */}
-                <TouchableOpacity onPress={() => navigation.navigate('CVDGallery')}>
-                  <Ionicons name="images" size={30} color="#FFF" />
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-
-        <ModeSelector
-          visible={showModal}
-          onClose={() => setShowModal(false)}
-          navigation={navigation}
-          currentMode="Simulation"
-        />
-      </SafeAreaView>
     </View>
   );
 }
@@ -3374,7 +3094,6 @@ export default function App() {
             <Stack.Screen name="IshiharaTest" component={IshiharaTestScreen} />
             <Stack.Screen name="IshiharaResult" component={IshiharaResultScreen} />
             <Stack.Screen name="Survey" component={SurveyScreen} />
-            <Stack.Screen name="CameraSim" component={CameraSimScreen} />
             <Stack.Screen name="CameraEnhance" component={CameraEnhanceScreen} />
             <Stack.Screen name="EducationList" component={EducationListScreen} />
             <Stack.Screen name="ColorIdentifier" component={ColorIdentifierScreen} />
@@ -3387,7 +3106,7 @@ export default function App() {
       </View>
 
       {/* 2. THE DISCLAIMER (Sits safely below everything) */}
-       {!['Splash', 'CameraSim', 'CameraEnhance', 'ColorIdentifier', 'CVDSimulation', 'CVDGallery'].includes(routeName) && <DisclaimerBanner />}
+       {!['Splash', 'CameraEnhance', 'ColorIdentifier', 'CVDSimulation', 'CVDGallery'].includes(routeName) && <DisclaimerBanner />}
     </View>
   );
 }
