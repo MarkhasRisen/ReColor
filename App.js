@@ -2089,6 +2089,428 @@ function CameraSimScreenInner({ navigation }) {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════
+// CameraEnhanceScreen — CNN-based daltonization
+// Freezes a photo, runs CNN segmentation to identify color classes,
+// then applies daltonization to redistribute lost color information
+// into channels the user CAN perceive. CNN mask is cached so
+// switching CVD type only re-runs the fast pixel loop.
+// ═══════════════════════════════════════════════════════════════
+function CameraEnhanceScreen(props) {
+  return (
+    <ScreenErrorBoundary navigation={props.navigation}>
+      <CameraEnhanceScreenInner {...props} />
+    </ScreenErrorBoundary>
+  );
+}
+
+function CameraEnhanceScreenInner({ navigation }) {
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const isFocused = useIsFocused();
+  const [cameraPosition, setCameraPosition] = useState('back');
+  const [cvdType, setCvdType]         = useState('Protan');
+  const [showModal, setShowModal]     = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+
+  // Freeze/processing state
+  const [frozen, setFrozen]           = useState(false);
+  const [processing, setProcessing]   = useState(false);
+  const [progress, setProgress]       = useState('');
+  const [resultUri, setResultUri]     = useState(null);
+  const [showOriginal, setShowOriginal] = useState(false);
+
+  const cameraRef    = useRef(null);
+  const isMountedRef = useRef(true);
+
+  // Cached between CVD type switches — CNN only runs once per capture
+  const maskRef      = useRef(null);   // Uint8Array full-res class mask
+  const decodedRef   = useRef(null);   // { data, width, height } raw RGBA
+  const frozenUriRef = useRef(null);   // original photo URI for before/after
+
+  const device = useCameraDevice(cameraPosition);
+
+  // Load TFLite CNN model
+  const tfliteModel = useTensorflowModel(require('./assets/color_model.tflite'));
+  const model = tfliteModel.state === 'loaded' ? tfliteModel.model : null;
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isMountedRef.current) setCameraReady(true);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!hasPermission) requestPermission();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Extract a tile from decoded pixel buffer (no disk I/O) ──
+  const extractTile = useCallback((decoded, tileX, tileY) => {
+    const tile = new Uint8Array(CNN_SIZE * CNN_SIZE * 4); // zero-padded
+    for (let y = 0; y < CNN_SIZE; y++) {
+      const srcY = tileY * CNN_SIZE + y;
+      if (srcY >= decoded.height) break;
+      for (let x = 0; x < CNN_SIZE; x++) {
+        const srcX = tileX * CNN_SIZE + x;
+        if (srcX >= decoded.width) break;
+        const srcIdx = (srcY * decoded.width + srcX) * 4;
+        const dstIdx = (y * CNN_SIZE + x) * 4;
+        tile[dstIdx]     = decoded.data[srcIdx];
+        tile[dstIdx + 1] = decoded.data[srcIdx + 1];
+        tile[dstIdx + 2] = decoded.data[srcIdx + 2];
+        tile[dstIdx + 3] = 255;
+      }
+    }
+    return { data: tile, width: CNN_SIZE, height: CNN_SIZE };
+  }, []);
+
+  // ── Run daltonization from cached mask (fast, no CNN) ──
+  const runDaltonize = useCallback((cvd) => {
+    if (!decodedRef.current || !maskRef.current) return null;
+    if (cvd === 'Off') return null; // show original
+    const enhanced = applyDaltonization(decodedRef.current, maskRef.current, cvd);
+    return encodeToDataUri(enhanced, decodedRef.current.width, decodedRef.current.height);
+  }, []);
+
+  // ── FREEZE: capture → CNN tile pipeline → daltonize ──
+  const handleFreeze = useCallback(async () => {
+    if (!cameraRef.current || !model) return;
+
+    setProcessing(true);
+    setProgress('Capturing...');
+    AppLog.log('CameraEnhance', 'freeze: capturing photo');
+
+    try {
+      const photo = await cameraRef.current.takePhoto({
+        qualityPrioritization: 'quality',
+        enableShutterSound: false,
+      });
+      if (!photo?.path) throw new Error('takePhoto returned no path');
+      const fileUri = `file://${photo.path}`;
+
+      // Resize longest edge to 1040px
+      const SIM_MAX = 1040;
+      setProgress('Resizing...');
+      const resized = await ImageManipulator.manipulateAsync(
+        fileUri,
+        [{ resize: photo.width >= photo.height
+            ? { width: Math.min(SIM_MAX, photo.width) }
+            : { height: Math.min(SIM_MAX, photo.height) }
+        }],
+        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.92 }
+      );
+      if (!isMountedRef.current) return;
+
+      // Store original URI for before/after
+      frozenUriRef.current = resized.uri;
+
+      // Decode full image
+      setProgress('Decoding...');
+      const decoded = decodeJpegBase64(resized.base64);
+      decodedRef.current = decoded;
+      AppLog.log('CameraEnhance', `decoded: ${decoded.width}x${decoded.height}`);
+
+      // Tile and run CNN
+      const tilesX = Math.ceil(decoded.width / CNN_SIZE);
+      const tilesY = Math.ceil(decoded.height / CNN_SIZE);
+      const totalTiles = tilesX * tilesY;
+      const fullMask = new Uint8Array(decoded.width * decoded.height);
+
+      let tileCount = 0;
+      for (let ty = 0; ty < tilesY; ty++) {
+        for (let tx = 0; tx < tilesX; tx++) {
+          tileCount++;
+          if (!isMountedRef.current) return;
+          setProgress(`CNN tile ${tileCount}/${totalTiles}...`);
+
+          // Extract tile from pixel buffer (no disk I/O)
+          const tileImg = extractTile(decoded, tx, ty);
+          const inputTensor = downscaleToTensor(tileImg);
+          const output = model.runSync([inputTensor]);
+          const tileMask = getClassMask(output[0]);
+
+          // Copy tile mask into full-res mask
+          for (let y = 0; y < CNN_SIZE; y++) {
+            const dstY = ty * CNN_SIZE + y;
+            if (dstY >= decoded.height) break;
+            for (let x = 0; x < CNN_SIZE; x++) {
+              const dstX = tx * CNN_SIZE + x;
+              if (dstX >= decoded.width) break;
+              fullMask[dstY * decoded.width + dstX] = tileMask[y * CNN_SIZE + x];
+            }
+          }
+
+          // Yield to UI every 4 tiles
+          if (tileCount % 4 === 0) {
+            await new Promise(r => setTimeout(r, 0));
+          }
+        }
+      }
+
+      if (!isMountedRef.current) return;
+      maskRef.current = fullMask;
+      AppLog.log('CameraEnhance', `CNN done: ${totalTiles} tiles, mask built`);
+
+      // Run daltonization
+      setProgress('Enhancing colors...');
+      await new Promise(r => setTimeout(r, 0)); // yield before heavy pixel loop
+      const uri = runDaltonize(cvdType);
+
+      if (isMountedRef.current) {
+        setResultUri(uri || frozenUriRef.current);
+        setFrozen(true);
+        setProcessing(false);
+        setProgress('');
+      }
+    } catch (e) {
+      AppLog.log('CameraEnhance', `freeze error: ${e?.message || e}`);
+      if (isMountedRef.current) {
+        setProcessing(false);
+        setProgress('');
+        Alert.alert('Error', `Processing failed: ${e?.message || 'unknown error'}`);
+      }
+    }
+  }, [model, cvdType, extractTile, runDaltonize]);
+
+  // ── CVD type change: re-daltonize from cached mask ──
+  const handleCvdChange = useCallback((newType) => {
+    setCvdType(newType);
+    if (!frozen || !maskRef.current) return;
+
+    setProcessing(true);
+    setProgress('Re-enhancing...');
+    // Use setTimeout to let the UI update before the heavy pixel loop
+    setTimeout(() => {
+      const uri = runDaltonize(newType);
+      if (isMountedRef.current) {
+        setResultUri(uri || frozenUriRef.current);
+        setProcessing(false);
+        setProgress('');
+      }
+    }, 50);
+  }, [frozen, runDaltonize]);
+
+  // ── RESET ──
+  const handleReset = useCallback(() => {
+    setFrozen(false);
+    setResultUri(null);
+    setProcessing(false);
+    setProgress('');
+    setShowOriginal(false);
+    maskRef.current = null;
+    decodedRef.current = null;
+    frozenUriRef.current = null;
+    AppLog.log('CameraEnhance', 'reset to live preview');
+  }, []);
+
+  // ── SAVE ──
+  const handleSave = useCallback(async () => {
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please allow access to save photos.');
+        return;
+      }
+      const uri = resultUri;
+      if (!uri) {
+        Alert.alert('Error', 'Nothing to save.');
+        return;
+      }
+      const b64 = uri.split(',')[1];
+      const tmpPath = `${FileSystem.cacheDirectory}recolor_enhance_${Date.now()}.jpg`;
+      await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: FileSystem.EncodingType.Base64 });
+      await MediaLibrary.saveToLibraryAsync(tmpPath);
+      Alert.alert('Saved', 'Enhanced photo saved to your gallery.');
+    } catch (e) {
+      AppLog.log('CameraEnhance', `save error: ${e?.message || e}`);
+      Alert.alert('Error', 'Could not save photo.');
+    }
+  }, [resultUri]);
+
+  // ── Permission gate ──
+  if (!hasPermission) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ textAlign: 'center', marginBottom: 20 }}>
+          We need camera access for color enhancement.
+        </Text>
+        <TouchableOpacity style={styles.btnPrimary} onPress={requestPermission}>
+          <Text style={styles.btnText}>Grant Permission</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Which image to display in frozen mode
+  const displayUri = frozen
+    ? (showOriginal ? frozenUriRef.current : resultUri)
+    : null;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
+
+      {/* Live camera preview — hidden when frozen */}
+      {device && cameraReady && !frozen && (
+        <Camera
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          device={device}
+          isActive={isFocused && !frozen}
+          photo={true}
+          enableShutterSound={false}
+        />
+      )}
+
+      {/* Frozen result — enhanced or original image */}
+      {frozen && displayUri && (
+        <Image
+          source={{ uri: displayUri }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
+      )}
+
+      {/* Processing overlay */}
+      {processing && (
+        <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.7)',
+          justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
+          <ActivityIndicator size="large" color="#FFF" />
+          <Text style={{ color: '#FFF', fontSize: 14, marginTop: 12, fontWeight: '600' }}>
+            {progress || 'Processing...'}
+          </Text>
+        </View>
+      )}
+
+      {/* Model loading indicator */}
+      {!model && !frozen && (
+        <View style={{ position: 'absolute', top: '50%', alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.7)',
+          padding: 15, borderRadius: 10, zIndex: 5 }}>
+          <Text style={{ color: '#FFF', fontSize: 12 }}>Loading CNN model...</Text>
+        </View>
+      )}
+
+      <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
+
+        {/* Top Bar */}
+        <View style={styles.camTopBar}>
+          <TouchableOpacity onPress={() => { if (frozen) handleReset(); else navigation.goBack(); }} style={{ padding: 5 }}>
+            <Ionicons name={frozen ? 'close' : 'arrow-back'} size={24} color="#FFF" />
+          </TouchableOpacity>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{
+              color: '#FFF', fontWeight: 'bold', marginRight: 10,
+              textShadowColor: 'rgba(0,0,0,0.75)',
+              textShadowOffset: { width: -1, height: 1 },
+              textShadowRadius: 10,
+            }}>
+              {frozen ? (cvdType === 'Off' ? 'Original' : `${cvdType} Enhanced`)
+                      : 'Color Enhancement'}
+            </Text>
+            {!frozen && (
+              <TouchableOpacity onPress={() => setShowModal(true)}>
+                <Ionicons name="menu" size={28} color="#FFF" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* CVD type selector (right side) */}
+        <View style={{ position: 'absolute', top: 100, right: 20, alignItems: 'center' }}>
+          {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
+            <TouchableOpacity
+              key={m}
+              onPress={() => handleCvdChange(m)}
+              disabled={processing}
+              style={[
+                styles.filterBtn,
+                {
+                  backgroundColor: cvdType === m ? COLORS.primary : 'rgba(0,0,0,0.5)',
+                  marginBottom: 15,
+                  opacity: processing ? 0.4 : 1,
+                },
+              ]}
+            >
+              <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 10 }}>
+                {m === 'Off' ? 'Off' : m.charAt(0)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Before/after hint */}
+        {frozen && !processing && (
+          <View style={{ position: 'absolute', top: '55%', alignSelf: 'center', pointerEvents: 'none' }}>
+            <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 }}>
+              <Text style={{ color: '#AAA', fontSize: 11 }}>
+                {showOriginal ? 'Showing original' : 'Long-press for original'}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Bottom controls */}
+        <View style={{ flex: 1, justifyContent: 'flex-end', paddingBottom: 30 }}>
+          {/* Long-press overlay for before/after */}
+          {frozen && (
+            <View
+              style={StyleSheet.absoluteFill}
+              onStartShouldSetResponder={() => true}
+              onResponderGrant={() => setShowOriginal(true)}
+              onResponderRelease={() => setShowOriginal(false)}
+              onResponderTerminate={() => setShowOriginal(false)}
+            />
+          )}
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
+            {frozen ? (
+              <>
+                <TouchableOpacity onPress={handleReset}>
+                  <Ionicons name="refresh" size={30} color="#FFF" />
+                </TouchableOpacity>
+                <View style={{ width: 70 }} />
+                <TouchableOpacity onPress={handleSave} disabled={!resultUri || processing}>
+                  <Ionicons name="download-outline" size={30}
+                    color={!resultUri || processing ? '#666' : '#FFF'} />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <TouchableOpacity onPress={() => setCameraPosition(p => p === 'back' ? 'front' : 'back')}>
+                  <Ionicons name="camera-reverse" size={30} color="#FFF" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.shutterBtn} onPress={handleFreeze} disabled={!model}>
+                  <View style={{ width: 60, height: 60, borderRadius: 30,
+                    backgroundColor: model ? '#FFF' : '#666',
+                    justifyContent: 'center', alignItems: 'center' }}>
+                    <Ionicons name="snow" size={24} color="#333" />
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate('CVDGallery')}>
+                  <Ionicons name="images" size={30} color="#FFF" />
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+
+        <ModeSelector
+          visible={showModal}
+          onClose={() => setShowModal(false)}
+          navigation={navigation}
+          currentMode="Enhancement"
+        />
+      </SafeAreaView>
+    </View>
+  );
+}
+
 function ColorIdentifierScreen(props) {
   return (
     <ScreenErrorBoundary navigation={props.navigation}>
@@ -2861,7 +3283,7 @@ const ModeSelector = ({ visible, onClose, navigation, currentMode }) => {
 
   // Map mode labels to screen names for same-screen detection
   const MODE_TO_SCREEN = {
-    Enhancement: 'CameraSim',
+    Enhancement: 'CameraEnhance',
     Identifier: 'ColorIdentifier',
     Simulation: 'CVDSimulation',
   };
@@ -2886,7 +3308,7 @@ const ModeSelector = ({ visible, onClose, navigation, currentMode }) => {
         
         <TouchableOpacity 
           style={[styles.modalOption, currentMode === 'Enhancement' && styles.modalOptionActive]} 
-          onPress={() => navigateTo('CameraSim')}
+          onPress={() => navigateTo('CameraEnhance')}
         >
           <Ionicons name="color-wand" size={20} color={currentMode === 'Enhancement' ? '#FFF' : '#333'} />
           <Text style={[styles.modalText, currentMode === 'Enhancement' && {color:'#FFF'}]}>Color Enhancement</Text>
@@ -2953,6 +3375,7 @@ export default function App() {
             <Stack.Screen name="IshiharaResult" component={IshiharaResultScreen} />
             <Stack.Screen name="Survey" component={SurveyScreen} />
             <Stack.Screen name="CameraSim" component={CameraSimScreen} />
+            <Stack.Screen name="CameraEnhance" component={CameraEnhanceScreen} />
             <Stack.Screen name="EducationList" component={EducationListScreen} />
             <Stack.Screen name="ColorIdentifier" component={ColorIdentifierScreen} />
             <Stack.Screen name="SurveySuccess" component={SurveySuccessScreen} />
@@ -2964,7 +3387,7 @@ export default function App() {
       </View>
 
       {/* 2. THE DISCLAIMER (Sits safely below everything) */}
-       {!['Splash', 'CameraSim', 'ColorIdentifier', 'CVDSimulation', 'CVDGallery'].includes(routeName) && <DisclaimerBanner />}
+       {!['Splash', 'CameraSim', 'CameraEnhance', 'ColorIdentifier', 'CVDSimulation', 'CVDGallery'].includes(routeName) && <DisclaimerBanner />}
     </View>
   );
 }

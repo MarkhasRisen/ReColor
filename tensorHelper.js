@@ -465,11 +465,12 @@ export function applyDaltonization(rawImageData, mask, cvdType) {
     if (!confusionSet.has(mask[i])) continue; // Leave non-confused pixels untouched
 
     const rIdx = i * 4;
-    const r = pixels[rIdx]     / 255.0;
-    const g = pixels[rIdx + 1] / 255.0;
-    const b = pixels[rIdx + 2] / 255.0;
+    // sRGB → linear (gamma decode)
+    const r = Math.pow(pixels[rIdx]     / 255.0, 2.2);
+    const g = Math.pow(pixels[rIdx + 1] / 255.0, 2.2);
+    const b = Math.pow(pixels[rIdx + 2] / 255.0, 2.2);
 
-    // Simulate what the CVD user sees (Viénot 1999 combined sRGB matrix)
+    // Simulate what the CVD user sees in linear space
     const rSim = SIM[0][0]*r + SIM[0][1]*g + SIM[0][2]*b;
     const gSim = SIM[1][0]*r + SIM[1][1]*g + SIM[1][2]*b;
     const bSim = SIM[2][0]*r + SIM[2][1]*g + SIM[2][2]*b;
@@ -479,14 +480,15 @@ export function applyDaltonization(rawImageData, mask, cvdType) {
     const gErr = g - gSim;
     const bErr = b - bSim;
 
-    // Redistribute error to surviving channels
+    // Redistribute error to surviving channels (still in linear space)
     const rOut = r + ERR[0][0]*rErr + ERR[0][1]*gErr + ERR[0][2]*bErr;
     const gOut = g + ERR[1][0]*rErr + ERR[1][1]*gErr + ERR[1][2]*bErr;
     const bOut = b + ERR[2][0]*rErr + ERR[2][1]*gErr + ERR[2][2]*bErr;
 
-    pixels[rIdx]     = Math.min(255, Math.max(0, Math.round(rOut * 255)));
-    pixels[rIdx + 1] = Math.min(255, Math.max(0, Math.round(gOut * 255)));
-    pixels[rIdx + 2] = Math.min(255, Math.max(0, Math.round(bOut * 255)));
+    // linear → sRGB (gamma encode)
+    pixels[rIdx]     = Math.min(255, Math.max(0, Math.round(Math.pow(Math.max(0, Math.min(1, rOut)), 1/2.2) * 255)));
+    pixels[rIdx + 1] = Math.min(255, Math.max(0, Math.round(Math.pow(Math.max(0, Math.min(1, gOut)), 1/2.2) * 255)));
+    pixels[rIdx + 2] = Math.min(255, Math.max(0, Math.round(Math.pow(Math.max(0, Math.min(1, bOut)), 1/2.2) * 255)));
   }
 
   return pixels; // modified RGBA Uint8Array
