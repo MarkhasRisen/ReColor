@@ -453,16 +453,19 @@ export function encodeToDataUri(rgbaPixels, width, height, quality = 85) {
 }
 
 export function applyDaltonization(rawImageData, mask, cvdType) {
-  const pixels       = new Uint8Array(rawImageData.data); // copy
-  const confusionSet = CONFUSION_CLASSES[cvdType];
-  const SIM          = CVD_COMBINED[cvdType];
-  const ERR          = CVD_ERR_SHIFT[cvdType];
-  if (!confusionSet || !SIM || !ERR) return pixels; // invalid cvdType — return unmodified
+  const pixels = new Uint8Array(rawImageData.data); // copy
+  const SIM    = CVD_COMBINED[cvdType];
+  const ERR    = CVD_ERR_SHIFT[cvdType];
+  if (!SIM || !ERR) return pixels; // invalid cvdType — return unmodified
 
-  const numPixels = rawImageData.width * rawImageData.height;
+  // Mask is optional. When null, daltonization is applied to every pixel and
+  // self-gates via the error term (error ≈ 0 for colors the user already perceives).
+  const useGate      = mask != null;
+  const confusionSet = useGate ? CONFUSION_CLASSES[cvdType] : null;
+  const numPixels    = rawImageData.width * rawImageData.height;
 
   for (let i = 0; i < numPixels; i++) {
-    if (!confusionSet.has(mask[i])) continue; // Leave non-confused pixels untouched
+    if (useGate && !confusionSet.has(mask[i])) continue;
 
     const rIdx = i * 4;
     // sRGB → linear (gamma decode)
@@ -492,4 +495,81 @@ export function applyDaltonization(rawImageData, mask, cvdType) {
   }
 
   return pixels; // modified RGBA Uint8Array
+}
+
+// ─────────────────────────────────────────────────────────────
+// Hue Rotation Enhancement (comparative algorithm)
+// Shifts hues within a CVD-specific confusion band away from the
+// confusion axis so the user perceives a distinguishable hue.
+// Different algorithm family than Daltonization (rule-based, not
+// error-redistribution) for comparative analysis.
+// ─────────────────────────────────────────────────────────────
+const HUE_ROTATION_CONFIG = {
+  // center = hue where confusion is strongest (degrees)
+  // range  = half-width of the band (degrees)
+  // shift  = rotation applied at band center, tapers linearly to 0 at edges
+  Protan: { center: 0,   range: 60, shift: 40 },  // reds (0°) → oranges/yellows
+  Deutan: { center: 0,   range: 60, shift: 40 },  // reds/greens separated by pushing reds toward yellow
+  Tritan: { center: 240, range: 60, shift: -30 }, // blues (240°) → cyan/purple
+};
+
+function circularHueDistance(h, center) {
+  const d = Math.abs(h - center);
+  return d > 180 ? 360 - d : d;
+}
+
+export function applyHueRotation(rawImageData, cvdType) {
+  const pixels = new Uint8Array(rawImageData.data);
+  const cfg = HUE_ROTATION_CONFIG[cvdType];
+  if (!cfg) return pixels;
+
+  const numPixels = rawImageData.width * rawImageData.height;
+  const SAT_MIN = 0.15; // leave near-grays untouched
+
+  for (let i = 0; i < numPixels; i++) {
+    const idx = i * 4;
+    const r = pixels[idx] / 255, g = pixels[idx + 1] / 255, b = pixels[idx + 2] / 255;
+
+    // RGB → HSV (inline, no allocation)
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const d = max - min;
+    const v = max;
+    const s = max === 0 ? 0 : d / max;
+
+    if (s < SAT_MIN) continue;
+
+    let h;
+    if (d === 0)          h = 0;
+    else if (max === r)   h = 60 * (((g - b) / d) % 6);
+    else if (max === g)   h = 60 * ((b - r) / d + 2);
+    else                  h = 60 * ((r - g) / d + 4);
+    if (h < 0) h += 360;
+
+    const dist = circularHueDistance(h, cfg.center);
+    if (dist > cfg.range) continue;
+
+    // Linear taper: full shift at band center, 0 at edge
+    const weight = 1 - dist / cfg.range;
+    let newH = h + cfg.shift * weight;
+    newH = ((newH % 360) + 360) % 360;
+
+    // HSV → RGB (inline)
+    const c = v * s;
+    const hp = newH / 60;
+    const x = c * (1 - Math.abs((hp % 2) - 1));
+    let nr = 0, ng = 0, nb = 0;
+    if (hp < 1)      { nr = c; ng = x; }
+    else if (hp < 2) { nr = x; ng = c; }
+    else if (hp < 3) { ng = c; nb = x; }
+    else if (hp < 4) { ng = x; nb = c; }
+    else if (hp < 5) { nr = x; nb = c; }
+    else             { nr = c; nb = x; }
+    const m = v - c;
+
+    pixels[idx]     = Math.min(255, Math.max(0, Math.round((nr + m) * 255)));
+    pixels[idx + 1] = Math.min(255, Math.max(0, Math.round((ng + m) * 255)));
+    pixels[idx + 2] = Math.min(255, Math.max(0, Math.round((nb + m) * 255)));
+  }
+
+  return pixels;
 }

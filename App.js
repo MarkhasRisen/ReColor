@@ -1,13 +1,10 @@
 import * as ImageManipulator from 'expo-image-manipulator';
-import { useTensorflowModel } from 'react-native-fast-tflite';
 import {
-  getClassMask,
   applyDaltonization,
+  applyHueRotation,
   decodeJpegBase64,
   encodeToDataUri,
   getCVDRows,
-  downscaleToTensor,
-  upscaleMaskNearest,
   identifyColor,
 } from './tensorHelper';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
@@ -65,10 +62,8 @@ import {
 const { width, height: screenHeight } = Dimensions.get('window');
 
 // Device-adaptive processing sizes.
-// CNN runs at CNN_SIZE x CNN_SIZE (update this when retraining at a new resolution).
 // Display overlay scales with screen: half the short edge, capped at 512 for performance.
 // Capture uses full screen-width resolution for best saved photo quality.
-const CNN_SIZE     = 256;
 // Display overlay width: match screen width for sharp full-screen overlay.
 // Capped at 720 for performance on high-res screens.
 const DISPLAY_SIZE = Math.min(720, width);
@@ -1829,6 +1824,7 @@ function CameraEnhanceScreenInner({ navigation }) {
   const isFocused = useIsFocused();
   const [cameraPosition, setCameraPosition] = useState('back');
   const [cvdType, setCvdType]         = useState('Protan');
+  const [algorithm, setAlgorithm]     = useState('daltonization'); // 'daltonization' | 'hue_rotation'
   const [showModal, setShowModal]     = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
 
@@ -1842,16 +1838,11 @@ function CameraEnhanceScreenInner({ navigation }) {
   const cameraRef    = useRef(null);
   const isMountedRef = useRef(true);
 
-  // Cached between CVD type switches — CNN only runs once per capture
-  const maskRef      = useRef(null);   // Uint8Array full-res class mask
-  const decodedRef   = useRef(null);   // { data, width, height } raw RGBA
+  // Cache original decoded pixels so CVD/algorithm switches skip re-decoding
+  const decodedRef   = useRef(null);   // { data, width, height } raw RGBA (ORIGINAL, never mutated)
   const frozenUriRef = useRef(null);   // original photo URI for before/after
 
   const device = useCameraDevice(cameraPosition);
-
-  // Load TFLite CNN model
-  const tfliteModel = useTensorflowModel(require('./assets/color_model.tflite'));
-  const model = tfliteModel.state === 'loaded' ? tfliteModel.model : null;
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -1870,37 +1861,21 @@ function CameraEnhanceScreenInner({ navigation }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Extract a tile from decoded pixel buffer (no disk I/O) ──
-  const extractTile = useCallback((decoded, tileX, tileY) => {
-    const tile = new Uint8Array(CNN_SIZE * CNN_SIZE * 4); // zero-padded
-    for (let y = 0; y < CNN_SIZE; y++) {
-      const srcY = tileY * CNN_SIZE + y;
-      if (srcY >= decoded.height) break;
-      for (let x = 0; x < CNN_SIZE; x++) {
-        const srcX = tileX * CNN_SIZE + x;
-        if (srcX >= decoded.width) break;
-        const srcIdx = (srcY * decoded.width + srcX) * 4;
-        const dstIdx = (y * CNN_SIZE + x) * 4;
-        tile[dstIdx]     = decoded.data[srcIdx];
-        tile[dstIdx + 1] = decoded.data[srcIdx + 1];
-        tile[dstIdx + 2] = decoded.data[srcIdx + 2];
-        tile[dstIdx + 3] = 255;
-      }
-    }
-    return { data: tile, width: CNN_SIZE, height: CNN_SIZE };
-  }, []);
-
-  // ── Run daltonization from cached mask (fast, no CNN) ──
-  const runDaltonize = useCallback((cvd) => {
-    if (!decodedRef.current || !maskRef.current) return null;
+  // ── Run enhancement from cached original pixels ──
+  const runEnhancement = useCallback((cvd, algo) => {
+    if (!decodedRef.current) return null;
     if (cvd === 'Off') return null; // show original
-    const enhanced = applyDaltonization(decodedRef.current, maskRef.current, cvd);
-    return encodeToDataUri(enhanced, decodedRef.current.width, decodedRef.current.height);
+    const { data, width: w, height: h } = decodedRef.current;
+    const src = { data, width: w, height: h };
+    const out = algo === 'hue_rotation'
+      ? applyHueRotation(src, cvd)
+      : applyDaltonization(src, null, cvd); // null mask → self-gating via error term
+    return encodeToDataUri(out, w, h);
   }, []);
 
-  // ── FREEZE: capture → CNN tile pipeline → daltonize ──
+  // ── FREEZE: capture → decode → enhance ──
   const handleFreeze = useCallback(async () => {
-    if (!cameraRef.current || !model) return;
+    if (!cameraRef.current) return;
 
     setProcessing(true);
     setProgress('Capturing...');
@@ -1914,7 +1889,6 @@ function CameraEnhanceScreenInner({ navigation }) {
       if (!photo?.path) throw new Error('takePhoto returned no path');
       const fileUri = `file://${photo.path}`;
 
-      // Resize longest edge to 1040px
       const SIM_MAX = 1040;
       setProgress('Resizing...');
       const resized = await ImageManipulator.manipulateAsync(
@@ -1927,60 +1901,16 @@ function CameraEnhanceScreenInner({ navigation }) {
       );
       if (!isMountedRef.current) return;
 
-      // Store original URI for before/after
       frozenUriRef.current = resized.uri;
 
-      // Decode full image
       setProgress('Decoding...');
       const decoded = decodeJpegBase64(resized.base64);
       decodedRef.current = decoded;
       AppLog.log('CameraEnhance', `decoded: ${decoded.width}x${decoded.height}`);
 
-      // Tile and run CNN
-      const tilesX = Math.ceil(decoded.width / CNN_SIZE);
-      const tilesY = Math.ceil(decoded.height / CNN_SIZE);
-      const totalTiles = tilesX * tilesY;
-      const fullMask = new Uint8Array(decoded.width * decoded.height);
-
-      let tileCount = 0;
-      for (let ty = 0; ty < tilesY; ty++) {
-        for (let tx = 0; tx < tilesX; tx++) {
-          tileCount++;
-          if (!isMountedRef.current) return;
-          setProgress(`CNN tile ${tileCount}/${totalTiles}...`);
-
-          // Extract tile from pixel buffer (no disk I/O)
-          const tileImg = extractTile(decoded, tx, ty);
-          const inputTensor = downscaleToTensor(tileImg);
-          const output = model.runSync([inputTensor]);
-          const tileMask = getClassMask(output[0]);
-
-          // Copy tile mask into full-res mask
-          for (let y = 0; y < CNN_SIZE; y++) {
-            const dstY = ty * CNN_SIZE + y;
-            if (dstY >= decoded.height) break;
-            for (let x = 0; x < CNN_SIZE; x++) {
-              const dstX = tx * CNN_SIZE + x;
-              if (dstX >= decoded.width) break;
-              fullMask[dstY * decoded.width + dstX] = tileMask[y * CNN_SIZE + x];
-            }
-          }
-
-          // Yield to UI every 4 tiles
-          if (tileCount % 4 === 0) {
-            await new Promise(r => setTimeout(r, 0));
-          }
-        }
-      }
-
-      if (!isMountedRef.current) return;
-      maskRef.current = fullMask;
-      AppLog.log('CameraEnhance', `CNN done: ${totalTiles} tiles, mask built`);
-
-      // Run daltonization
-      setProgress('Enhancing colors...');
-      await new Promise(r => setTimeout(r, 0)); // yield before heavy pixel loop
-      const uri = runDaltonize(cvdType);
+      setProgress('Enhancing...');
+      await new Promise(r => setTimeout(r, 0));
+      const uri = runEnhancement(cvdType, algorithm);
 
       if (isMountedRef.current) {
         setResultUri(uri || frozenUriRef.current);
@@ -1996,25 +1926,41 @@ function CameraEnhanceScreenInner({ navigation }) {
         Alert.alert('Error', `Processing failed: ${e?.message || 'unknown error'}`);
       }
     }
-  }, [model, cvdType, extractTile, runDaltonize]);
+  }, [cvdType, algorithm, runEnhancement]);
 
-  // ── CVD type change: re-daltonize from cached mask ──
+  // ── CVD type change: re-enhance from cached pixels ──
   const handleCvdChange = useCallback((newType) => {
     setCvdType(newType);
-    if (!frozen || !maskRef.current) return;
+    if (!frozen || !decodedRef.current) return;
 
     setProcessing(true);
     setProgress('Re-enhancing...');
-    // Use setTimeout to let the UI update before the heavy pixel loop
     setTimeout(() => {
-      const uri = runDaltonize(newType);
+      const uri = runEnhancement(newType, algorithm);
       if (isMountedRef.current) {
         setResultUri(uri || frozenUriRef.current);
         setProcessing(false);
         setProgress('');
       }
     }, 50);
-  }, [frozen, runDaltonize]);
+  }, [frozen, algorithm, runEnhancement]);
+
+  // ── Algorithm change: re-enhance from cached pixels ──
+  const handleAlgorithmChange = useCallback((newAlgo) => {
+    setAlgorithm(newAlgo);
+    if (!frozen || !decodedRef.current) return;
+
+    setProcessing(true);
+    setProgress('Re-enhancing...');
+    setTimeout(() => {
+      const uri = runEnhancement(cvdType, newAlgo);
+      if (isMountedRef.current) {
+        setResultUri(uri || frozenUriRef.current);
+        setProcessing(false);
+        setProgress('');
+      }
+    }, 50);
+  }, [frozen, cvdType, runEnhancement]);
 
   // ── RESET ──
   const handleReset = useCallback(() => {
@@ -2023,7 +1969,6 @@ function CameraEnhanceScreenInner({ navigation }) {
     setProcessing(false);
     setProgress('');
     setShowOriginal(false);
-    maskRef.current = null;
     decodedRef.current = null;
     frozenUriRef.current = null;
     AppLog.log('CameraEnhance', 'reset to live preview');
@@ -2107,12 +2052,17 @@ function CameraEnhanceScreenInner({ navigation }) {
         </View>
       )}
 
-      {/* Model loading indicator */}
-      {!model && !frozen && (
-        <View style={{ position: 'absolute', top: '50%', alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.7)',
-          padding: 15, borderRadius: 10, zIndex: 5 }}>
-          <Text style={{ color: '#FFF', fontSize: 12 }}>Loading CNN model...</Text>
-        </View>
+      {/* Long-press zone for before/after.
+          Positioned to NOT overlap the top bar, the right-side CVD selector,
+          the left-side algorithm selector, or the bottom buttons. */}
+      {frozen && !processing && (
+        <View
+          style={{ position: 'absolute', top: 120, left: 80, right: 80, bottom: 140, zIndex: 1 }}
+          onStartShouldSetResponder={() => true}
+          onResponderGrant={() => setShowOriginal(true)}
+          onResponderRelease={() => setShowOriginal(false)}
+          onResponderTerminate={() => setShowOriginal(false)}
+        />
       )}
 
       <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
@@ -2130,8 +2080,11 @@ function CameraEnhanceScreenInner({ navigation }) {
               textShadowOffset: { width: -1, height: 1 },
               textShadowRadius: 10,
             }}>
-              {frozen ? (cvdType === 'Off' ? 'Original' : `${cvdType} Enhanced`)
-                      : 'Color Enhancement'}
+              {frozen
+                ? (cvdType === 'Off'
+                    ? 'Original'
+                    : `${cvdType} · ${algorithm === 'hue_rotation' ? 'Hue Rotate' : 'Daltonize'}`)
+                : 'Color Enhancement'}
             </Text>
             {!frozen && (
               <TouchableOpacity onPress={() => setShowModal(true)}>
@@ -2142,7 +2095,7 @@ function CameraEnhanceScreenInner({ navigation }) {
         </View>
 
         {/* CVD type selector (right side) */}
-        <View style={{ position: 'absolute', top: 100, right: 20, alignItems: 'center' }}>
+        <View style={{ position: 'absolute', top: 100, right: 20, alignItems: 'center', zIndex: 2 }}>
           {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
             <TouchableOpacity
               key={m}
@@ -2164,6 +2117,33 @@ function CameraEnhanceScreenInner({ navigation }) {
           ))}
         </View>
 
+        {/* Algorithm selector (left side, only when frozen) */}
+        {frozen && (
+          <View style={{ position: 'absolute', top: 100, left: 20, alignItems: 'center', zIndex: 2 }}>
+            {[
+              { key: 'daltonization', label: 'DAL' },
+              { key: 'hue_rotation',  label: 'HUE' },
+            ].map((a) => (
+              <TouchableOpacity
+                key={a.key}
+                onPress={() => handleAlgorithmChange(a.key)}
+                disabled={processing || cvdType === 'Off'}
+                style={[
+                  styles.filterBtn,
+                  {
+                    backgroundColor: algorithm === a.key ? COLORS.primary : 'rgba(0,0,0,0.5)',
+                    marginBottom: 15,
+                    opacity: (processing || cvdType === 'Off') ? 0.4 : 1,
+                    minWidth: 42,
+                  },
+                ]}
+              >
+                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 10 }}>{a.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
         {/* Before/after hint */}
         {frozen && !processing && (
           <View style={{ position: 'absolute', top: '55%', alignSelf: 'center', pointerEvents: 'none' }}>
@@ -2175,19 +2155,8 @@ function CameraEnhanceScreenInner({ navigation }) {
           </View>
         )}
 
-        {/* Bottom controls */}
-        <View style={{ flex: 1, justifyContent: 'flex-end', paddingBottom: 30 }}>
-          {/* Long-press overlay for before/after */}
-          {frozen && (
-            <View
-              style={StyleSheet.absoluteFill}
-              onStartShouldSetResponder={() => true}
-              onResponderGrant={() => setShowOriginal(true)}
-              onResponderRelease={() => setShowOriginal(false)}
-              onResponderTerminate={() => setShowOriginal(false)}
-            />
-          )}
-
+        {/* Bottom buttons — fixed at bottom, no absoluteFill overlay to steal touches */}
+        <View style={{ position: 'absolute', bottom: 30, left: 0, right: 0, zIndex: 2 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
             {frozen ? (
               <>
@@ -2205,9 +2174,9 @@ function CameraEnhanceScreenInner({ navigation }) {
                 <TouchableOpacity onPress={() => setCameraPosition(p => p === 'back' ? 'front' : 'back')}>
                   <Ionicons name="camera-reverse" size={30} color="#FFF" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.shutterBtn} onPress={handleFreeze} disabled={!model}>
+                <TouchableOpacity style={styles.shutterBtn} onPress={handleFreeze}>
                   <View style={{ width: 60, height: 60, borderRadius: 30,
-                    backgroundColor: model ? '#FFF' : '#666',
+                    backgroundColor: '#FFF',
                     justifyContent: 'center', alignItems: 'center' }}>
                     <Ionicons name="snow" size={24} color="#333" />
                   </View>
