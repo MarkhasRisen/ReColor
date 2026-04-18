@@ -5,7 +5,13 @@
       "Bash(eas build:list --platform android --limit 3 --json --non-interactive)",
       "WebFetch(domain:job-logs.eascdn.net)",
       "Bash(npm ci:*)",
-      "Bash(npx eas-cli *)"
+      "Bash(npx eas-cli *)",
+      "Bash(eas whoami *)",
+      "Bash(eas init *)",
+      "Bash(sed -n '2375,2770p')",
+      "Read(//tmp/**)",
+      "Bash(git -C \"c:/xampp/htdocs/Evala/ReColor\" show 0eb47229:App.js)",
+      "Bash(node -e \"require\\('@babel/parser'\\).parse\\(require\\('fs'\\).readFileSync\\('App.js','utf8'\\), {sourceType:'module', plugins:['jsx']}\\); console.log\\('OK'\\);\")"
     ]
   }
 }

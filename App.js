@@ -8,8 +8,14 @@ import {
   identifyColor,
 } from './tensorHelper';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
-import { useSkiaFrameProcessor } from 'react-native-vision-camera';
-import { Skia } from '@shopify/react-native-skia';
+import {
+  Canvas,
+  Image as SkiaImage,
+  RuntimeShader,
+  Skia,
+  useCanvasRef,
+  useImage,
+} from '@shopify/react-native-skia';
 
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
@@ -1852,9 +1858,18 @@ function CameraEnhanceScreenInner({ navigation }) {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (isMountedRef.current) setCameraReady(true);
-    }, 500);
+    }, 700);
     return () => clearTimeout(timer);
   }, []);
+
+  // Deactivate camera before navigation unmounts the screen — prevents
+  // the next camera screen from racing this one's HAL release.
+  useEffect(() => {
+    const unsub = navigation.addListener('beforeRemove', () => {
+      setCameraReady(false);
+    });
+    return unsub;
+  }, [navigation]);
 
   useEffect(() => {
     if (!hasPermission) requestPermission();
@@ -1930,6 +1945,7 @@ function CameraEnhanceScreenInner({ navigation }) {
 
   // ── CVD type change: re-enhance from cached pixels ──
   const handleCvdChange = useCallback((newType) => {
+    if (newType === cvdType) return; // no-op on same selection
     setCvdType(newType);
     if (!frozen || !decodedRef.current) return;
 
@@ -1943,10 +1959,11 @@ function CameraEnhanceScreenInner({ navigation }) {
         setProgress('');
       }
     }, 50);
-  }, [frozen, algorithm, runEnhancement]);
+  }, [cvdType, frozen, algorithm, runEnhancement]);
 
   // ── Algorithm change: re-enhance from cached pixels ──
   const handleAlgorithmChange = useCallback((newAlgo) => {
+    if (newAlgo === algorithm) return; // no-op on same selection
     setAlgorithm(newAlgo);
     if (!frozen || !decodedRef.current) return;
 
@@ -1960,7 +1977,7 @@ function CameraEnhanceScreenInner({ navigation }) {
         setProgress('');
       }
     }, 50);
-  }, [frozen, cvdType, runEnhancement]);
+  }, [algorithm, frozen, cvdType, runEnhancement]);
 
   // ── RESET ──
   const handleReset = useCallback(() => {
@@ -2235,9 +2252,18 @@ function ColorIdentifierScreenInner({ navigation }) {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (isMountedRef.current) setCameraReady(true);
-    }, 500);
+    }, 700);
     return () => clearTimeout(timer);
   }, []);
+
+  // Deactivate camera before navigation unmounts the screen — prevents
+  // the next camera screen from racing this one's HAL release.
+  useEffect(() => {
+    const unsub = navigation.addListener('beforeRemove', () => {
+      setCameraReady(false);
+    });
+    return unsub;
+  }, [navigation]);
 
   // Auto-request camera permission once on mount
   useEffect(() => {
@@ -2440,58 +2466,107 @@ function CVDSimulationScreen(props) {
 function CVDSimulationScreenInner({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
   const isFocused = useIsFocused();
-  const [mode, setMode]                 = useState('Off');
-  const [showModal, setShowModal]       = useState(false);
   const [cameraPosition, setCameraPosition] = useState('back');
-  const [cameraReady, setCameraReady]   = useState(false);
+  const [cvdType, setCvdType]           = useState('Protan');
+  const [showModal, setShowModal]       = useState(false);
+
+  // Freeze/capture state
+  const [frozen, setFrozen]             = useState(false);
+  const [frozenUri, setFrozenUri]       = useState(null);
+  const [processing, setProcessing]     = useState(false);
 
   const cameraRef    = useRef(null);
   const isMountedRef = useRef(true);
+  const canvasRef    = useCanvasRef();
+
   const device = useCameraDevice(cameraPosition);
+
+  // Load frozen image into Skia — GPU-resident, no JS pixel decoding
+  const skImage = useImage(frozenUri);
+
+  // CVD shader uniforms — changes instantly when cvdType changes
+  const cvdUniforms = useMemo(() => getCVDRows(cvdType), [cvdType]);
 
   useEffect(() => {
     isMountedRef.current = true;
     return () => { isMountedRef.current = false; };
   }, []);
 
-  // Delay camera activation so VisionCamera + Skia frame processor
-  // have time to initialize after the previous screen's camera releases.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (isMountedRef.current) setCameraReady(true);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Auto-request camera permission once on mount
   useEffect(() => {
     if (!hasPermission) requestPermission();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Build Paint with gamma-aware CVD shader as image filter.
-  // Objects must be constructed outside the worklet in react-native-skia 2.x.
-  const paint = useMemo(() => {
-    const p = Skia.Paint();
-    if (mode !== 'Off' && CVD_EFFECT) {
-      const rows = getCVDRows(mode);
-      const builder = Skia.RuntimeShaderBuilder(CVD_EFFECT);
-      builder.setUniform('row0', rows.row0);
-      builder.setUniform('row1', rows.row1);
-      builder.setUniform('row2', rows.row2);
-      const imgFilter = Skia.ImageFilter.MakeRuntimeShader(builder, null, null);
-      p.setImageFilter(imgFilter);
+  // Deactivate live camera before unmount to avoid HAL race with next screen
+  useEffect(() => {
+    const unsub = navigation.addListener('beforeRemove', () => {
+      setFrozen(true);
+    });
+    return unsub;
+  }, [navigation]);
+
+  // ── FREEZE: capture → resize to 1040p → display via Skia ──
+  const handleFreeze = useCallback(async () => {
+    if (!cameraRef.current) return;
+    setProcessing(true);
+    try {
+      const photo = await cameraRef.current.takePhoto({
+        qualityPrioritization: 'quality',
+        enableShutterSound: false,
+      });
+      if (!photo?.path) throw new Error('takePhoto returned no path');
+      const fileUri = `file://${photo.path}`;
+
+      const SIM_MAX = 1040;
+      const resized = await ImageManipulator.manipulateAsync(
+        fileUri,
+        [{ resize: photo.width >= photo.height
+            ? { width: Math.min(SIM_MAX, photo.width) }
+            : { height: Math.min(SIM_MAX, photo.height) }
+        }],
+        { format: ImageManipulator.SaveFormat.JPEG, compress: 0.92 }
+      );
+      if (!isMountedRef.current) return;
+      setFrozenUri(resized.uri);
+      setFrozen(true);
+      setProcessing(false);
+    } catch (e) {
+      if (isMountedRef.current) {
+        setProcessing(false);
+        Alert.alert('Error', `Capture failed: ${e?.message || 'unknown error'}`);
+      }
     }
-    return p;
-  }, [mode]);
+  }, []);
 
-  // Skia frame processor — runs on GPU for every video frame
-  const frameProcessor = useSkiaFrameProcessor((frame) => {
-    'worklet';
-    frame.render(paint);
-  }, [paint]);
+  const handleReset = useCallback(() => {
+    setFrozen(false);
+    setFrozenUri(null);
+    setProcessing(false);
+  }, []);
 
-  // --- PERMISSION CHECK ---
+  // ── SAVE: snapshot the Skia canvas (includes CVD filter) ──
+  const handleSave = useCallback(async () => {
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please allow access to save photos.');
+        return;
+      }
+      const snapshot = canvasRef.current?.makeImageSnapshot();
+      if (!snapshot) {
+        Alert.alert('Error', 'Nothing to save.');
+        return;
+      }
+      const b64 = snapshot.encodeToBase64();
+      const tmpPath = `${FileSystem.cacheDirectory}recolor_sim_${Date.now()}.png`;
+      await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: FileSystem.EncodingType.Base64 });
+      await MediaLibrary.saveToLibraryAsync(tmpPath);
+      Alert.alert('Saved', 'Photo saved to your gallery.');
+    } catch (e) {
+      Alert.alert('Error', 'Could not save photo.');
+    }
+  }, []);
+
   if (!hasPermission) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -2503,156 +2578,130 @@ function CVDSimulationScreenInner({ navigation }) {
     );
   }
 
-  const handleCapture = async () => {
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please allow access to save photos.');
-        return;
-      }
-
-      if (cameraRef.current) {
-        const photo = await cameraRef.current.takePhoto({
-          qualityPrioritization: 'balanced',
-          enableShutterSound: false,
-        });
-        const fileUri = `file://${photo.path}`;
-
-        if (mode !== 'Off') {
-          const resized = await ImageManipulator.manipulateAsync(
-            fileUri,
-            [{ resize: { width: CAPTURE_SIZE } }],
-            { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
-          );
-          const rawImage = decodeJpegBase64(resized.base64);
-          const { row0, row1, row2 } = getCVDRows(mode);
-          const pixels = rawImage.data;
-          for (let i = 0; i < pixels.length; i += 4) {
-            // sRGB → linear (gamma decode)
-            const r = Math.pow(pixels[i] / 255, 2.2);
-            const g = Math.pow(pixels[i+1] / 255, 2.2);
-            const b = Math.pow(pixels[i+2] / 255, 2.2);
-            // Apply CVD matrix in linear space
-            const sr = Math.max(0, Math.min(1, row0[0]*r + row0[1]*g + row0[2]*b));
-            const sg = Math.max(0, Math.min(1, row1[0]*r + row1[1]*g + row1[2]*b));
-            const sb = Math.max(0, Math.min(1, row2[0]*r + row2[1]*g + row2[2]*b));
-            // linear → sRGB (gamma encode)
-            pixels[i]   = Math.round(Math.pow(sr, 1/2.2) * 255);
-            pixels[i+1] = Math.round(Math.pow(sg, 1/2.2) * 255);
-            pixels[i+2] = Math.round(Math.pow(sb, 1/2.2) * 255);
-          }
-          const uri = encodeToDataUri(pixels, rawImage.width, rawImage.height);
-          const filename = `cvd_sim_${Date.now()}.jpg`;
-          const saveUri = FileSystem.documentDirectory + filename;
-          await FileSystem.writeAsStringAsync(saveUri, uri.split(',')[1], {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          await MediaLibrary.saveToLibraryAsync(saveUri);
-          Alert.alert('Saved', 'CVD simulation photo saved to gallery.');
-        } else {
-          await MediaLibrary.saveToLibraryAsync(fileUri);
-          Alert.alert('Saved', 'Photo saved to gallery.');
-        }
-      }
-    } catch (e) {
-      console.warn('[CVDSim] capture error:', e);
-      Alert.alert('Error', 'Could not save the photo.');
-    }
-  };
-
-  const getSimDescription = () => {
-    switch(mode) {
-      case 'Protan': return 'Protanopia: Red-green color blindness (red deficiency)';
-      case 'Deutan': return 'Deuteranopia: Red-green color blindness (green deficiency)';
-      case 'Tritan': return 'Tritanopia: Blue-yellow color blindness';
-      default: return 'Normal Vision: No simulation active';
-    }
-  };
-
-  const cameraLabel = cameraPosition === 'back' ? 'Back Camera' : 'Front Camera';
-
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
 
-      {/* VisionCamera + Skia GPU frame processor — only active when a CVD mode is selected */}
-      {device && cameraReady && (
+      {/* Live camera preview — hidden when frozen */}
+      {device && !frozen && (
         <Camera
           ref={cameraRef}
           style={StyleSheet.absoluteFill}
           device={device}
-          isActive={isFocused}
+          isActive={isFocused && !frozen}
           photo={true}
-          frameProcessor={mode !== 'Off' ? frameProcessor : undefined}
         />
+      )}
+
+      {/* Frozen frame rendered via Skia with GPU color matrix filter */}
+      {frozen && skImage && (
+        <Canvas ref={canvasRef} style={StyleSheet.absoluteFill}>
+          <SkiaImage
+            image={skImage}
+            x={0} y={0}
+            width={width}
+            height={screenHeight}
+            fit="cover"
+          >
+            {cvdType !== 'Off' && CVD_EFFECT && (
+              <RuntimeShader source={CVD_EFFECT} uniforms={cvdUniforms} />
+            )}
+          </SkiaImage>
+        </Canvas>
+      )}
+
+      {/* Processing spinner */}
+      {(processing || (frozen && frozenUri && !skImage)) && (
+        <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)',
+          justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
+          <ActivityIndicator size="large" color="#FFF" />
+          <Text style={{ color: '#FFF', fontSize: 14, marginTop: 12, fontWeight: '600' }}>
+            {processing ? 'Capturing...' : 'Loading image...'}
+          </Text>
+        </View>
       )}
 
       <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
 
+        {/* Top Bar */}
         <View style={styles.camTopBar}>
-          <View style={{flexDirection:'row', alignItems:'center'}}>
-              <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 10 }}>
-                <Ionicons name="arrow-back" size={24} color="#FFF" />
+          <TouchableOpacity onPress={() => { if (frozen) handleReset(); else navigation.goBack(); }} style={{ padding: 5 }}>
+            <Ionicons name={frozen ? 'close' : 'arrow-back'} size={24} color="#FFF" />
+          </TouchableOpacity>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{
+              color: '#FFF', fontWeight: 'bold', marginRight: 10,
+              textShadowColor: 'rgba(0,0,0,0.75)',
+              textShadowOffset: { width: -1, height: 1 },
+              textShadowRadius: 10,
+            }}>
+              {frozen
+                ? (cvdType === 'Off' ? 'Original' : `${cvdType} Simulation`)
+                : 'CVD Simulation'}
+            </Text>
+            {!frozen && (
+              <TouchableOpacity onPress={() => setShowModal(true)}>
+                <Ionicons name="menu" size={28} color="#FFF" />
               </TouchableOpacity>
-              <View style={styles.camPill}>
-                 <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>{cameraLabel}</Text>
-              </View>
-          </View>
-          <View style={{flexDirection:'row', alignItems:'center'}}>
-             <Text style={{color:'#FFF', fontWeight:'bold', marginRight:10}}>CVD Sim</Text>
-             <TouchableOpacity onPress={() => setShowModal(true)}>
-               <Ionicons name="menu" size={28} color="#FFF" />
-             </TouchableOpacity>
+            )}
           </View>
         </View>
 
-        {/* --- INFO BOX --- */}
-        <View style={{
-          position: 'absolute', top: 120, left: 20, right: 85,
-          backgroundColor: 'rgba(30, 20, 20, 0.9)',
-          padding: 15, borderRadius: 12,
-          flexDirection: 'row', alignItems: 'center'
-        }}>
-           <Ionicons name="information-circle-outline" size={24} color="#FFF" style={{marginRight: 12}} />
-           <View style={{flex: 1}}>
-              <Text style={{ color: '#BBB', fontSize: 10, marginBottom: 2 }}>Simulation Active</Text>
-              <Text style={{ color: '#FFF', fontSize: 13, fontWeight: 'bold', lineHeight: 18 }}>
-                {getSimDescription()}
+        {/* CVD type selector (right side) */}
+        <View style={{ position: 'absolute', top: 100, right: 20, alignItems: 'center', zIndex: 2 }}>
+          {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
+            <TouchableOpacity
+              key={m}
+              onPress={() => setCvdType(m)}
+              disabled={processing}
+              style={[
+                styles.filterBtn,
+                {
+                  backgroundColor: cvdType === m ? COLORS.primary : 'rgba(0,0,0,0.5)',
+                  marginBottom: 15,
+                  opacity: processing ? 0.4 : 1,
+                },
+              ]}
+            >
+              <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 10 }}>
+                {m === 'Off' ? 'Off' : m.charAt(0)}
               </Text>
-           </View>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Side Modes */}
-        <View style={{ position: 'absolute', top: 120, right: 20, alignItems: 'center', zIndex: 100, elevation: 100 }}>
-           <TouchableOpacity onPress={() => setMode('Off')} style={[styles.filterBtn, { backgroundColor: '#555', marginBottom: 20 }, mode === 'Off' && styles.filterBtnActive]}>
-             <Text style={{ fontWeight: 'bold', color: '#FFF' }}>Off</Text>
-           </TouchableOpacity>
-
-           <TouchableOpacity onPress={() => setMode('Protan')} style={[styles.filterBtn, { backgroundColor: '#FF3B30', marginBottom: 15 }, mode === 'Protan' && styles.filterBtnActive]}>
-             <Text style={styles.filterText}>P</Text>
-           </TouchableOpacity>
-
-           <TouchableOpacity onPress={() => setMode('Deutan')} style={[styles.filterBtn, { backgroundColor: '#4CD964', marginBottom: 15 }, mode === 'Deutan' && styles.filterBtnActive]}>
-             <Text style={styles.filterText}>D</Text>
-           </TouchableOpacity>
-
-           <TouchableOpacity onPress={() => setMode('Tritan')} style={[styles.filterBtn, { backgroundColor: '#007AFF' }, mode === 'Tritan' && styles.filterBtnActive]}>
-             <Text style={styles.filterText}>T</Text>
-           </TouchableOpacity>
-        </View>
-
-        {/* Bottom Controls */}
-        <View style={{ position: 'absolute', bottom: 30, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 30, alignItems: 'center', zIndex: 50 }}>
-           <TouchableOpacity style={styles.camBtnCircleSmall} onPress={() => setCameraPosition(p => p === 'back' ? 'front' : 'back')}>
-              <Ionicons name="camera-reverse-outline" size={24} color="#FFF" />
-           </TouchableOpacity>
-
-           <TouchableOpacity style={styles.shutterBtn} onPress={handleCapture}>
-              <Ionicons name="camera" size={32} color="#000" />
-           </TouchableOpacity>
-
-           <TouchableOpacity style={styles.camBtnCircleSmall} onPress={() => navigation.navigate('CVDGallery')}>
-              <Ionicons name="image-outline" size={24} color="#FFF" />
-           </TouchableOpacity>
+        {/* Bottom controls */}
+        <View style={{ position: 'absolute', bottom: 30, left: 0, right: 0, zIndex: 2 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
+            {frozen ? (
+              <>
+                <TouchableOpacity onPress={handleReset}>
+                  <Ionicons name="refresh" size={30} color="#FFF" />
+                </TouchableOpacity>
+                <View style={{ width: 70 }} />
+                <TouchableOpacity onPress={handleSave} disabled={!skImage}>
+                  <Ionicons name="download-outline" size={30}
+                    color={!skImage ? '#666' : '#FFF'} />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <TouchableOpacity onPress={() => setCameraPosition(p => p === 'back' ? 'front' : 'back')}>
+                  <Ionicons name="camera-reverse" size={30} color="#FFF" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.shutterBtn} onPress={handleFreeze}>
+                  <View style={{ width: 60, height: 60, borderRadius: 30,
+                    backgroundColor: '#FFF',
+                    justifyContent: 'center', alignItems: 'center' }}>
+                    <Ionicons name="snow" size={24} color="#333" />
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate('CVDGallery')}>
+                  <Ionicons name="images" size={30} color="#FFF" />
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
         </View>
 
         <ModeSelector visible={showModal} onClose={() => setShowModal(false)} navigation={navigation} currentMode="Simulation" />
@@ -2986,8 +3035,9 @@ const ModeSelector = ({ visible, onClose, navigation, currentMode }) => {
     AppLog.log('ModeSelector', `switching from ${currentMode} to ${screen}`);
     onClose();
     // Delay lets VisionCamera fully release the device before the new screen
-    // tries to acquire it. 300ms is safer than 120ms on slower devices.
-    setTimeout(() => navigation.replace(screen), 300);
+    // tries to acquire it. The beforeRemove listener on each camera screen
+    // sets cameraReady=false immediately, which this delay gives time to take effect.
+    setTimeout(() => navigation.replace(screen), 500);
   };
 
   return (
