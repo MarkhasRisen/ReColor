@@ -212,89 +212,89 @@ const IDENTIFIER_DB = [
   { name: "Soft Red", hex: "#E06060", lab: rgbToLab(224, 96, 96) }, // soft red
 
   // ── Orange (saturated + muted) ──
-  { name: "Orange", hex: "#FF8C00", lab: rgbToLab(255, 140, 0) }, // dark orange
+  { name: "Dark Orange", hex: "#FF8C00", lab: rgbToLab(255, 140, 0) }, // dark orange
   { name: "Orange", hex: "#FFA500", lab: rgbToLab(255, 165, 0) }, // orange
-  { name: "Orange", hex: "#FF7F50", lab: rgbToLab(255, 127, 80) }, // coral
+  { name: "Coral", hex: "#FF7F50", lab: rgbToLab(255, 127, 80) }, // coral
   { name: "Orange", hex: "#E8751A", lab: rgbToLab(232, 117, 26) },
   { name: "Orange", hex: "#CC7000", lab: rgbToLab(204, 112, 0) },
-  { name: "Orange", hex: "#C48040", lab: rgbToLab(196, 128, 64) }, // muted orange
-  { name: "Orange", hex: "#E0976E", lab: rgbToLab(224, 151, 110) }, // peach/salmon
-  { name: "Orange", hex: "#B8743A", lab: rgbToLab(184, 116, 58) }, // dusty orange
+  { name: "Muted Orange", hex: "#C48040", lab: rgbToLab(196, 128, 64) }, // muted orange
+  { name: "Peach", hex: "#E0976E", lab: rgbToLab(224, 151, 110) }, // peach/salmon
+  { name: "Dusty Orange", hex: "#B8743A", lab: rgbToLab(184, 116, 58) }, // dusty orange
 
   // ── Yellow (saturated + muted) ──
   { name: "Yellow", hex: "#FFFF00", lab: rgbToLab(255, 255, 0) },
-  { name: "Yellow", hex: "#FFD700", lab: rgbToLab(255, 215, 0) }, // gold
-  { name: "Yellow", hex: "#FFEC8B", lab: rgbToLab(255, 236, 139) }, // light goldenrod
-  { name: "Yellow", hex: "#DAA520", lab: rgbToLab(218, 165, 32) }, // goldenrod
-  { name: "Yellow", hex: "#F0E68C", lab: rgbToLab(240, 230, 140) }, // khaki
-  { name: "Yellow", hex: "#BDB76B", lab: rgbToLab(189, 183, 107) }, // dark khaki (muted)
-  { name: "Yellow", hex: "#D4CC6A", lab: rgbToLab(212, 204, 106) }, // muted yellow
+  { name: "Gold", hex: "#FFD700", lab: rgbToLab(255, 215, 0) }, // gold
+  { name: "Light Goldenrod", hex: "#FFEC8B", lab: rgbToLab(255, 236, 139) }, // light goldenrod
+  { name: "Goldenrod", hex: "#DAA520", lab: rgbToLab(218, 165, 32) }, // goldenrod
+  { name: "Khaki", hex: "#F0E68C", lab: rgbToLab(240, 230, 140) }, // khaki
+  { name: "Dark Khaki", hex: "#BDB76B", lab: rgbToLab(189, 183, 107) }, // dark khaki (muted)
+  { name: "Muted Yellow", hex: "#D4CC6A", lab: rgbToLab(212, 204, 106) }, // muted yellow
 
   // ── Green (saturated + muted) ──
   { name: "Green", hex: "#008000", lab: rgbToLab(0, 128, 0) },
-  { name: "Green", hex: "#00FF00", lab: rgbToLab(0, 255, 0) }, // lime
-  { name: "Green", hex: "#228B22", lab: rgbToLab(34, 139, 34) }, // forest green
-  { name: "Green", hex: "#006400", lab: rgbToLab(0, 100, 0) }, // dark green
-  { name: "Green", hex: "#32CD32", lab: rgbToLab(50, 205, 50) }, // lime green
-  { name: "Green", hex: "#90EE90", lab: rgbToLab(144, 238, 144) }, // light green
-  { name: "Green", hex: "#6B8E23", lab: rgbToLab(107, 142, 35) }, // olive drab (muted)
-  { name: "Green", hex: "#556B2F", lab: rgbToLab(85, 107, 47) }, // dark olive green
-  { name: "Green", hex: "#8FBC8F", lab: rgbToLab(143, 188, 143) }, // dark sea green (muted)
-  { name: "Green", hex: "#4A7A4A", lab: rgbToLab(74, 122, 74) }, // muted green
+  { name: "Lime", hex: "#00FF00", lab: rgbToLab(0, 255, 0) }, // lime
+  { name: "Forest Green", hex: "#228B22", lab: rgbToLab(34, 139, 34) }, // forest green
+  { name: "Dark Green", hex: "#006400", lab: rgbToLab(0, 100, 0) }, // dark green
+  { name: "Lime Green", hex: "#32CD32", lab: rgbToLab(50, 205, 50) }, // lime green
+  { name: "Light Green", hex: "#90EE90", lab: rgbToLab(144, 238, 144) }, // light green
+  { name: "Olive Drab", hex: "#6B8E23", lab: rgbToLab(107, 142, 35) }, // olive drab (muted)
+  { name: "Dark Olive Green", hex: "#556B2F", lab: rgbToLab(85, 107, 47) }, // dark olive green
+  { name: "Dark Sea Green", hex: "#8FBC8F", lab: rgbToLab(143, 188, 143) }, // dark sea green (muted)
+  { name: "Muted Green", hex: "#4A7A4A", lab: rgbToLab(74, 122, 74) }, // muted green
 
   // ── Cyan (saturated + muted) ──
   { name: "Cyan", hex: "#00FFFF", lab: rgbToLab(0, 255, 255) },
-  { name: "Cyan", hex: "#008B8B", lab: rgbToLab(0, 139, 139) }, // dark cyan
-  { name: "Cyan", hex: "#20B2AA", lab: rgbToLab(32, 178, 170) }, // light sea green
-  { name: "Cyan", hex: "#00CED1", lab: rgbToLab(0, 206, 209) }, // dark turquoise
-  { name: "Cyan", hex: "#40E0D0", lab: rgbToLab(64, 224, 208) }, // turquoise
-  { name: "Cyan", hex: "#5F9EA0", lab: rgbToLab(95, 158, 160) }, // cadet blue (muted)
-  { name: "Cyan", hex: "#6B9B9B", lab: rgbToLab(107, 155, 155) }, // muted teal
+  { name: "Dark Cyan", hex: "#008B8B", lab: rgbToLab(0, 139, 139) }, // dark cyan
+  { name: "Light Sea Green", hex: "#20B2AA", lab: rgbToLab(32, 178, 170) }, // light sea green
+  { name: "Dark Turquoise", hex: "#00CED1", lab: rgbToLab(0, 206, 209) }, // dark turquoise
+  { name: "Turquoise", hex: "#40E0D0", lab: rgbToLab(64, 224, 208) }, // turquoise
+  { name: "Cadet Blue", hex: "#5F9EA0", lab: rgbToLab(95, 158, 160) }, // cadet blue (muted)
+  { name: "Muted Teal", hex: "#6B9B9B", lab: rgbToLab(107, 155, 155) }, // muted teal
 
   // ── Blue (saturated + muted) ──
   { name: "Blue", hex: "#0000FF", lab: rgbToLab(0, 0, 255) },
-  { name: "Blue", hex: "#000080", lab: rgbToLab(0, 0, 128) }, // navy
-  { name: "Blue", hex: "#1E90FF", lab: rgbToLab(30, 144, 255) }, // dodger blue
-  { name: "Blue", hex: "#4169E1", lab: rgbToLab(65, 105, 225) }, // royal blue
-  { name: "Blue", hex: "#87CEEB", lab: rgbToLab(135, 206, 235) }, // sky blue
-  { name: "Blue", hex: "#4682B4", lab: rgbToLab(70, 130, 180) }, // steel blue
-  { name: "Blue", hex: "#6A7B8D", lab: rgbToLab(106, 123, 141) }, // slate (muted blue)
-  { name: "Blue", hex: "#4A6A8A", lab: rgbToLab(74, 106, 138) }, // denim (muted)
-  { name: "Blue", hex: "#B0C4DE", lab: rgbToLab(176, 196, 222) }, // light steel blue
+  { name: "Navy", hex: "#000080", lab: rgbToLab(0, 0, 128) }, // navy
+  { name: "Dodger Blue", hex: "#1E90FF", lab: rgbToLab(30, 144, 255) }, // dodger blue
+  { name: "Royal Blue", hex: "#4169E1", lab: rgbToLab(65, 105, 225) }, // royal blue
+  { name: "Sky Blue", hex: "#87CEEB", lab: rgbToLab(135, 206, 235) }, // sky blue
+  { name: "Steel Blue", hex: "#4682B4", lab: rgbToLab(70, 130, 180) }, // steel blue
+  { name: "Slate Blue", hex: "#6A7B8D", lab: rgbToLab(106, 123, 141) }, // slate (muted blue)
+  { name: "Denim", hex: "#4A6A8A", lab: rgbToLab(74, 106, 138) }, // denim (muted)
+  { name: "Light Steel Blue", hex: "#B0C4DE", lab: rgbToLab(176, 196, 222) }, // light steel blue
 
   // ── Violet (saturated + muted) ──
   { name: "Violet", hex: "#8B00FF", lab: rgbToLab(139, 0, 255) },
-  { name: "Violet", hex: "#800080", lab: rgbToLab(128, 0, 128) }, // purple
-  { name: "Violet", hex: "#9400D3", lab: rgbToLab(148, 0, 211) }, // dark violet
-  { name: "Violet", hex: "#BA55D3", lab: rgbToLab(186, 85, 211) }, // medium orchid
-  { name: "Violet", hex: "#4B0082", lab: rgbToLab(75, 0, 130) }, // indigo
-  { name: "Violet", hex: "#663399", lab: rgbToLab(102, 51, 153) }, // rebecca purple
-  { name: "Violet", hex: "#9370DB", lab: rgbToLab(147, 112, 219) }, // medium purple (muted)
-  { name: "Violet", hex: "#7B68A5", lab: rgbToLab(123, 104, 165) }, // muted lavender
-  { name: "Violet", hex: "#5D4E7A", lab: rgbToLab(93, 78, 122) }, // dusty purple
+  { name: "Purple", hex: "#800080", lab: rgbToLab(128, 0, 128) }, // purple
+  { name: "Dark Violet", hex: "#9400D3", lab: rgbToLab(148, 0, 211) }, // dark violet
+  { name: "Medium Orchid", hex: "#BA55D3", lab: rgbToLab(186, 85, 211) }, // medium orchid
+  { name: "Indigo", hex: "#4B0082", lab: rgbToLab(75, 0, 130) }, // indigo
+  { name: "Rebecca Purple", hex: "#663399", lab: rgbToLab(102, 51, 153) }, // rebecca purple
+  { name: "Medium Purple", hex: "#9370DB", lab: rgbToLab(147, 112, 219) }, // medium purple (muted)
+  { name: "Muted Lavender", hex: "#7B68A5", lab: rgbToLab(123, 104, 165) }, // muted lavender
+  { name: "Dusty Purple", hex: "#5D4E7A", lab: rgbToLab(93, 78, 122) }, // dusty purple
 
   // ── Pink (saturated + muted) ──
   { name: "Pink", hex: "#FFC0CB", lab: rgbToLab(255, 192, 203) },
-  { name: "Pink", hex: "#FF69B4", lab: rgbToLab(255, 105, 180) }, // hot pink
-  { name: "Pink", hex: "#FF1493", lab: rgbToLab(255, 20, 147) }, // deep pink
-  { name: "Pink", hex: "#DB7093", lab: rgbToLab(219, 112, 147) }, // pale violet red
-  { name: "Pink", hex: "#FFB6C1", lab: rgbToLab(255, 182, 193) }, // light pink
-  { name: "Pink", hex: "#FF00FF", lab: rgbToLab(255, 0, 255) }, // magenta
-  { name: "Pink", hex: "#C48A9A", lab: rgbToLab(196, 138, 154) }, // dusty rose (muted)
-  { name: "Pink", hex: "#D4A0A0", lab: rgbToLab(212, 160, 160) }, // muted pink
-  { name: "Pink", hex: "#B07080", lab: rgbToLab(176, 112, 128) }, // mauve
+  { name: "Hot Pink", hex: "#FF69B4", lab: rgbToLab(255, 105, 180) }, // hot pink
+  { name: "Deep Pink", hex: "#FF1493", lab: rgbToLab(255, 20, 147) }, // deep pink
+  { name: "Pale Violet Red", hex: "#DB7093", lab: rgbToLab(219, 112, 147) }, // pale violet red
+  { name: "Light Pink", hex: "#FFB6C1", lab: rgbToLab(255, 182, 193) }, // light pink
+  { name: "Magenta", hex: "#FF00FF", lab: rgbToLab(255, 0, 255) }, // magenta
+  { name: "Dusty Rose", hex: "#C48A9A", lab: rgbToLab(196, 138, 154) }, // dusty rose (muted)
+  { name: "Muted Pink", hex: "#D4A0A0", lab: rgbToLab(212, 160, 160) }, // muted pink
+  { name: "Mauve", hex: "#B07080", lab: rgbToLab(176, 112, 128) }, // mauve
 
   // ── Brown (saturated + muted) ──
-  { name: "Brown", hex: "#8B4513", lab: rgbToLab(139, 69, 19) }, // saddle brown
-  { name: "Brown", hex: "#A0522D", lab: rgbToLab(160, 82, 45) }, // sienna
-  { name: "Brown", hex: "#D2691E", lab: rgbToLab(210, 105, 30) }, // chocolate
-  { name: "Brown", hex: "#654321", lab: rgbToLab(101, 67, 33) }, // dark brown
+  { name: "Saddle Brown", hex: "#8B4513", lab: rgbToLab(139, 69, 19) }, // saddle brown
+  { name: "Sienna", hex: "#A0522D", lab: rgbToLab(160, 82, 45) }, // sienna
+  { name: "Chocolate", hex: "#D2691E", lab: rgbToLab(210, 105, 30) }, // chocolate
+  { name: "Dark Brown", hex: "#654321", lab: rgbToLab(101, 67, 33) }, // dark brown
   { name: "Brown", hex: "#A52A2A", lab: rgbToLab(165, 42, 42) }, // brown
-  { name: "Brown", hex: "#DEB887", lab: rgbToLab(222, 184, 135) }, // burlywood
-  { name: "Brown", hex: "#8B7355", lab: rgbToLab(139, 115, 85) }, // muted tan
-  { name: "Brown", hex: "#6B4F3A", lab: rgbToLab(107, 79, 58) }, // muted brown
-  { name: "Brown", hex: "#C4A882", lab: rgbToLab(196, 168, 130) }, // sand/beige-brown
-  { name: "Brown", hex: "#806040", lab: rgbToLab(128, 96, 64) }, // medium brown
+  { name: "Burlywood", hex: "#DEB887", lab: rgbToLab(222, 184, 135) }, // burlywood
+  { name: "Muted Tan", hex: "#8B7355", lab: rgbToLab(139, 115, 85) }, // muted tan
+  { name: "Muted Brown", hex: "#6B4F3A", lab: rgbToLab(107, 79, 58) }, // muted brown
+  { name: "Sand/Beige-Brown", hex: "#C4A882", lab: rgbToLab(196, 168, 130) }, // sand/beige-brown
+  { name: "Medium Brown", hex: "#806040", lab: rgbToLab(128, 96, 64) }, // medium brown
 ];
 
 /**
