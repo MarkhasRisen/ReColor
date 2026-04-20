@@ -7,27 +7,13 @@ export const ARTICLES = [
     coverImage: require('../../assets/art.png'),
     summary: 'Inclusive design benefits everyone. A few simple principles make a big difference.',
     sections: [
-      {
-        type: 'heading',
-        text: "Do's & Don'ts",
-      },
+      { type: 'heading', text: "Do's & Don'ts" },
       {
         type: 'dos_donts',
-        dos: [
-          'Add text labels to charts',
-          'Use patterns + color',
-          'Ensure 4.5:1 contrast',
-        ],
-        donts: [
-          'Use color alone for info',
-          'Red text on green bg',
-          'Skip alt text on icons',
-        ],
+        dos: ['Add text labels to charts', 'Use patterns + color', 'Ensure 4.5:1 contrast'],
+        donts: ['Use color alone for info', 'Red text on green bg', 'Skip alt text on icons'],
       },
-      {
-        type: 'heading',
-        text: 'Contrast Ratio Guide',
-      },
+      { type: 'heading', text: 'Contrast Ratio Guide' },
       {
         type: 'contrast',
         items: [
@@ -36,10 +22,7 @@ export const ARTICLES = [
           { ratio: '1.5:1', label: 'Decorative', pass: false },
         ],
       },
-      {
-        type: 'heading',
-        text: 'Colorblind-Safe Palettes',
-      },
+      { type: 'heading', text: 'Colorblind-Safe Palettes' },
       {
         type: 'palettes',
         items: [
@@ -48,118 +31,114 @@ export const ARTICLES = [
           { colors: ['#222222', '#DDAA33'], name: 'Black & Yellow', safe: 'High contrast' },
         ],
       },
-      {
-        type: 'heading',
-        text: 'Testing Tools',
-      },
-      {
-        type: 'tools',
-        items: ['Coblis', 'Color Oracle', 'WebAIM Checker', 'Figma Plugin'],
-      },
+      { type: 'heading', text: 'Testing Tools' },
+      { type: 'tools', items: ['Coblis', 'Color Oracle', 'WebAIM Checker', 'Figma Plugin'] },
     ],
   },
   {
     id: 'a2',
-    title: 'Understanding Color Vision Deficiency',
-    category: 'Education',
-    readTime: '5 min read',
+    title: 'Types of Color Blindness',
+    category: 'Guide',
+    readTime: '6 min read',
     coverImage: require('../../assets/eye.png'),
-    summary: 'Learn the science behind how colour blindness affects approximately 8% of males and 0.5% of females worldwide.',
+    summary: 'CVD ranges from mild color shifts to complete inability to perceive color.',
     sections: [
+      { type: 'heading', text: 'Severity Spectrum' },
+      { type: 'severity_spectrum' },
+      { type: 'heading', text: 'CVD Types' },
       {
-        type: 'paragraph',
-        text: 'Colour vision deficiency (CVD) is caused by missing or malfunctioning cone cells in the retina. There are three types of cone cells, each sensitive to different wavelengths of light: red (long), green (medium), and blue (short).',
-      },
-      {
-        type: 'heading',
-        text: 'Types of CVD',
-      },
-      {
-        type: 'list',
+        type: 'cvd_types',
         items: [
-          { title: 'Protanopia', desc: 'Absent red cones. Red appears dark, confused with black or dark brown.' },
-          { title: 'Deuteranopia', desc: 'Absent green cones. Most common form of red-green blindness.' },
-          { title: 'Tritanopia', desc: 'Absent blue cones. Rare. Blue and green appear similar.' },
-          { title: 'Achromatopsia', desc: 'Complete colour blindness. Sees only shades of grey.' },
+          {
+            name: 'Protanomaly',
+            sub: 'Red-weak vision',
+            colors: ['#C0392B', '#922B21', '#641E16', '#4A0E0E'],
+            desc: 'Red appears darker; red-green distinctions are difficult.',
+          },
+          {
+            name: 'Deuteranomaly',
+            sub: 'Green-weak vision',
+            colors: ['#27AE60', '#1E8449', '#196F3D', '#145A32'],
+            desc: 'Most common CVD — affects ~5% of males worldwide.',
+          },
+          {
+            name: 'Tritanomaly',
+            sub: 'Blue-weak vision',
+            colors: ['#2980B9', '#1A5276', '#154360', '#0E2F44'],
+            desc: 'Blue-yellow distinctions are difficult. Rarest type.',
+          },
+          {
+            name: 'Monochromacy',
+            sub: 'Complete color blindness',
+            colors: ['#BDC3C7', '#95A5A6', '#7F8C8D', '#566573'],
+            desc: 'Sees only shades of gray. Rarest and most severe form.',
+          },
         ],
-      },
-      {
-        type: 'heading',
-        text: 'Prevalence',
-      },
-      {
-        type: 'paragraph',
-        text: 'CVD affects approximately 300 million people worldwide. It is more common in males (8%) than females (0.5%) due to the X-linked inheritance pattern of most forms of colour vision deficiency.',
       },
     ],
   },
   {
     id: 'a3',
-    title: 'Living with Colour Blindness',
-    category: 'Lifestyle',
+    title: 'What is Color Vision Deficiency?',
+    category: 'Science',
     readTime: '4 min read',
     coverImage: require('../../assets/access.png'),
-    summary: 'Practical tips and tools to navigate daily life with color vision deficiency.',
+    summary: 'A condition where the ability to distinguish certain colors is reduced — far more common than you think.',
     sections: [
       {
-        type: 'paragraph',
-        text: 'While there is no cure for CVD, many strategies and technologies can help you navigate daily life more effectively.',
-      },
-      {
-        type: 'heading',
-        text: 'Daily Strategies',
-      },
-      {
-        type: 'list',
+        type: 'stats',
         items: [
-          { title: 'Label everything', desc: 'Use text labels or symbols alongside colour coding.' },
-          { title: 'Use apps', desc: 'Colour identifier apps like ReColor can name colours in real-time.' },
-          { title: 'Request accommodation', desc: 'Workplaces and schools must provide accessible materials.' },
-          { title: 'Smartphone accessibility', desc: 'iOS and Android both offer colour filter overlays.' },
+          { value: '1 in 12', label: 'men affected' },
+          { value: '1 in 200', label: 'women affected' },
+          { value: '300M+', label: 'worldwide' },
         ],
       },
-      {
-        type: 'heading',
-        text: 'Career Considerations',
-      },
+      { type: 'heading', text: 'How the Eye Sees Color' },
       {
         type: 'paragraph',
-        text: 'Many professions have relaxed requirements for colour vision. Graphic designers, pilots, and electricians should check specific requirements, but CVD rarely prevents a fulfilling career.',
+        text: 'Your retina has 3 cone types. When one is missing or weak, CVD occurs.',
+      },
+      {
+        type: 'cone_diagram',
+        cones: [
+          { label: 'L-Cone', sub: 'Red ~700nm', color: '#E74C3C' },
+          { label: 'M-Cone', sub: 'Green ~540nm', color: '#2ECC71' },
+          { label: 'S-Cone', sub: 'Blue ~420nm', color: '#3498DB' },
+        ],
+      },
+      { type: 'heading', text: 'Common Causes' },
+      {
+        type: 'causes',
+        items: ['Genetic (X-linked)', 'Aging', 'Eye disease', 'Medication'],
       },
     ],
   },
   {
     id: 'a4',
-    title: 'Technology & Colour Accessibility',
-    category: 'Technology',
-    readTime: '6 min read',
+    title: 'Tips for Daily Life',
+    category: 'Daily Life',
+    readTime: '5 min read',
     coverImage: require('../../assets/domore.png'),
-    summary: 'How modern technology is breaking down barriers for people with colour vision deficiency.',
+    summary: 'With the right strategies and tools, you can navigate a color-coded world with confidence.',
     sections: [
       {
-        type: 'paragraph',
-        text: 'From AI-powered assistants to GPU-accelerated simulation, technology is rapidly improving the quality of life for people with CVD.',
-      },
-      {
-        type: 'heading',
-        text: 'Key Innovations',
-      },
-      {
-        type: 'list',
+        type: 'bento_grid',
         items: [
-          { title: 'Daltonization', desc: 'Algorithms that shift inaccessible colours into the visible range for each CVD type.' },
-          { title: 'AI Colour Naming', desc: 'Neural networks that identify and describe colours from camera input.' },
-          { title: 'CVD Simulation', desc: 'Real-time GPU shaders that let designers experience CVD conditions.' },
-          { title: 'Smart Glasses', desc: 'Wearables with embedded colour enhancement lenses.' },
+          { icon: 'phone-portrait-outline', title: 'Tech Tools', desc: 'Use color-identifier apps & accessibility filters on your phone' },
+          { icon: 'shirt-outline', title: 'Wardrobe', desc: 'Label clothes by texture tags or use a color-ID app while shopping' },
+          { icon: 'business-outline', title: 'Workplace', desc: 'Ask for pattern-based charts; inform HR about your CVD needs' },
+          { icon: 'navigate-outline', title: 'Daily Life', desc: 'Traffic lights: red on top, green on bottom — use position, not color' },
         ],
       },
+      { type: 'heading', text: 'Quick Wins' },
       {
-        type: 'heading',
-        text: 'The Ishihara Test',
-      },
-      {
-        type: 'paragraph',
-        text: 'Developed in 1917 by Dr. Shinobu Ishihara, the pseudoisochromatic plate test remains the most widely used screening tool for red-green colour deficiency. ReColor digitises this test for broad accessibility.',
+        type: 'quick_wins',
+        items: [
+          'Enable color filters in Accessibility settings',
+          'Cook by temperature, not meat color',
+          'Ask for charts with patterns + color',
+          'Use high-contrast mode for readability',
+        ],
       },
     ],
   },

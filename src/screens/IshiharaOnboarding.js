@@ -3,6 +3,7 @@ import { MotiView } from 'moti';
 import React, { useRef, useState } from 'react';
 import {
   Dimensions,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -209,9 +210,7 @@ export default function IshiharaOnboarding({ navigation, route }) {
           <Ionicons name="arrow-back" size={22} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.topTitle}>Before You Begin</Text>
-        <View style={[styles.eyeCircle]}>
-          <Ionicons name="eye" size={20} color={COLORS.primary} />
-        </View>
+        <Image source={require('../../assets/icon.png')} style={{ width: 36, height: 36, resizeMode: 'contain' }} />
       </View>
 
       {/* Progress dots */}

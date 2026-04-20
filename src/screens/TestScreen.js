@@ -1,4 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Brightness from 'expo-brightness';
+import * as Haptics from 'expo-haptics';
+import * as Speech from 'expo-speech';
 import { MotiView } from 'moti';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -31,6 +34,21 @@ export default function TestScreen({ route, navigation }) {
   const [showImage, setShowImage] = useState(true);
   const [calculating, setCalculating] = useState(false);
   const timerRef = useRef(null);
+  const prevBrightnessRef = useRef(null);
+
+  // Set brightness to 80% on mount, restore on unmount
+  useEffect(() => {
+    Brightness.requestPermissionsAsync().then(({ granted }) => {
+      if (!granted) return;
+      Brightness.getBrightnessAsync().then((b) => { prevBrightnessRef.current = b; });
+      Brightness.setBrightnessAsync(0.8);
+    });
+    return () => {
+      if (prevBrightnessRef.current !== null) {
+        Brightness.setBrightnessAsync(prevBrightnessRef.current).catch(() => {});
+      }
+    };
+  }, []);
 
   const current = queue[index];
 
@@ -69,6 +87,16 @@ export default function TestScreen({ route, navigation }) {
       current.category === 'hidden'
         ? input === ''
         : input === current.answer;
+
+    // Haptic feedback
+    Haptics.impactAsync(isCorrect ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+
+    // Auditory feedback
+    const nextNum = index + 2;
+    const announcement = index < queue.length - 1
+      ? `Plate ${nextNum}`
+      : 'Test complete. Calculating your results.';
+    Speech.speak(announcement, { rate: 1.1, pitch: 1.0 });
 
     const newAnswers = [...answers, { plate: current, userAnswer: input, isCorrect }];
 

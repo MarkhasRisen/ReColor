@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import React, { useState } from 'react';
+import { addDoc, collection, getDocs, query, serverTimestamp, where } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { auth, db } from '../../firebaseConfig';
 import Card from '../components/Card';
@@ -14,8 +14,23 @@ export default function SurveyScreen({ navigation }) {
   const [selectedCause, setSelectedCause] = useState(null);
   const [selectedSex, setSelectedSex] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) { setChecking(false); return; }
+    getDocs(query(collection(db, 'surveys'), where('userId', '==', uid)))
+      .then((snap) => setAlreadySubmitted(!snap.empty))
+      .catch(() => {})
+      .finally(() => setChecking(false));
+  }, []);
 
   const handleSubmit = async () => {
+    if (alreadySubmitted) {
+      Alert.alert('Already Submitted', 'You have already completed this survey. Thank you for your contribution!');
+      return;
+    }
     if (selectedCause === null || !selectedSex) {
       Alert.alert('Incomplete', 'Please answer all questions before submitting.');
       return;
@@ -81,13 +96,23 @@ export default function SurveyScreen({ navigation }) {
           </View>
         </Card>
 
-        <TouchableOpacity
-          style={[styles.btnPrimary, { marginTop: 30, backgroundColor: '#111' }]}
-          onPress={handleSubmit}
-          disabled={submitting}
-        >
-          {submitting ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Submit Survey</Text>}
-        </TouchableOpacity>
+        {checking ? (
+          <ActivityIndicator style={{ marginTop: 30 }} color={COLORS.primary} />
+        ) : alreadySubmitted ? (
+          <View style={{ marginTop: 30, backgroundColor: '#E8F5E9', padding: 16, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#C8E6C9' }}>
+            <Ionicons name="checkmark-circle" size={28} color={COLORS.success} />
+            <Text style={{ color: '#2E7D32', fontWeight: '700', marginTop: 8 }}>Survey Already Submitted</Text>
+            <Text style={{ color: '#555', fontSize: 12, marginTop: 4, textAlign: 'center' }}>Thank you for your contribution to the research.</Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[styles.btnPrimary, { marginTop: 30, backgroundColor: '#111' }]}
+            onPress={handleSubmit}
+            disabled={submitting}
+          >
+            {submitting ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Submit Survey</Text>}
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );

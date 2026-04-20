@@ -99,6 +99,101 @@ function SectionRenderer({ section }) {
         </View>
       );
 
+    case 'severity_spectrum':
+      return (
+        <View style={styles.spectrumWrap}>
+          <View style={styles.spectrumBar} />
+          <View style={styles.spectrumLabels}>
+            <Text style={styles.spectrumLabel}>Mild</Text>
+            <Text style={styles.spectrumLabel}>Moderate</Text>
+            <Text style={styles.spectrumLabel}>Severe</Text>
+          </View>
+        </View>
+      );
+
+    case 'cvd_types':
+      return (
+        <View style={styles.cvdTypesList}>
+          {section.items.map((cvd, i) => (
+            <View key={i} style={styles.cvdTypeCard}>
+              <View style={styles.cvdTypeHeader}>
+                <View style={styles.cvdSwatches}>
+                  {cvd.colors.map((c, ci) => (
+                    <View key={ci} style={[styles.cvdSwatch, { backgroundColor: c }]} />
+                  ))}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cvdTypeName}>{cvd.name}</Text>
+                  <Text style={styles.cvdTypeSub}>{cvd.sub}</Text>
+                </View>
+              </View>
+              <Text style={styles.cvdTypeDesc}>{cvd.desc}</Text>
+            </View>
+          ))}
+        </View>
+      );
+
+    case 'stats':
+      return (
+        <View style={styles.statsRow}>
+          {section.items.map((s, i) => (
+            <View key={i} style={styles.statItem}>
+              <Text style={styles.statValue}>{s.value}</Text>
+              <Text style={styles.statLabel}>{s.label}</Text>
+            </View>
+          ))}
+        </View>
+      );
+
+    case 'cone_diagram':
+      return (
+        <View style={styles.coneRow}>
+          {section.cones.map((cone, i) => (
+            <View key={i} style={styles.coneItem}>
+              <View style={[styles.coneCircle, { backgroundColor: cone.color }]} />
+              <Text style={styles.coneLabel}>{cone.label}</Text>
+              <Text style={styles.coneSub}>{cone.sub}</Text>
+            </View>
+          ))}
+        </View>
+      );
+
+    case 'causes':
+      return (
+        <View style={styles.causesRow}>
+          {section.items.map((cause, i) => (
+            <View key={i} style={styles.causeChip}>
+              <Text style={styles.causeText}>{cause}</Text>
+            </View>
+          ))}
+        </View>
+      );
+
+    case 'bento_grid':
+      return (
+        <View style={styles.bentoGrid}>
+          {section.items.map((item, i) => (
+            <View key={i} style={styles.bentoCell}>
+              <Ionicons name={item.icon} size={22} color={COLORS.primary} style={{ marginBottom: 6 }} />
+              <Text style={styles.bentoCellTitle}>{item.title}</Text>
+              <Text style={styles.bentoCellDesc}>{item.desc}</Text>
+            </View>
+          ))}
+        </View>
+      );
+
+    case 'quick_wins':
+      return (
+        <View style={styles.quickWinsList}>
+          {section.items.map((item, i) => (
+            <View key={i} style={styles.quickWinRow}>
+              <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+              <Text style={styles.quickWinText}>{item}</Text>
+            </View>
+          ))}
+        </View>
+      );
+
     case 'list':
       return (
         <View style={styles.articleList}>
@@ -388,4 +483,69 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
   },
   footerDisclaimerText: { fontSize: 11, fontWeight: '700', color: COLORS.warning },
+
+  // Severity spectrum
+  spectrumWrap: { marginBottom: SPACING.md },
+  spectrumBar: {
+    height: 12, borderRadius: 6,
+    background: 'linear-gradient(to right, #27AE60, #F39C12, #E74C3C)',
+    backgroundColor: '#F39C12',
+    marginBottom: 6,
+    // Simulated gradient via shadow
+    shadowColor: '#E74C3C', shadowOffset: { width: 4, height: 0 }, shadowOpacity: 0.4,
+  },
+  spectrumLabels: { flexDirection: 'row', justifyContent: 'space-between' },
+  spectrumLabel: { fontSize: 12, color: COLORS.textLight },
+
+  // CVD types
+  cvdTypesList: { gap: SPACING.sm, marginBottom: SPACING.md },
+  cvdTypeCard: {
+    backgroundColor: COLORS.card, borderRadius: RADIUS.md, padding: SPACING.sm, ...SHADOW.sm,
+  },
+  cvdTypeHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginBottom: 6 },
+  cvdSwatches: { flexDirection: 'row', gap: 4 },
+  cvdSwatch: { width: 22, height: 22, borderRadius: 11 },
+  cvdTypeName: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  cvdTypeSub: { fontSize: 11, color: COLORS.primary, fontWeight: '600' },
+  cvdTypeDesc: { fontSize: 13, color: COLORS.textLight, lineHeight: 18 },
+
+  // Stats
+  statsRow: {
+    flexDirection: 'row', justifyContent: 'space-around',
+    backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md,
+    padding: SPACING.md, marginBottom: SPACING.md,
+  },
+  statItem: { alignItems: 'center' },
+  statValue: { fontSize: 20, fontWeight: '800', color: COLORS.primary },
+  statLabel: { fontSize: 11, color: COLORS.textLight, marginTop: 2, textAlign: 'center' },
+
+  // Cone diagram
+  coneRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: SPACING.md },
+  coneItem: { alignItems: 'center', gap: 4 },
+  coneCircle: { width: 48, height: 48, borderRadius: 24 },
+  coneLabel: { fontSize: 13, fontWeight: '700', color: COLORS.text },
+  coneSub: { fontSize: 11, color: COLORS.textLight },
+
+  // Causes
+  causesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, marginBottom: SPACING.md },
+  causeChip: {
+    backgroundColor: COLORS.surfaceAlt, borderRadius: 20,
+    paddingHorizontal: SPACING.md, paddingVertical: 6,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  causeText: { fontSize: 13, color: COLORS.text, fontWeight: '500' },
+
+  // Bento grid
+  bentoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, marginBottom: SPACING.md },
+  bentoCell: {
+    width: '47%', backgroundColor: COLORS.card, borderRadius: RADIUS.md,
+    padding: SPACING.sm, ...SHADOW.sm,
+  },
+  bentoCellTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text, marginBottom: 4 },
+  bentoCellDesc: { fontSize: 12, color: COLORS.textLight, lineHeight: 17 },
+
+  // Quick wins
+  quickWinsList: { gap: SPACING.sm, marginBottom: SPACING.md },
+  quickWinRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm },
+  quickWinText: { flex: 1, fontSize: 13, color: COLORS.text, lineHeight: 19 },
 });
