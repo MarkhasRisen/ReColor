@@ -27,8 +27,13 @@ import { COLORS, RADIUS, SHADOW, SPACING } from '../theme/colors';
 
 WebBrowser.maybeCompleteAuthSession();
 
-// Configure at Firebase Console → Project Settings → Your Apps → Web app → OAuth Client ID
-const GOOGLE_WEB_CLIENT_ID = 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com';
+// To enable Google Sign-In:
+// 1. Firebase Console → Project Settings → General → Your Apps → Add Android app
+// 2. Register SHA-1 fingerprint (from: eas credentials or keytool)
+// 3. Download google-services.json and place in project root
+// 4. Replace placeholder below with your OAuth Web Client ID
+const GOOGLE_WEB_CLIENT_ID = '912342727884-YOUR_OAUTH_WEB_CLIENT_ID.apps.googleusercontent.com';
+const GOOGLE_CONFIGURED = !GOOGLE_WEB_CLIENT_ID.includes('YOUR_OAUTH');
 
 const APP_VERSION = 'v1.0.4-thesis';
 
@@ -184,9 +189,15 @@ export default function LoginScreen({ navigation }) {
 
           {/* Google Sign-in */}
           <TouchableOpacity
-            style={styles.googleBtn}
-            onPress={() => promptAsync()}
-            disabled={!request || loading}
+            style={[styles.googleBtn, !GOOGLE_CONFIGURED && { opacity: 0.5 }]}
+            onPress={() => {
+              if (!GOOGLE_CONFIGURED) {
+                Alert.alert('Not Configured', 'Google Sign-In requires SHA-1 fingerprint registration in Firebase Console. Use email login for now.');
+                return;
+              }
+              promptAsync();
+            }}
+            disabled={loading}
             activeOpacity={0.85}
           >
             <Ionicons name="logo-google" size={20} color="#DB4437" />

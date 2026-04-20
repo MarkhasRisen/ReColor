@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, Text, TouchableOpacity, View, SafeAreaView } from 'react-native';
 import { auth } from '../../firebaseConfig';
 import BackgroundBubbles from '../components/BackgroundBubbles';
 import { COLORS } from '../theme/colors';
@@ -30,6 +30,13 @@ export default function HomeScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <BackgroundBubbles />
+      {/* Sticky disclaimer */}
+      <SafeAreaView>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFF8E1', paddingVertical: 5, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: '#FFE082' }}>
+          <Ionicons name="warning-outline" size={12} color="#F59E0B" />
+          <Text style={{ fontSize: 10, fontWeight: '700', color: '#F59E0B', letterSpacing: 0.4 }}>NOT A MEDICAL DIAGNOSIS — SCREENING PURPOSE ONLY</Text>
+        </View>
+      </SafeAreaView>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32 }} showsVerticalScrollIndicator={false} style={{ backgroundColor: 'transparent' }}>
         <View style={{ marginTop: 10, marginBottom: 24 }}>
           <Text style={{ color: '#666', marginBottom: 5 }}>Hello, {userName}</Text>
@@ -82,3 +89,4 @@ export default function HomeScreen({ navigation }) {
     </View>
   );
 }
+

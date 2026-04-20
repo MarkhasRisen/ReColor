@@ -70,15 +70,20 @@ export function computeDiagnosis(answers) {
     diagnosis = 'Normal Vision';
     severity = 'None';
     diagnosisCode = 'N';
+  } else if (percentage >= 65) {
+    // Indeterminate zone — mirrors the clinical 13–16 correct threshold
+    diagnosis = 'Indeterminate Result';
+    severity = 'Borderline';
+    diagnosisCode = 'I';
   } else {
     const subtype = detectProtanDeutan(answers);
     const subtypeLabel = subtype === 'Protan' ? 'Protanomaly' : 'Deuteranomaly';
     diagnosisCode = subtype === 'Protan' ? 'P' : 'D';
 
-    if (percentage >= 60) {
+    if (percentage >= 45) {
       severity = 'Mild';
       diagnosis = `Mild ${subtypeLabel ?? 'Red-Green Deficiency'}`;
-    } else if (percentage >= 40) {
+    } else if (percentage >= 25) {
       severity = 'Moderate';
       diagnosis = `Moderate ${subtypeLabel ?? 'Red-Green Deficiency'}`;
     } else {

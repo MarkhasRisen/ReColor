@@ -28,7 +28,7 @@
       "permissions": ["android.permission.CAMERA"]
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [

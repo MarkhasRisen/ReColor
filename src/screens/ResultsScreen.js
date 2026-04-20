@@ -51,15 +51,21 @@ export default function ResultsScreen({ route, navigation }) {
 
   const displayScore = maxScore ?? total;
   const isNormal = diagnosis === 'Normal Vision';
+  const isIndeterminate = diagnosis === 'Indeterminate Result';
 
   const severityColor =
-    severity === 'Severe' ? COLORS.danger : severity === 'Moderate' ? COLORS.warning : COLORS.success;
+    severity === 'Severe' ? COLORS.danger
+    : severity === 'Moderate' ? COLORS.warning
+    : severity === 'Borderline' ? '#FF9800'
+    : COLORS.success;
 
-  const displayDiagnosis = isNormal ? diagnosis : `Likely ${diagnosis}`;
+  const displayDiagnosis = (isNormal || isIndeterminate) ? diagnosis : `Likely ${diagnosis}`;
 
   const getDescription = () => {
     if (isNormal)
       return 'Your colour vision screening appears to be within the normal range. No significant colour confusion patterns were detected during this session.';
+    if (isIndeterminate)
+      return 'Your results fall in the borderline zone (equivalent to 13–16 correct plates in the clinical standard). A definitive classification cannot be made from this screening alone. Retaking the test or consulting an eye care professional is recommended.';
     if (diagnosis.includes('Protan'))
       return 'Screening suggests possible red-channel sensitivity reduction (Protanomaly/Protanopia). Red and green may appear similar. This is a screening result only — consult a qualified eye care professional for clinical confirmation.';
     if (diagnosis.includes('Deutan'))
@@ -76,12 +82,12 @@ export default function ResultsScreen({ route, navigation }) {
         from={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ type: 'spring', damping: 16 }}
-        style={[styles.heroBanner, { backgroundColor: isNormal ? '#E8F5E9' : '#FFF3E0' }]}
+        style={[styles.heroBanner, { backgroundColor: isNormal ? '#E8F5E9' : isIndeterminate ? '#F3E5F5' : '#FFF3E0' }]}
       >
         <Ionicons
-          name={isNormal ? 'checkmark-circle' : 'alert-circle'}
+          name={isNormal ? 'checkmark-circle' : isIndeterminate ? 'help-circle' : 'alert-circle'}
           size={44}
-          color={isNormal ? COLORS.success : COLORS.warning}
+          color={isNormal ? COLORS.success : isIndeterminate ? '#9C27B0' : COLORS.warning}
         />
         <Text style={styles.heroLabel}>Screening Result</Text>
         <Text style={styles.heroDiagnosis}>{displayDiagnosis}</Text>

@@ -19,8 +19,9 @@ export default function AdminLoginScreen({ navigation }) {
     }
     setAdminLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, adminEmail, adminPass);
-      navigation.navigate('AdminHub', { role: 'admin' });
+      await signInWithEmailAndPassword(auth, adminEmail.trim(), adminPass);
+      const role = adminEmail.trim().toLowerCase().includes('researcher') ? 'researcher' : 'admin';
+      navigation.navigate('AdminHub', { role });
     } catch (e) {
       Alert.alert('Login Failed', 'Incorrect email or password.');
     } finally {
