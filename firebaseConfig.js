@@ -2,12 +2,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApp } from 'firebase/app';
 import {
+    GoogleAuthProvider,
     createUserWithEmailAndPassword,
     getReactNativePersistence,
     initializeAuth,
     onAuthStateChanged,
+    signInWithCredential,
     signInWithEmailAndPassword,
-    signOut
+    signOut,
 } from 'firebase/auth';
 import {
     addDoc,
@@ -81,6 +83,13 @@ const saveExamResult = async (userId, score, diagnosis, severity, total = 14) =>
 
 // Export these to be used in App.js
 export {
-    auth, createUserWithEmailAndPassword, db, onAuthStateChanged,
-    saveExamResult, signInWithEmailAndPassword, signOut
+    GoogleAuthProvider,
+    auth,
+    createUserWithEmailAndPassword,
+    db,
+    onAuthStateChanged,
+    saveExamResult,
+    signInWithCredential,
+    signInWithEmailAndPassword,
+    signOut,
 };
