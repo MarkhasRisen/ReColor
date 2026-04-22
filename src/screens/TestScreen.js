@@ -16,7 +16,11 @@ import {
 import { auth } from "../../firebaseConfig";
 import { saveTestSession } from "../database/client";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
-import { buildTestQueue, computeDiagnosis, evaluateStage1 } from "../utils/colorLogic";
+import {
+  buildTestQueue,
+  computeDiagnosis,
+  evaluateStage1,
+} from "../utils/colorLogic";
 
 const { width } = Dimensions.get("window");
 const DISPLAY_TIME = 3; // seconds each plate is shown
