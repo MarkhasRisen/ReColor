@@ -1,17 +1,18 @@
 export const COLORS = {
-  primary: '#6C63FF',
-  secondary: '#FF4081',
-  accent: '#00D2D3',
-  background: '#F8F9FA',
-  card: '#FFFFFF',
-  text: '#2D3436',
-  textLight: '#A4B0BE',
-  success: '#2ECC71',
-  warning: '#FF9F43',
-  danger: '#FF6B6B',
-  darkOverlay: 'rgba(0,0,0,0.6)',
-  border: '#E8ECEF',
-  surfaceAlt: '#F0F2FF',
+  primary: "#6C63FF",
+  secondary: "#FF4081",
+  accent: "#00D2D3",
+  background: "#F8F9FA",
+  card: "#FFFFFF",
+  text: "#2D3436",
+  textLight: "#636E72",
+  inputPlaceholder: "#7F8C8D",
+  success: "#2ECC71",
+  warning: "#FF9F43",
+  danger: "#FF6B6B",
+  darkOverlay: "rgba(0,0,0,0.6)",
+  border: "#E8ECEF",
+  surfaceAlt: "#F0F2FF",
 };
 
 export const SPACING = {
@@ -32,21 +33,21 @@ export const RADIUS = {
 
 export const SHADOW = {
   sm: {
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
     elevation: 3,
   },
   md: {
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.10,
+    shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 6,
   },
   lg: {
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.14,
     shadowRadius: 20,

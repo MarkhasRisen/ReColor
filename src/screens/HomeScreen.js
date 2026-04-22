@@ -1,11 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import {
-  Image,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { auth } from "../../firebaseConfig";
 import BackgroundBubbles from "../components/BackgroundBubbles";
@@ -81,7 +75,7 @@ export default function HomeScreen({ navigation }) {
         </Text>
       </View>
       <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
         style={{ backgroundColor: "transparent" }}
       >
@@ -125,7 +119,7 @@ export default function HomeScreen({ navigation }) {
         )}
 
         {/* Row — Enhancement + Education */}
-        <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
+        <View style={{ flexDirection: "row", gap: 16, marginBottom: 16 }}>
           {bentoCard(
             "#F3E5F5",
             () => navigation.navigate("CameraEnhance"),
