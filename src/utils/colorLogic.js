@@ -1,4 +1,4 @@
-import { ISHIHARA_PLATES } from '../data/ishiharaData';
+import { ISHIHARA_PLATES } from "../data/ishiharaData";
 
 // Fisher-Yates shuffle — O(n), unbiased
 export function fisherYatesShuffle(arr) {
@@ -27,7 +27,7 @@ export function calculateWeightedScore(answers) {
   let maxScore = 0;
 
   answers.forEach(({ plate, isCorrect }) => {
-    if (plate.category === 'demo' || plate.category === 'hidden') return;
+    if (plate.category === "demo" || plate.category === "hidden") return;
     const w = plate.weight ?? 1;
     maxScore += w;
     if (isCorrect) weightedScore += w;
@@ -36,68 +36,139 @@ export function calculateWeightedScore(answers) {
   return { weightedScore, maxScore };
 }
 
-// Protan/Deutan differentiation based on answers to plates 22-25.
+// Stage 1 evaluation: Count correct answers in plates 1-20 (first 20 plates of test)
+// Returns { correctCount, shouldProceedToStage2 }
+export function evaluateStage1(answers) {
+  // Filter to only include answers from first 20 plates (excluding demo)
+  const stage1Answers = answers.filter(({ plate }) => {
+    return plate.id >= 1 && plate.id <= 20 && plate.category !== "demo";
+  });
+
+  let correctCount = 0;
+  stage1Answers.forEach(({ isCorrect }) => {
+    if (isCorrect) correctCount++;
+  });
+
+  // Decision logic per user requirements:
+  // >= 17-20: Normal vision (no stage 2)
+  // 14-16: Indeterminate (no stage 2)
+  // < 14: Proceed to stage 2
+  const shouldProceedToStage2 = correctCount < 14;
+
+  return {
+    correctCount,
+    totalStage1: stage1Answers.length,
+    shouldProceedToStage2,
+  };
+}
+
+// Protan/Deutan differentiation based on diagnostic plates (22-25).
+// Checks if ≥3 of 4 plates match protan or deutan pattern.
 // Returns 'Protan', 'Deutan', or null if insufficient data.
-function detectProtanDeutan(answers) {
-  const diagnosticAnswers = answers.filter(
-    ({ plate }) => plate.category === 'diagnostic'
+function detectProtanDeutan(diagnosticAnswers) {
+  // Only process diagnostic plates (22-25)
+  const diagnostic = diagnosticAnswers.filter(
+    ({ plate }) => plate.category === "diagnostic",
   );
-  if (diagnosticAnswers.length === 0) return null;
+
+  if (diagnostic.length < 3) return null; // Need at least 3 diagnostic plates
 
   let protanHits = 0;
   let deutanHits = 0;
 
-  diagnosticAnswers.forEach(({ plate, userAnswer }) => {
+  diagnostic.forEach(({ plate, userAnswer }) => {
     if (plate.protanAnswer && userAnswer === plate.protanAnswer) protanHits++;
     if (plate.deutanAnswer && userAnswer === plate.deutanAnswer) deutanHits++;
   });
 
-  if (protanHits === 0 && deutanHits === 0) return null;
-  return protanHits >= deutanHits ? 'Protan' : 'Deutan';
+  // Rule: If ≥3 of 4 match protan pattern → Protan
+  // If ≥3 of 4 match deutan pattern → Deutan
+  // Otherwise → null (indeterminate)
+  if (protanHits >= 3) return "Protan";
+  if (deutanHits >= 3) return "Deutan";
+  return null;
 }
 
-// Full diagnosis from a completed answer set.
+// Full diagnosis from a completed answer set (two-stage process)
 // Returns { diagnosis, severity, diagnosisCode, weightedScore, maxScore, percentage }
 export function computeDiagnosis(answers) {
-  const { weightedScore, maxScore } = calculateWeightedScore(answers);
-  const percentage = maxScore > 0 ? (weightedScore / maxScore) * 100 : 0;
+  const stage1 = evaluateStage1(answers);
 
-  let diagnosis = 'Normal Vision';
-  let severity = 'None';
-  let diagnosisCode = 'N';
-
-  if (percentage >= 80) {
-    diagnosis = 'Normal Vision';
-    severity = 'None';
-    diagnosisCode = 'N';
-  } else if (percentage >= 65) {
-    // Indeterminate zone — mirrors the clinical 13–16 correct threshold
-    diagnosis = 'Indeterminate Result';
-    severity = 'Borderline';
-    diagnosisCode = 'I';
+  if (stage1.correctCount >= 17) {
+    return {
+      diagnosis: "Normal Vision",
+      severity: "None",
+      diagnosisCode: "N",
+      score: stage1.correctCount,
+      maxScore: stage1.totalStage1,
+      percentage: Math.round((stage1.correctCount / stage1.totalStage1) * 100),
+      stage: 1,
+    };
+  } else if (stage1.correctCount >= 14) {
+    return {
+      diagnosis: "Indeterminate Result",
+      severity: "Borderline",
+      diagnosisCode: "I",
+      score: stage1.correctCount,
+      maxScore: stage1.totalStage1,
+      percentage: Math.round((stage1.correctCount / stage1.totalStage1) * 100),
+      stage: 1,
+    };
   } else {
-    const subtype = detectProtanDeutan(answers);
-    const subtypeLabel = subtype === 'Protan' ? 'Protanomaly' : 'Deuteranomaly';
-    diagnosisCode = subtype === 'Protan' ? 'P' : 'D';
+    const stage2Answers = answers.filter(({ plate }) => plate.id >= 21);
 
-    if (percentage >= 45) {
-      severity = 'Mild';
-      diagnosis = `Mild ${subtypeLabel ?? 'Red-Green Deficiency'}`;
-    } else if (percentage >= 25) {
-      severity = 'Moderate';
-      diagnosis = `Moderate ${subtypeLabel ?? 'Red-Green Deficiency'}`;
+    if (stage2Answers.length > 0) {
+      const subtype = detectProtanDeutan(stage2Answers);
+
+      if (subtype === "Protan") {
+        return {
+          diagnosis: "Protanomaly",
+          severity: "Mild",
+          diagnosisCode: "P",
+          score: stage1.correctCount,
+          maxScore: stage1.totalStage1,
+          percentage: Math.round(
+            (stage1.correctCount / stage1.totalStage1) * 100,
+          ),
+          stage: 2,
+        };
+      } else if (subtype === "Deutan") {
+        return {
+          diagnosis: "Deuteranomaly",
+          severity: "Mild",
+          diagnosisCode: "D",
+          score: stage1.correctCount,
+          maxScore: stage1.totalStage1,
+          percentage: Math.round(
+            (stage1.correctCount / stage1.totalStage1) * 100,
+          ),
+          stage: 2,
+        };
+      } else {
+        return {
+          diagnosis: "Indeterminate Result",
+          severity: "Borderline",
+          diagnosisCode: "I",
+          score: stage1.correctCount,
+          maxScore: stage1.totalStage1,
+          percentage: Math.round(
+            (stage1.correctCount / stage1.totalStage1) * 100,
+          ),
+          stage: 2,
+        };
+      }
     } else {
-      severity = 'Severe';
-      diagnosis = `Severe ${subtypeLabel ?? 'Red-Green Deficiency'}`;
+      return {
+        diagnosis: "Incomplete",
+        severity: "N/A",
+        diagnosisCode: "X",
+        score: stage1.correctCount,
+        maxScore: stage1.totalStage1,
+        percentage: Math.round(
+          (stage1.correctCount / stage1.totalStage1) * 100,
+        ),
+        stage: 1,
+      };
     }
   }
-
-  return {
-    diagnosis,
-    severity,
-    diagnosisCode,
-    weightedScore,
-    maxScore,
-    percentage: Math.round(percentage),
-  };
 }
