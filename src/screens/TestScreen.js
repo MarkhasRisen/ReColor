@@ -53,7 +53,7 @@ export default function TestScreen({ route, navigation }) {
     return () => {
       if (prevBrightnessRef.current !== null) {
         Brightness.setBrightnessAsync(prevBrightnessRef.current).catch(
-          () => {},
+          () => { },
         );
       }
     };
@@ -101,7 +101,7 @@ export default function TestScreen({ route, navigation }) {
         isCorrect
           ? Haptics.ImpactFeedbackStyle.Light
           : Haptics.ImpactFeedbackStyle.Medium,
-      ).catch(() => {});
+      ).catch(() => { });
 
       const newAnswers = [
         ...answers,
@@ -274,6 +274,14 @@ export default function TestScreen({ route, navigation }) {
               <Text style={styles.hiddenSub}>Enter what you saw</Text>
             </View>
           )}
+
+          {/* Debug overlay — shows correct answer */}
+          <View style={styles.debugOverlay}>
+            <Text style={styles.debugLabel}>ANS:</Text>
+            <Text style={styles.debugAnswer}>
+              {current.category === "hidden" ? "—" : current.answer}
+            </Text>
+          </View>
         </MotiView>
 
         {/* Timer */}
@@ -459,6 +467,32 @@ const styles = StyleSheet.create({
   hiddenState: { alignItems: "center", gap: SPACING.sm },
   hiddenLabel: { fontSize: 16, fontWeight: "700", color: "#AAA" },
   hiddenSub: { fontSize: 12, color: "#CCC" },
+
+  debugOverlay: {
+    position: "absolute",
+    top: SPACING.md,
+    right: SPACING.md,
+    backgroundColor: "rgba(255, 193, 7, 0.9)",
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 4,
+    borderRadius: RADIUS.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    ...SHADOW.md,
+  },
+  debugLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#333",
+    letterSpacing: 0.5,
+  },
+  debugAnswer: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#333",
+    letterSpacing: 1,
+  },
 
   timerRow: { alignItems: "center" },
   timerPill: {
