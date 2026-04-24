@@ -92,7 +92,10 @@ export default function TestScreen({ route, navigation }) {
     async (inputOverride) => {
       clearInterval(timerRef.current);
 
-      const input = inputOverride !== undefined ? inputOverride : userInput;
+      // Only accept string overrides — TouchableOpacity's onPress passes a
+      // GestureResponderEvent object as the first arg, which must NOT be treated
+      // as an answer (would score every plate wrong).
+      const input = typeof inputOverride === "string" ? inputOverride : userInput;
       const isCorrect =
         current.category === "hidden" ? input === "" : input === current.answer;
 
@@ -108,8 +111,8 @@ export default function TestScreen({ route, navigation }) {
         { plate: current, userAnswer: input, isCorrect },
       ];
 
-      // Check if we're finishing 20 answers total (end of stage 1)
-      if (newAnswers.length === 20 && stage === 1) {
+      // Check if we're finishing 21 answers total (end of stage 1: demo + plates 2-21)
+      if (newAnswers.length === 21 && stage === 1) {
         // Evaluate stage 1
         const stage1Result = evaluateStage1(newAnswers);
 
@@ -216,8 +219,8 @@ export default function TestScreen({ route, navigation }) {
     );
   }
 
-  // Calculate progress based on current stage
-  const stageMaxPlates = stage === 1 ? 20 : 25;
+  // Calculate progress based on current stage (Stage 1 = plates 1-21, Stage 2 = plates 22-25)
+  const stageMaxPlates = stage === 1 ? 21 : 25;
   const progress = ((index + 1) / stageMaxPlates) * 100;
   const stageLabel = stage === 1 ? `Screening` : `Diagnostic`;
   const timerColor =

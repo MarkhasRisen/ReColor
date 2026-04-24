@@ -1,4 +1,4 @@
-// Full 38-plate Ishihara colour vision test dataset.
+// 25-plate Ishihara colour vision test dataset.
 // Plate #1 is the demonstration plate — MUST always be shown first.
 // Categories:
 //   'demo'         — shown to everyone, verifies the test is working
@@ -202,9 +202,9 @@ export const ISHIHARA_PLATES = [
     answer: "42",
     category: "diagnostic",
     weight: 2,
-    protanAnswer: "4",
-    deutanAnswer: "2",
-    description: "Protan: 4 | Deutan: 2 | Normal: 42",
+    protanAnswer: "2",
+    deutanAnswer: "4",
+    description: "Protan: 2 | Deutan: 4 | Normal: 42",
   },
   {
     id: 24,
@@ -222,8 +222,8 @@ export const ISHIHARA_PLATES = [
     answer: "96",
     category: "diagnostic",
     weight: 2,
-    protanAnswer: "9",
-    deutanAnswer: "6",
-    description: "Protan: 9 | Deutan: 6 | Normal: 96",
+    protanAnswer: "6",
+    deutanAnswer: "9",
+    description: "Protan: 6 | Deutan: 9 | Normal: 96",
   },
 ];

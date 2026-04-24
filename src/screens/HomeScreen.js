@@ -114,7 +114,7 @@ export default function HomeScreen({ navigation }) {
           "eye",
           "#2196F3",
           "Take Ishihara Test",
-          "Screen for color vision deficiency with our digital 38-plate test",
+          "Screen for color vision deficiency with our digital 25-plate test",
           { marginBottom: 12 },
         )}
 

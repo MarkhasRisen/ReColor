@@ -252,7 +252,7 @@ export default function ResearchDashboardScreen({ navigation }) {
               </View>
               <View style={{ marginTop: 15, backgroundColor: '#E3F2FD', padding: 12, borderRadius: 8 }}>
                 <Text style={{ fontSize: 11, color: '#1565C0', lineHeight: 17 }}>
-                  Indeterminate zone mirrors the clinical 13–16 correct plates threshold from the standard Ishihara 38-plate scoring protocol (Ishihara, 1917).
+                  Indeterminate zone mirrors the clinical 14–16 correct plates threshold derived from the standard Ishihara scoring protocol (Ishihara, 1917). Stage 1 uses 21 plates; Stage 2 adds 4 diagnostic plates.
                 </Text>
               </View>
             </Card>
@@ -263,7 +263,7 @@ export default function ResearchDashboardScreen({ navigation }) {
                 <Text style={{ fontWeight: 'bold', marginLeft: 10, fontSize: 16 }}>Active Protocols</Text>
               </View>
               <Text style={{ fontSize: 11, color: '#555', lineHeight: 20 }}>
-                {'• Ishihara Test — 38 plates (comprehensive)\n• Stage 1: Screening via plates 1–25\n• Stage 2: Differentiation via plates 22–25 (weight ×2)\n• Plates 26–38: Tracing — Yes/No path\n• Dual-write: private history + anonymized research\n• Offline-first: Firestore persistentLocalCache'}
+                {'• Ishihara Test — 25 plates (comprehensive)\n• Stage 1: Screening via plates 1–21 (demo + 20 screening/vanishing/hidden)\n• Stage 2: Differentiation via plates 22–25 (weight ×2)\n• Thresholds: ≥17 Normal · 14–16 Indeterminate · ≤13 proceed to Stage 2\n• Dual-write: private history + anonymized research\n• Offline-first: Firestore persistentLocalCache'}
               </Text>
             </Card>
           </>

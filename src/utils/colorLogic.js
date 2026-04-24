@@ -14,7 +14,7 @@ export function fisherYatesShuffle(arr) {
 // For comprehensive test (count=25): demo + 20 stage1 plates + 4 diagnostic plates
 // Stage 1 positions (1-20): screening, vanishing, hidden plates only (randomised)
 // Stage 2 positions (21-24): diagnostic plates (22-25) in order
-export function buildTestQueue(count = 38) {
+export function buildTestQueue(count = 25) {
   const plate1 = ISHIHARA_PLATES.find((p) => p.id === 1);
 
   // For comprehensive test of 25 plates:
@@ -31,7 +31,7 @@ export function buildTestQueue(count = 38) {
     return [plate1, ...shuffledStage1, ...diagnosticPlates];
   }
 
-  // For other counts, use original logic (38-plate comprehensive, 14-plate quick, etc.)
+  // For other counts (e.g. 14-plate quick test), use simple shuffle logic.
   const rest = ISHIHARA_PLATES.filter((p) => p.id !== 1);
   const shuffled = fisherYatesShuffle(rest).slice(0, count - 1);
   return [plate1, ...shuffled];
@@ -54,27 +54,25 @@ export function calculateWeightedScore(answers) {
   return { weightedScore, maxScore };
 }
 
-// Stage 1 evaluation: Count correct answers in the FIRST 20 answers (positions, not plate IDs)
-// Returns { correctCount, shouldProceedToStage2 }
+// Stage 1 evaluation: Count correct answers in the FIRST 21 answers
+// (demo plate + 20 screening/vanishing/hidden plates = plates 1-21).
+// Thresholds per clinical spec:
+//   17-21 correct → Normal vision      (end test, no Stage 2)
+//   14-16 correct → Indeterminate      (end test, no Stage 2)
+//    0-13 correct → Proceed to Stage 2 (diagnostic plates 22-25)
 export function evaluateStage1(answers) {
-  // Take only the first 20 answers (positions 0-19), excluding the demo plate
-  const stage1Answers = answers.slice(0, 20).filter(({ plate }) => {
-    return plate.category !== "demo";
-  });
+  const stage1Answers = answers.slice(0, 21);
 
   let correctCount = 0;
   stage1Answers.forEach(({ isCorrect }) => {
     if (isCorrect) correctCount++;
   });
 
-  // Decision logic per user requirements:
-  // >= 14: Normal vision (no stage 2)
-  // < 14 (i.e., 0-13): Proceed to stage 2
   const shouldProceedToStage2 = correctCount < 14;
 
   return {
     correctCount,
-    totalStage1: stage1Answers.length,
+    totalStage1: stage1Answers.length, // 21
     shouldProceedToStage2,
   };
 }
@@ -132,8 +130,15 @@ export function computeDiagnosis(answers) {
       stage: 1,
     };
   } else {
-    // Stage 2: Get all answers after the first 20 (these should be diagnostic plates 21-25)
-    const stage2Answers = answers.slice(20);
+    // Stage 2: diagnostic plates are positions 21-24 in the queue
+    const stage2Answers = answers.slice(21);
+
+    // Total-correct across ALL answered plates (stage 1 + stage 2)
+    let totalCorrect = stage1.correctCount;
+    stage2Answers.forEach(({ isCorrect }) => {
+      if (isCorrect) totalCorrect++;
+    });
+    const totalAnswered = stage1.totalStage1 + stage2Answers.length;
 
     if (stage2Answers.length > 0) {
       const subtype = detectProtanDeutan(stage2Answers);
@@ -143,11 +148,9 @@ export function computeDiagnosis(answers) {
           diagnosis: "Protanomaly",
           severity: "Mild",
           diagnosisCode: "P",
-          score: stage1.correctCount,
-          maxScore: stage1.totalStage1,
-          percentage: Math.round(
-            (stage1.correctCount / stage1.totalStage1) * 100,
-          ),
+          score: totalCorrect,
+          maxScore: totalAnswered,
+          percentage: Math.round((totalCorrect / totalAnswered) * 100),
           stage: 2,
         };
       } else if (subtype === "Deutan") {
@@ -155,11 +158,9 @@ export function computeDiagnosis(answers) {
           diagnosis: "Deuteranomaly",
           severity: "Mild",
           diagnosisCode: "D",
-          score: stage1.correctCount,
-          maxScore: stage1.totalStage1,
-          percentage: Math.round(
-            (stage1.correctCount / stage1.totalStage1) * 100,
-          ),
+          score: totalCorrect,
+          maxScore: totalAnswered,
+          percentage: Math.round((totalCorrect / totalAnswered) * 100),
           stage: 2,
         };
       } else {
@@ -167,11 +168,9 @@ export function computeDiagnosis(answers) {
           diagnosis: "Indeterminate Result",
           severity: "Borderline",
           diagnosisCode: "I",
-          score: stage1.correctCount,
-          maxScore: stage1.totalStage1,
-          percentage: Math.round(
-            (stage1.correctCount / stage1.totalStage1) * 100,
-          ),
+          score: totalCorrect,
+          maxScore: totalAnswered,
+          percentage: Math.round((totalCorrect / totalAnswered) * 100),
           stage: 2,
         };
       }
