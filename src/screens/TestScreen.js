@@ -5,21 +5,21 @@ import * as Speech from "expo-speech";
 import { MotiView } from "moti";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { auth } from "../../firebaseConfig";
 import { saveTestSession } from "../database/client";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 import {
-  buildTestQueue,
-  computeDiagnosis,
-  evaluateStage1,
+    buildTestQueue,
+    computeDiagnosis,
+    evaluateStage1,
 } from "../utils/colorLogic";
 
 const { width } = Dimensions.get("window");
@@ -53,7 +53,7 @@ export default function TestScreen({ route, navigation }) {
     return () => {
       if (prevBrightnessRef.current !== null) {
         Brightness.setBrightnessAsync(prevBrightnessRef.current).catch(
-          () => { },
+          () => {},
         );
       }
     };
@@ -101,15 +101,15 @@ export default function TestScreen({ route, navigation }) {
         isCorrect
           ? Haptics.ImpactFeedbackStyle.Light
           : Haptics.ImpactFeedbackStyle.Medium,
-      ).catch(() => { });
+      ).catch(() => {});
 
       const newAnswers = [
         ...answers,
         { plate: current, userAnswer: input, isCorrect },
       ];
 
-      // Check if we're finishing plate 20 (end of stage 1)
-      if (current.id === 20 && stage === 1) {
+      // Check if we're finishing 20 answers total (end of stage 1)
+      if (newAnswers.length === 20 && stage === 1) {
         // Evaluate stage 1
         const stage1Result = evaluateStage1(newAnswers);
 

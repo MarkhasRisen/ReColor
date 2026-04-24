@@ -11,9 +11,27 @@ export function fisherYatesShuffle(arr) {
 }
 
 // Build test queue: Plate #1 (demo) is always first; the rest are randomised.
-// count: total plates to include (default 38 for comprehensive, 14 for quick).
+// For comprehensive test (count=25): demo + 20 stage1 plates + 4 diagnostic plates
+// Stage 1 positions (1-20): screening, vanishing, hidden plates only (randomised)
+// Stage 2 positions (21-24): diagnostic plates (22-25) in order
 export function buildTestQueue(count = 38) {
   const plate1 = ISHIHARA_PLATES.find((p) => p.id === 1);
+
+  // For comprehensive test of 25 plates:
+  if (count === 25) {
+    // Get all non-diagnostic, non-demo plates (2-21)
+    const stage1Plates = ISHIHARA_PLATES.filter((p) => p.id >= 2 && p.id <= 21);
+    // Get all diagnostic plates (22-25)
+    const diagnosticPlates = ISHIHARA_PLATES.filter(
+      (p) => p.id >= 22 && p.id <= 25,
+    );
+
+    // Shuffle stage 1 plates and build final queue
+    const shuffledStage1 = fisherYatesShuffle(stage1Plates);
+    return [plate1, ...shuffledStage1, ...diagnosticPlates];
+  }
+
+  // For other counts, use original logic (38-plate comprehensive, 14-plate quick, etc.)
   const rest = ISHIHARA_PLATES.filter((p) => p.id !== 1);
   const shuffled = fisherYatesShuffle(rest).slice(0, count - 1);
   return [plate1, ...shuffled];
@@ -36,12 +54,12 @@ export function calculateWeightedScore(answers) {
   return { weightedScore, maxScore };
 }
 
-// Stage 1 evaluation: Count correct answers in plates 1-20 (first 20 plates of test)
+// Stage 1 evaluation: Count correct answers in the FIRST 20 answers (positions, not plate IDs)
 // Returns { correctCount, shouldProceedToStage2 }
 export function evaluateStage1(answers) {
-  // Filter to only include answers from first 20 plates (excluding demo)
-  const stage1Answers = answers.filter(({ plate }) => {
-    return plate.id >= 1 && plate.id <= 20 && plate.category !== "demo";
+  // Take only the first 20 answers (positions 0-19), excluding the demo plate
+  const stage1Answers = answers.slice(0, 20).filter(({ plate }) => {
+    return plate.category !== "demo";
   });
 
   let correctCount = 0;
@@ -50,9 +68,8 @@ export function evaluateStage1(answers) {
   });
 
   // Decision logic per user requirements:
-  // >= 17-20: Normal vision (no stage 2)
-  // 14-16: Indeterminate (no stage 2)
-  // < 14: Proceed to stage 2
+  // >= 14: Normal vision (no stage 2)
+  // < 14 (i.e., 0-13): Proceed to stage 2
   const shouldProceedToStage2 = correctCount < 14;
 
   return {
@@ -115,7 +132,8 @@ export function computeDiagnosis(answers) {
       stage: 1,
     };
   } else {
-    const stage2Answers = answers.filter(({ plate }) => plate.id >= 21);
+    // Stage 2: Get all answers after the first 20 (these should be diagnostic plates 21-25)
+    const stage2Answers = answers.slice(20);
 
     if (stage2Answers.length > 0) {
       const subtype = detectProtanDeutan(stage2Answers);
