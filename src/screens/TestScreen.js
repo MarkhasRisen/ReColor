@@ -27,10 +27,11 @@ const DISPLAY_TIME = 3; // seconds each plate is shown
 
 export default function TestScreen({ route, navigation }) {
   const { testType = "comprehensive" } = route?.params || {};
-  const plateCount = testType === "comprehensive" ? 25 : 14;
+  const isQuick = testType === "quick";
+  const stage1Length = isQuick ? 11 : 21; // demo + 10 scored (quick) or demo + 20 scored (comprehensive)
 
   // Build queue once on mount — plate #1 always first, rest randomised
-  const [queue] = useState(() => buildTestQueue(plateCount));
+  const [queue] = useState(() => buildTestQueue(testType));
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState([]);
   const [userInput, setUserInput] = useState("");
@@ -96,6 +97,10 @@ export default function TestScreen({ route, navigation }) {
       // GestureResponderEvent object as the first arg, which must NOT be treated
       // as an answer (would score every plate wrong).
       const input = typeof inputOverride === "string" ? inputOverride : userInput;
+      // Scoring:
+      //   hidden → correct if user enters nothing
+      //   everything else → correct if input matches plate.answer exactly
+      //   (tracing plates supply their own string via button onPress)
       const isCorrect =
         current.category === "hidden" ? input === "" : input === current.answer;
 
@@ -111,27 +116,25 @@ export default function TestScreen({ route, navigation }) {
         { plate: current, userAnswer: input, isCorrect },
       ];
 
-      // Check if we're finishing 21 answers total (end of stage 1: demo + plates 2-21)
-      if (newAnswers.length === 21 && stage === 1) {
-        // Evaluate stage 1
-        const stage1Result = evaluateStage1(newAnswers);
+      // End of Stage 1 (comprehensive: 21 answers, quick: 11 answers)
+      if (newAnswers.length === stage1Length && stage === 1) {
+        const stage1Result = evaluateStage1(newAnswers, testType);
 
         if (stage1Result.shouldProceedToStage2) {
-          // Score < 14: Proceed to stage 2
+          // Stage 1 score below normal threshold → proceed to Stage 2 classification
           setAnswers(newAnswers);
           setUserInput("");
-          setStage(2); // Switch to stage 2
+          setStage(2);
           setIndex(index + 1);
 
-          // Announce stage 2
           Speech.speak("Stage 2: Diagnostic plates", {
             rate: 1.1,
             pitch: 1.0,
           });
         } else {
-          // Score >= 14: Go directly to results
+          // Stage 1 score at/above threshold → Normal or Indeterminate, skip Stage 2
           setCalculating(true);
-          const result = computeDiagnosis(newAnswers);
+          const result = computeDiagnosis(newAnswers, testType);
           const shuffledOrder = queue.map((p) => p.id);
 
           if (auth.currentUser) {
@@ -170,8 +173,8 @@ export default function TestScreen({ route, navigation }) {
           Speech.speak(`Plate ${nextNum}`, { rate: 1.1, pitch: 1.0 });
         }
       } else {
-        // Test complete (all plates done, including stage 2)
-        const result = computeDiagnosis(newAnswers);
+        // Test complete (all plates done, including Stage 2)
+        const result = computeDiagnosis(newAnswers, testType);
         const shuffledOrder = queue.map((p) => p.id);
 
         setCalculating(true);
@@ -202,12 +205,14 @@ export default function TestScreen({ route, navigation }) {
         }, 1500);
       }
     },
-    [index, queue, answers, userInput, current, navigation, stage],
+    [index, queue, answers, userInput, current, navigation, stage, testType, stage1Length],
   );
 
   if (!current) return <View style={styles.root} />;
 
-  const isTracingPlate = current?.id >= 26;
+  const inputType = current.inputType || "numeric";
+  const isTracingYesNo = inputType === "tracing-yesno";
+  const isTracingMulti = inputType === "tracing-multi";
 
   if (calculating) {
     return (
@@ -219,8 +224,8 @@ export default function TestScreen({ route, navigation }) {
     );
   }
 
-  // Calculate progress based on current stage (Stage 1 = plates 1-21, Stage 2 = plates 22-25)
-  const stageMaxPlates = stage === 1 ? 21 : 25;
+  // Progress display: Stage 1 spans stage1Length plates; Stage 2 runs to the full queue length
+  const stageMaxPlates = stage === 1 ? stage1Length : queue.length;
   const progress = ((index + 1) / stageMaxPlates) * 100;
   const stageLabel = stage === 1 ? `Screening` : `Diagnostic`;
   const timerColor =
@@ -303,27 +308,57 @@ export default function TestScreen({ route, navigation }) {
       </View>
 
       {/* ── INPUT PANEL ── */}
-      {isTracingPlate ? (
+      {isTracingYesNo ? (
         <View style={styles.tracingPanel}>
           <Text style={styles.tracingQuestion}>
-            Can you see a figure in this plate?
+            Can you trace the coloured line in this plate?
           </Text>
           <View style={styles.tracingBtns}>
             <TouchableOpacity
               style={[styles.tracingBtn, { backgroundColor: COLORS.success }]}
-              onPress={() => handleNext(current.answer)}
+              onPress={() => handleNext("yes")}
               activeOpacity={0.85}
             >
               <Ionicons name="eye-outline" size={26} color="#FFF" />
-              <Text style={styles.tracingBtnText}>Yes, I see it</Text>
+              <Text style={styles.tracingBtnText}>Yes, I can trace it</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.tracingBtn, { backgroundColor: COLORS.danger }]}
-              onPress={() => handleNext("")}
+              onPress={() => handleNext("no")}
               activeOpacity={0.85}
             >
               <Ionicons name="eye-off-outline" size={26} color="#FFF" />
-              <Text style={styles.tracingBtnText}>I can't see it</Text>
+              <Text style={styles.tracingBtnText}>No / wrong line</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : isTracingMulti ? (
+        <View style={styles.tracingPanel}>
+          <Text style={styles.tracingQuestion}>
+            Which line(s) can you see in this plate?
+          </Text>
+          <View style={styles.tracingMultiBtns}>
+            <TouchableOpacity
+              style={[styles.tracingMultiBtn, { backgroundColor: COLORS.success }]}
+              onPress={() => handleNext("both")}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.tracingBtnText}>Both lines</Text>
+              <Text style={styles.tracingBtnSub}>(purple + red)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tracingMultiBtn, { backgroundColor: "#9C27B0" }]}
+              onPress={() => handleNext("purple")}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.tracingBtnText}>Purple only</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tracingMultiBtn, { backgroundColor: COLORS.danger }]}
+              onPress={() => handleNext("red")}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.tracingBtnText}>Red only</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -354,12 +389,16 @@ export default function TestScreen({ route, navigation }) {
             />
           </View>
 
-          {/* Skip for hidden plates */}
-          {current.category === "hidden" && userInput.length === 0 && (
-            <TouchableOpacity style={styles.skipBtn} onPress={handleNext}>
-              <Text style={styles.skipText}>I see nothing → Skip</Text>
-            </TouchableOpacity>
-          )}
+          {/* Skip — always visible for numeric inputs.
+              For hidden plates this submits empty (correct).
+              For other plates this submits empty (wrong) but lets the user move on. */}
+          <TouchableOpacity style={styles.skipBtn} onPress={() => handleNext("")}>
+            <Text style={styles.skipText}>
+              {current.category === "hidden"
+                ? "I see nothing → Skip"
+                : "Can't see / skip"}
+            </Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -596,5 +635,20 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontWeight: "700",
     fontSize: 14,
+  },
+  tracingBtnSub: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 11,
+    marginTop: 2,
+  },
+  tracingMultiBtns: {
+    flexDirection: "column",
+    gap: SPACING.sm,
+  },
+  tracingMultiBtn: {
+    borderRadius: RADIUS.lg,
+    paddingVertical: 18,
+    alignItems: "center",
+    ...SHADOW.md,
   },
 });
