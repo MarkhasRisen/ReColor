@@ -873,7 +873,13 @@ P(
     "full at center to zero at the edge, eliminating visible discontinuities."
 )
 
-H2('3.6 — Why Daltonization beats Hue Rotation (rehearse this)')
+H2('3.6 — Theoretical comparison (a priori)')
+P(
+    "On paper — before running any empirical test — Daltonization is the more principled choice. "
+    "This table summarises the theoretical case. Section 3.6.1 then reports what the actual "
+    "evaluation showed, which forces us to refine this position.",
+    italic=True
+)
 TABLE(
     ['Property', 'Daltonization', 'Hue Rotation'],
     [
@@ -885,6 +891,110 @@ TABLE(
         ['Achromatic axis',        'Preserved by matrix design',                  'Preserved by sat gate'],
     ],
     widths=[4, 6, 6]
+)
+
+# ─────────────────────────────────────────────────────────────
+# NEW: Empirical evaluation correction
+# ─────────────────────────────────────────────────────────────
+H2('3.6.1 — UPDATE: What the empirical evaluation actually showed')
+P(
+    "After the theoretical comparison above was written, we ran the algorithmic performance "
+    "evaluation harness across 6 synthetic test images × 3 CVD types. The numerical results "
+    "do NOT support the simple 'Daltonization beats Hue Rotation' claim, and you must be ready "
+    "for panelists who have read the full report.",
+    bold=True
+)
+
+H3('3.6.1.1 — The aggregate numbers')
+TABLE(
+    ['Metric', 'Daltonization', 'Hue Rotation', 'Winner'],
+    [
+        ['Suite 1: Mean ΔE (lower = closer to original normal view)', '15.29', '14.89', 'HUE (marginal)'],
+        ['Suite 2: SSIM (higher = more structural preservation)',     '0.877', '0.978', 'HUE (clear)'],
+        ['Suite 3: Per-CVD wins (out of 6 categories: ΔE × SSIM × 3)', '1',     '5',     'HUE'],
+        ['Suite 6: Mean latency (lower = faster execution)',          '53.6 ms', '66.9 ms', 'DAL'],
+    ],
+    widths=[7, 3, 3, 3]
+)
+P(
+    "Daltonization wins ONLY on speed. On every visual-quality metric the harness measures, "
+    "Hue Rotation produces output that is closer to the original (lower ΔE under CVD perception) "
+    "and structurally more similar (higher SSIM). This is the opposite of the theoretical prediction.",
+    bold=True
+)
+
+H3('3.6.1.2 — Why the report does NOT actually invalidate Daltonization')
+P('There is a metric mismatch in the evaluation. This is the most important paragraph in this section — memorise the structure of the argument:')
+P([('Suite 1 measures: ', {'bold': True}),
+   ('"after CVD perception of the enhanced image, how close does it look to the ORIGINAL normal-vision view?" '
+    'Lower ΔE means the enhanced image — once a CVD user looks at it — is perceptually similar to what a '
+    'normal-vision viewer sees in the unmodified original.', {})])
+P([('Why this is the wrong question for enhancement: ', {'bold': True}),
+   ('Enhancement cannot make a CVD user perceive what a normal-vision user perceives. The cones that '
+    'distinguish red from green are physiologically missing or shifted in protan/deutan vision. '
+    'No amount of pixel manipulation can synthesise the missing channel response. So measuring '
+    '"closeness to original normal view" is measuring an unattainable target — both algorithms fail '
+    'because the goal is impossible, not because the algorithms are bad.', {})])
+P([('What enhancement is ACTUALLY for: ', {'bold': True}),
+   ('Making previously-confused color pairs (red vs green for protan, blue vs yellow for tritan) '
+    'discriminable AT THE CVD VIEWING STAGE. The right metric would be: "for color pairs that produce '
+    'low ΔE under CVD simulation of the unenhanced image (i.e. confused pairs), does the enhanced '
+    'version produce HIGHER ΔE between those same pairs after CVD simulation?" Neither Suite 1 '
+    'nor Suite 2 measures this. Suite 1 does the opposite — it rewards algorithms that change '
+    'the image LEAST.', {})])
+P([('Why Hue Rotation "wins" Suite 2 (SSIM): ', {'bold': True}),
+   ('Hue Rotation only touches pixels inside a narrow hue band (60° around red). It leaves '
+    'everything else untouched. That preserves structure trivially — large regions of the image '
+    'are bit-for-bit identical. Daltonization touches every pixel that has a non-zero error term, '
+    'which is most of them. Higher SSIM here reflects "fewer pixels modified", not "better '
+    'discrimination provided".', {})])
+
+H3('3.6.1.3 — What you should say if a panelist confronts you with the report')
+P('Three rehearsable responses, in order of likelihood:')
+QUOTE(
+    'Q: "Your own evaluation says Hue Rotation wins on quality metrics. Why is Daltonization the default?"\n\n'
+    'A: "The metrics that show Hue Rotation winning measure preservation of the original image, not '
+    'discrimination gain for the CVD user. Suite 1 specifically scores how close the CVD-perceived '
+    'enhanced image is to the original normal-vision view, but no enhancement algorithm can close '
+    'that gap because the missing cone information is physiologically unrecoverable. A future '
+    'evaluation should measure the discrimination delta between confused color pairs before and '
+    'after enhancement — under that metric we expect Daltonization to win because it actively '
+    'redistributes the lost channel information into surviving channels, while Hue Rotation only '
+    'shifts hues within a fixed band."'
+)
+QUOTE(
+    'Q: "If your metric is wrong, why did you ship this evaluation in the first place?"\n\n'
+    'A: "Suite 1 measures faithfulness, which is a useful property but not the only one. The '
+    'evaluation was useful for confirming Suites 4 and 5 — Identifier accuracy at 85.4% and '
+    'Simulation precision under 0.1 ΔE — which directly validate two of the three camera modes. '
+    'For Enhancement, the evaluation prompted us to refine the metric framework, which is itself '
+    'a research contribution: it shows that the standard image-similarity metrics from photography '
+    '(ΔE-vs-original, SSIM) are not the right tools for evaluating accessibility-oriented '
+    'enhancement. That methodological insight goes in the discussion section."'
+)
+QUOTE(
+    'Q: "So is Daltonization actually better, or are you rationalising?"\n\n'
+    'A: "On a discrimination-gain metric — which is what enhancement should be evaluated on — '
+    'Daltonization is the principled choice because it is mathematically derived to maximise '
+    'recovery of the lost cone signal. Hue Rotation cannot do this by construction; it only '
+    'rotates hues, it does not redistribute energy across channels. We did not run a discrimination-'
+    'gain benchmark in this evaluation cycle, so the strongest defensible claim is: theoretical '
+    'analysis favours Daltonization, current empirical evaluation favours Hue Rotation on '
+    'unmodified-image preservation, and the gap between those is itself the research finding."'
+)
+
+H3('3.6.1.4 — What NOT to say')
+BULLET('DO NOT claim the report is wrong. The numbers are correct; the metric framework is just narrow.')
+BULLET('DO NOT claim Daltonization beats Hue Rotation in absolute terms — the evaluation does not support that.')
+BULLET('DO NOT hide the report. If a panelist asks "did you evaluate empirically?" and you say no, they will find the report file in your repo.')
+BULLET('DO NOT say "we will fix it later" without specifying what. Say specifically: "next iteration adds a discrimination-gain benchmark using LMS-space confusion-line endpoints."')
+
+H3('3.6.1.5 — One-sentence elevator version')
+QUOTE(
+    'The empirical evaluation rewards visual fidelity to the unmodified original — a target no '
+    'CVD enhancement can reach by design — so its "Hue Rotation wins" verdict reflects metric '
+    'choice rather than algorithm quality. Daltonization remains the principled default; the '
+    'evaluation framework needs a discrimination-gain metric for a clean comparative verdict.'
 )
 
 H2('3.7 — Instant re-enhancement via cached decodedRef')
@@ -960,6 +1070,30 @@ QA('"What happens with a completely dark photo (indoor, low light)?"',
    "so noise becomes negligible in linear space. But the corrected output is also mostly dark, "
    "and the user cannot distinguish colors in darkness regardless of correction. Low-light "
    "enhancement is a separate problem not addressed by daltonization.")
+
+QA('"Your evaluation_report.md says Hue Rotation has lower ΔE and higher SSIM than Daltonization. '
+   'Doesn\'t that contradict your claim that Daltonization is the better algorithm?"',
+   "Yes — and that contradiction is treated explicitly in section 3.6.1 of this reviewer. The short "
+   "version: Suite 1's ΔE measures how close the CVD-perceived enhanced image is to the ORIGINAL "
+   "normal-vision view. That is an unattainable target — no enhancement can synthesise the missing "
+   "cone signal — so both algorithms fail on absolute scale. Hue Rotation 'wins' that metric "
+   "because it touches fewer pixels (narrow 60° hue band only), so by default it stays closer to "
+   "the original. Daltonization touches every pixel with a non-zero error term, which lowers its "
+   "ΔE-to-original score even when it actually provides better discrimination. The right metric is "
+   "discrimination GAIN between confused color pairs after CVD perception of the enhanced image — "
+   "we did not run that benchmark this cycle, and that is the next iteration of the evaluation. "
+   "I am not claiming the report is wrong; I am claiming its metric is narrow.")
+
+QA('"If Hue Rotation is faster on every measurement except mean latency, why ship Daltonization '
+   'as the default?"',
+   "Hue Rotation is SLOWER, not faster — Suite 6 shows DAL at 53.6 ms mean and HUE at 66.9 ms "
+   "mean. Hue Rotation wins on faithfulness metrics (ΔE, SSIM) because it modifies less of the "
+   "image. The default is Daltonization for two reasons: (1) it is mathematically derived from the "
+   "physical loss model (Brettel/Fidaner), so its corrections are principled rather than tuned; "
+   "(2) its self-gating property means it does nothing when nothing needs doing — the user does "
+   "not have to know which colors are in their confusion set. Hue Rotation requires us to define "
+   "a band per CVD type by hand. Daltonization is therefore the more general default; Hue Rotation "
+   "ships as a comparative option for power users and for the research contribution.")
 
 doc.add_page_break()
 

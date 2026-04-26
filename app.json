@@ -2,7 +2,6 @@
   "expo": {
     "name": "ReColor",
     "slug": "ReColor",
-    "owner": "recolor",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -25,7 +24,9 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.recolor.app",
-      "permissions": ["android.permission.CAMERA"]
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "output": "single",
@@ -60,8 +61,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "5170a648-0120-42e7-8953-21850f18bb95"
+        "projectId": "550110bf-4c3a-4375-8cc6-200316d985c8"
       }
-    }
+    },
+    "owner": "decolor2027"
   }
 }

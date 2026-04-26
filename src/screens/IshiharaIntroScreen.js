@@ -16,10 +16,10 @@ export default function IshiharaIntroScreen({ navigation }) {
           <View style={{ flexDirection: 'row' }}>
             <View style={{ flex: 1 }}>
               <Text style={styles.cardTitle}>Comprehensive Test</Text>
-              <Text style={styles.cardDesc}>Complete 38-plate assessment</Text>
+              <Text style={styles.cardDesc}>Complete 25-plate assessment</Text>
               <View style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons name="time-outline" size={16} color="#666" />
-                <Text style={{ fontSize: 12, marginLeft: 5, color: '#666' }}>15-20 minutes</Text>
+                <Text style={{ fontSize: 12, marginLeft: 5, color: '#666' }}>5-8 minutes</Text>
               </View>
             </View>
             <View style={{ justifyContent: 'center', alignItems: 'center' }}>

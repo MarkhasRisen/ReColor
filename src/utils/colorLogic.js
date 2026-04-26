@@ -1,4 +1,9 @@
-import { ISHIHARA_PLATES } from '../data/ishiharaData';
+import { ISHIHARA_PLATES } from "../data/ishiharaData";
+import { QUICK_ISHIHARA_PLATES } from "../data/quickIshiharaData";
+
+// ─────────────────────────────────────────────────────────────
+// Shared utilities
+// ─────────────────────────────────────────────────────────────
 
 // Fisher-Yates shuffle — O(n), unbiased
 export function fisherYatesShuffle(arr) {
@@ -10,94 +15,189 @@ export function fisherYatesShuffle(arr) {
   return shuffled;
 }
 
-// Build test queue: Plate #1 (demo) is always first; the rest are randomised.
-// count: total plates to include (default 38 for comprehensive, 14 for quick).
-export function buildTestQueue(count = 38) {
-  const plate1 = ISHIHARA_PLATES.find((p) => p.id === 1);
-  const rest = ISHIHARA_PLATES.filter((p) => p.id !== 1);
-  const shuffled = fisherYatesShuffle(rest).slice(0, count - 1);
-  return [plate1, ...shuffled];
+// Mode-specific constants.
+// Comprehensive: 25 plates, Stage 1 = 21, Stage 2 = 4 diagnostic, ≥3/4 classification.
+// Quick:         14 plates, Stage 1 = 11, Stage 2 = 3 diagnostic, ≥2/3 classification.
+const MODE_CONFIG = {
+  comprehensive: {
+    totalPlates: 25,
+    stage1Length: 21, // demo + plates 2-21
+    stage2Length: 4,  // plates 22-25
+    normalThreshold: 17,       // ≥17 → Normal
+    indeterminateThreshold: 14, // 14-16 → Indeterminate, <14 → Stage 2
+    classificationHits: 3,      // ≥3 of 4 diagnostic matches
+  },
+  quick: {
+    totalPlates: 14,
+    stage1Length: 11, // demo + plates 2-11
+    stage2Length: 3,  // plates 12-14
+    normalThreshold: 10,       // ≥10 → Normal (perfect)
+    indeterminateThreshold: 8,  // 8-9 → Borderline, <8 → Stage 2
+    classificationHits: 2,      // ≥2 of 3 diagnostic matches
+  },
+};
+
+function getConfig(testType) {
+  return MODE_CONFIG[testType] ?? MODE_CONFIG.comprehensive;
 }
 
-// Weighted scoring:  Score = Σ (Correct × Weight)
-// Plates 22-25 (diagnostic) carry weight 2 for Protan/Deutan differentiation.
-// Hidden-category plates (18-21) are excluded from scoring (normal answer is '').
-export function calculateWeightedScore(answers) {
-  let weightedScore = 0;
-  let maxScore = 0;
+// ─────────────────────────────────────────────────────────────
+// Queue construction
+// ─────────────────────────────────────────────────────────────
 
-  answers.forEach(({ plate, isCorrect }) => {
-    if (plate.category === 'demo' || plate.category === 'hidden') return;
-    const w = plate.weight ?? 1;
-    maxScore += w;
-    if (isCorrect) weightedScore += w;
+// Build test queue: Plate #1 (demo) always first; Stage 1 plates randomised;
+// Stage 2 (diagnostic) plates kept in clinical order at the tail.
+export function buildTestQueue(testType = "comprehensive") {
+  if (testType === "quick") return buildQuickQueue();
+  return buildComprehensiveQueue();
+}
+
+function buildComprehensiveQueue() {
+  const plate1 = ISHIHARA_PLATES.find((p) => p.id === 1);
+  const stage1Plates = ISHIHARA_PLATES.filter((p) => p.id >= 2 && p.id <= 21);
+  const diagnosticPlates = ISHIHARA_PLATES.filter(
+    (p) => p.id >= 22 && p.id <= 25,
+  );
+  const shuffledStage1 = fisherYatesShuffle(stage1Plates);
+  return [plate1, ...shuffledStage1, ...diagnosticPlates];
+}
+
+function buildQuickQueue() {
+  const plate1 = QUICK_ISHIHARA_PLATES.find((p) => p.id === 1);
+  const stage1Plates = QUICK_ISHIHARA_PLATES.filter(
+    (p) => p.id >= 2 && p.id <= 11,
+  );
+  const diagnosticPlates = QUICK_ISHIHARA_PLATES.filter(
+    (p) => p.id >= 12 && p.id <= 14,
+  );
+  const shuffledStage1 = fisherYatesShuffle(stage1Plates);
+  return [plate1, ...shuffledStage1, ...diagnosticPlates];
+}
+
+// ─────────────────────────────────────────────────────────────
+// Stage 1 evaluation
+// ─────────────────────────────────────────────────────────────
+
+// Counts correct answers in the Stage-1 slice for the given mode and
+// decides whether Stage 2 should run.
+//
+// Quick mode excludes the demo plate from scoring per the clinical spec
+// ("Plate 1 is excluded from scoring", Ishihara Concise Edition 1960).
+// Comprehensive mode counts all 21 Stage-1 answers (demo included) per
+// the ≥17/21 rule the user verified earlier.
+export function evaluateStage1(answers, testType = "comprehensive") {
+  const { stage1Length, indeterminateThreshold } = getConfig(testType);
+  const stage1Answers = answers.slice(0, stage1Length);
+
+  const scoredAnswers =
+    testType === "quick"
+      ? stage1Answers.filter(({ plate }) => plate.category !== "demo")
+      : stage1Answers;
+
+  let correctCount = 0;
+  scoredAnswers.forEach(({ isCorrect }) => {
+    if (isCorrect) correctCount++;
   });
 
-  return { weightedScore, maxScore };
+  return {
+    correctCount,
+    totalStage1: scoredAnswers.length, // 10 for quick, 21 for comprehensive
+    shouldProceedToStage2: correctCount < indeterminateThreshold,
+  };
 }
 
-// Protan/Deutan differentiation based on answers to plates 22-25.
-// Returns 'Protan', 'Deutan', or null if insufficient data.
-function detectProtanDeutan(answers) {
-  const diagnosticAnswers = answers.filter(
-    ({ plate }) => plate.category === 'diagnostic'
+// ─────────────────────────────────────────────────────────────
+// Stage 2 classification (Protan vs Deutan)
+// ─────────────────────────────────────────────────────────────
+
+// Checks if ≥ minHits of the diagnostic plates match the protan or deutan pattern.
+// Returns 'Protan', 'Deutan', or null if inconclusive.
+function detectProtanDeutan(diagnosticAnswers, minHits) {
+  const diagnostic = diagnosticAnswers.filter(
+    ({ plate }) => plate.category === "diagnostic",
   );
-  if (diagnosticAnswers.length === 0) return null;
+
+  if (diagnostic.length === 0) return null;
 
   let protanHits = 0;
   let deutanHits = 0;
 
-  diagnosticAnswers.forEach(({ plate, userAnswer }) => {
+  diagnostic.forEach(({ plate, userAnswer }) => {
     if (plate.protanAnswer && userAnswer === plate.protanAnswer) protanHits++;
     if (plate.deutanAnswer && userAnswer === plate.deutanAnswer) deutanHits++;
   });
 
-  if (protanHits === 0 && deutanHits === 0) return null;
-  return protanHits >= deutanHits ? 'Protan' : 'Deutan';
+  if (protanHits >= minHits) return "Protan";
+  if (deutanHits >= minHits) return "Deutan";
+  return null;
 }
 
-// Full diagnosis from a completed answer set.
-// Returns { diagnosis, severity, diagnosisCode, weightedScore, maxScore, percentage }
-export function computeDiagnosis(answers) {
-  const { weightedScore, maxScore } = calculateWeightedScore(answers);
-  const percentage = maxScore > 0 ? (weightedScore / maxScore) * 100 : 0;
+// ─────────────────────────────────────────────────────────────
+// Full diagnosis (Stage 1 + optional Stage 2)
+// ─────────────────────────────────────────────────────────────
 
-  let diagnosis = 'Normal Vision';
-  let severity = 'None';
-  let diagnosisCode = 'N';
+export function computeDiagnosis(answers, testType = "comprehensive") {
+  const config = getConfig(testType);
+  const stage1 = evaluateStage1(answers, testType);
 
-  if (percentage >= 80) {
-    diagnosis = 'Normal Vision';
-    severity = 'None';
-    diagnosisCode = 'N';
-  } else if (percentage >= 65) {
-    // Indeterminate zone — mirrors the clinical 13–16 correct threshold
-    diagnosis = 'Indeterminate Result';
-    severity = 'Borderline';
-    diagnosisCode = 'I';
-  } else {
-    const subtype = detectProtanDeutan(answers);
-    const subtypeLabel = subtype === 'Protan' ? 'Protanomaly' : 'Deuteranomaly';
-    diagnosisCode = subtype === 'Protan' ? 'P' : 'D';
-
-    if (percentage >= 45) {
-      severity = 'Mild';
-      diagnosis = `Mild ${subtypeLabel ?? 'Red-Green Deficiency'}`;
-    } else if (percentage >= 25) {
-      severity = 'Moderate';
-      diagnosis = `Moderate ${subtypeLabel ?? 'Red-Green Deficiency'}`;
-    } else {
-      severity = 'Severe';
-      diagnosis = `Severe ${subtypeLabel ?? 'Red-Green Deficiency'}`;
-    }
+  if (stage1.correctCount >= config.normalThreshold) {
+    return {
+      diagnosis: "Normal Vision",
+      severity: "None",
+      diagnosisCode: "N",
+      score: stage1.correctCount,
+      maxScore: stage1.totalStage1,
+      percentage: Math.round((stage1.correctCount / stage1.totalStage1) * 100),
+      stage: 1,
+    };
   }
 
-  return {
-    diagnosis,
-    severity,
-    diagnosisCode,
-    weightedScore,
-    maxScore,
-    percentage: Math.round(percentage),
+  if (stage1.correctCount >= config.indeterminateThreshold) {
+    return {
+      diagnosis: "Indeterminate Result",
+      severity: "Borderline",
+      diagnosisCode: "I",
+      score: stage1.correctCount,
+      maxScore: stage1.totalStage1,
+      percentage: Math.round((stage1.correctCount / stage1.totalStage1) * 100),
+      stage: 1,
+    };
+  }
+
+  // Stage 2: diagnostic plates begin at position stage1Length
+  const stage2Answers = answers.slice(config.stage1Length);
+
+  let totalCorrect = stage1.correctCount;
+  stage2Answers.forEach(({ isCorrect }) => {
+    if (isCorrect) totalCorrect++;
+  });
+  const totalAnswered = stage1.totalStage1 + stage2Answers.length;
+
+  if (stage2Answers.length === 0) {
+    return {
+      diagnosis: "Incomplete",
+      severity: "N/A",
+      diagnosisCode: "X",
+      score: stage1.correctCount,
+      maxScore: stage1.totalStage1,
+      percentage: Math.round((stage1.correctCount / stage1.totalStage1) * 100),
+      stage: 1,
+    };
+  }
+
+  const subtype = detectProtanDeutan(stage2Answers, config.classificationHits);
+  const base = {
+    score: totalCorrect,
+    maxScore: totalAnswered,
+    percentage: Math.round((totalCorrect / totalAnswered) * 100),
+    stage: 2,
   };
+
+  if (subtype === "Protan") {
+    return { ...base, diagnosis: "Protanomaly", severity: "Mild", diagnosisCode: "P" };
+  }
+  if (subtype === "Deutan") {
+    return { ...base, diagnosis: "Deuteranomaly", severity: "Mild", diagnosisCode: "D" };
+  }
+  return { ...base, diagnosis: "Indeterminate Result", severity: "Borderline", diagnosisCode: "I" };
 }

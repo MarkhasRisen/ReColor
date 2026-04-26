@@ -3,7 +3,7 @@ import { auth, db } from '../../firebaseConfig';
 
 export { auth, db };
 
-// Save a completed 38-plate test session.
+// Save a completed Ishihara test session (25-plate comprehensive or 14-plate quick).
 // Dual-writes to user private history AND anonymised research collection.
 export async function saveTestSession({
   userId,

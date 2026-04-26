@@ -43,7 +43,7 @@ export default function ResultsScreen({ route, navigation }) {
   const {
     score = 0,
     maxScore,
-    total = 38,
+    total = 25,
     diagnosis = "Unknown",
     severity = "N/A",
     percentage = 0,
@@ -53,31 +53,47 @@ export default function ResultsScreen({ route, navigation }) {
   const displayScore = maxScore ?? total;
   const isNormal = diagnosis === "Normal Vision";
   const isIndeterminate = diagnosis === "Indeterminate Result";
+  const isProtan = diagnosis.includes("Protan");
+  const isDeutan = diagnosis.includes("Deutan");
+  const isTritan = diagnosis.includes("Tritan");
+  const isCVD = isProtan || isDeutan || isTritan;
 
-  const severityColor =
-    severity === "Severe"
-      ? COLORS.danger
-      : severity === "Moderate"
-        ? COLORS.warning
-        : severity === "Borderline"
-          ? "#FF9800"
-          : COLORS.success;
+  const severityColor = isNormal
+    ? COLORS.success
+    : isIndeterminate
+      ? "#FF9800"
+      : severity === "Severe"
+        ? COLORS.danger
+        : severity === "Moderate"
+          ? COLORS.warning
+          : isCVD
+            ? COLORS.warning // Mild CVD
+            : COLORS.textLight;
 
   const displayDiagnosis =
     isNormal || isIndeterminate ? diagnosis : `Likely ${diagnosis}`;
 
+  const getHeadline = () => {
+    if (isNormal) return "No colour vision deficiency detected";
+    if (isIndeterminate) return "Inconclusive — retake recommended";
+    if (isProtan) return "Red-channel sensitivity pattern detected";
+    if (isDeutan) return "Green-channel sensitivity pattern detected";
+    if (isTritan) return "Blue-channel sensitivity pattern detected";
+    return "Possible colour vision variation";
+  };
+
   const getDescription = () => {
     if (isNormal)
-      return "Your colour vision screening appears to be within the normal range. No significant colour confusion patterns were detected during this session.";
+      return `You correctly read ${score} of ${displayScore} screening plates. No red-green confusion pattern was detected, so the diagnostic stage was skipped.`;
     if (isIndeterminate)
-      return "Your results fall in the borderline zone (equivalent to 13–16 correct plates in the clinical standard). A definitive classification cannot be made from this screening alone. Retaking the test or consulting an eye care professional is recommended.";
-    if (diagnosis.includes("Protan"))
-      return "Screening suggests possible red-channel sensitivity reduction (Protanomaly/Protanopia). Red and green may appear similar. This is a screening result only — consult a qualified eye care professional for clinical confirmation.";
-    if (diagnosis.includes("Deutan"))
-      return "Screening suggests possible green-channel sensitivity reduction (Deuteranomaly/Deuteranopia). Red and green may appear similar. This is a screening result only — consult a qualified eye care professional for clinical confirmation.";
-    if (diagnosis.includes("Tritan"))
-      return "Screening suggests possible blue-channel sensitivity reduction (Tritanomaly/Tritanopia). Blue and green may appear similar. This is a screening result only — consult a qualified eye care professional for clinical confirmation.";
-    return "Screening suggests a possible colour vision variation. This is not a diagnosis — consult a qualified eye care professional for a comprehensive assessment.";
+      return `You scored ${score} of ${displayScore} in the screening stage, which falls in the borderline range. The test cannot confidently classify your colour vision from this result alone. Common causes: poor lighting, screen glare, fatigue, or a mild deficiency near the detection threshold. Retake in good natural lighting, or consult an eye-care professional for a definitive assessment.`;
+    if (isProtan)
+      return `The screening stage flagged red-green confusion, and your answers on the diagnostic plates matched the protan pattern in a majority of cases. This suggests reduced red-cone sensitivity, which can make red and green appear similar. Use the Enhancement camera to boost distinguishability. This is a screening result — clinical confirmation requires a professional eye exam.`;
+    if (isDeutan)
+      return `The screening stage flagged red-green confusion, and your answers on the diagnostic plates matched the deutan pattern in a majority of cases. This suggests reduced green-cone sensitivity, which can make red and green appear similar. Use the Enhancement camera to boost distinguishability. This is a screening result — clinical confirmation requires a professional eye exam.`;
+    if (isTritan)
+      return `Screening suggests possible blue-channel sensitivity (tritan pattern). Blue and yellow may appear similar. Tritan CVD is rare and often acquired — consult an eye-care professional for a comprehensive assessment.`;
+    return "Screening suggests a possible colour vision variation. This is not a diagnosis — consult a qualified eye-care professional for a comprehensive assessment.";
   };
 
   return (
@@ -117,18 +133,14 @@ export default function ResultsScreen({ route, navigation }) {
         />
         <Text style={styles.heroLabel}>Screening Result</Text>
         <Text style={styles.heroDiagnosis}>{displayDiagnosis}</Text>
+        <Text style={styles.heroHeadline}>{getHeadline()}</Text>
 
         <ScoreRing percentage={percentage} color={severityColor} />
 
         <Text style={styles.heroScore}>
-          {score} / {displayScore} weighted points
+          {score} of {displayScore} plates correct
         </Text>
 
-        <View
-          style={[styles.severityBadge, { backgroundColor: severityColor }]}
-        >
-          <Text style={styles.severityText}>Severity: {severity}</Text>
-        </View>
       </MotiView>
 
       <View style={styles.content}>
@@ -184,16 +196,16 @@ export default function ResultsScreen({ route, navigation }) {
         >
           <View style={styles.metaGrid}>
             <View style={styles.metaItem}>
-              <Text style={styles.metaValue}>{total}</Text>
-              <Text style={styles.metaKey}>Total Plates</Text>
+              <Text style={styles.metaValue}>{score}</Text>
+              <Text style={styles.metaKey}>Correct</Text>
             </View>
             <View style={styles.metaItem}>
               <Text style={styles.metaValue}>{displayScore}</Text>
-              <Text style={styles.metaKey}>Max Score</Text>
+              <Text style={styles.metaKey}>Plates Shown</Text>
             </View>
             <View style={styles.metaItem}>
-              <Text style={styles.metaValue}>{score}</Text>
-              <Text style={styles.metaKey}>Weighted Score</Text>
+              <Text style={styles.metaValue}>{percentage}%</Text>
+              <Text style={styles.metaKey}>Accuracy</Text>
             </View>
           </View>
           {shuffledOrder && (
@@ -256,6 +268,14 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: COLORS.text,
     textAlign: "center",
+  },
+  heroHeadline: {
+    fontSize: 13,
+    color: "#555",
+    textAlign: "center",
+    fontStyle: "italic",
+    marginTop: -4,
+    paddingHorizontal: SPACING.md,
   },
   heroScore: { fontSize: 13, color: "#666" },
 
