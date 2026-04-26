@@ -21,6 +21,7 @@ import EducationListScreen from './src/screens/EducationListScreen';
 import IshiharaIntroScreen from './src/screens/IshiharaIntroScreen';
 import IshiharaOnboarding from './src/screens/IshiharaOnboarding';
 import LoginScreen from './src/screens/LoginScreen';
+import SignUp from './src/screens/SignUp';
 import ResearchDashboardScreen from './src/screens/ResearchDashboardScreen';
 import ResultsScreen from './src/screens/ResultsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
@@ -67,6 +68,7 @@ export default function App() {
             <Stack.Screen name="Splash" component={SplashScreen} />
             <Stack.Screen name="AppOnboarding" component={AppOnboarding} />
             <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="SignUp" component={SignUp} />
             <Stack.Screen name="AdminLogin" component={AdminLoginScreen} />
             <Stack.Screen name="AdminHub" component={AdminHubScreen} />
             <Stack.Screen name="ResearchDashboard" component={ResearchDashboardScreen} />

@@ -16,10 +16,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import {
   GoogleAuthProvider,
   auth,
-  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInWithCredential,
   signInWithEmailAndPassword,
 } from '../../firebaseConfig';
@@ -63,28 +64,41 @@ export default function LoginScreen({ navigation }) {
     }
   }, [response]);
 
+  const handleForgotPassword = async () => {
+    const target = email.trim();
+    if (!target) {
+      Alert.alert('Enter your email', 'Type your email address above, then tap "Forgot password?".');
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, target);
+      Alert.alert('Email sent', `A password reset link has been sent to ${target}.`);
+    } catch (err) {
+      if (err.code === 'auth/user-not-found') {
+        Alert.alert('Not found', 'No account found with that email address.');
+      } else {
+        Alert.alert('Error', err.message);
+      }
+    }
+  };
+
   const handleLogin = async () => {
     if (!email.trim() || !password) {
       Alert.alert('Missing Fields', 'Please enter your email and password.');
       return;
     }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
       navigation.replace('MainTabs');
     } catch (err) {
-      if (err.code === 'auth/user-not-found') {
-        try {
-          await createUserWithEmailAndPassword(auth, email.trim(), password);
-          navigation.replace('MainTabs');
-        } catch (regErr) {
-          Alert.alert('Registration Error', regErr.message);
-        }
-      } else if (
+      if (
+        err.code === 'auth/user-not-found' ||
         err.code === 'auth/invalid-credential' ||
         err.code === 'auth/wrong-password'
       ) {
-        Alert.alert('Login Failed', 'Incorrect email or password.');
+        Alert.alert('Login Failed', 'Incorrect email or password. New user? Tap "Create an account" below.');
       } else {
         Alert.alert('Error', err.message);
       }
@@ -166,6 +180,11 @@ export default function LoginScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
+          {/* Forgot password */}
+          <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotBtn}>
+            <Text style={styles.forgotText}>Forgot password?</Text>
+          </TouchableOpacity>
+
           {/* Login button */}
           <TouchableOpacity
             style={styles.loginBtn}
@@ -202,6 +221,17 @@ export default function LoginScreen({ navigation }) {
           >
             <Ionicons name="logo-google" size={20} color="#DB4437" />
             <Text style={styles.googleBtnText}>Continue with Google</Text>
+          </TouchableOpacity>
+
+          {/* Sign Up link */}
+          <TouchableOpacity
+            style={styles.createAccountLink}
+            onPress={() => navigation.navigate('SignUp')}
+          >
+            <Text style={styles.createAccountText}>
+              New here?{' '}
+              <Text style={{ color: COLORS.primary, fontWeight: '700' }}>Create an account</Text>
+            </Text>
           </TouchableOpacity>
 
           {/* Admin link */}
@@ -286,6 +316,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: COLORS.text,
   },
+  forgotBtn: { alignSelf: 'flex-end', marginTop: 4, marginBottom: 2, padding: 4 },
+  forgotText: { fontSize: 13, color: COLORS.primary, fontWeight: '600' },
   loginBtn: {
     backgroundColor: COLORS.primary,
     borderRadius: RADIUS.md,
@@ -295,11 +327,17 @@ const styles = StyleSheet.create({
     ...SHADOW.sm,
   },
   loginBtnText: { color: '#FFF', fontWeight: '700', fontSize: 16 },
+  createAccountLink: {
+    alignItems: 'center',
+    marginTop: SPACING.md,
+    padding: SPACING.sm,
+  },
+  createAccountText: { fontSize: 14, color: COLORS.textLight },
   adminLink: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: SPACING.lg,
+    marginTop: SPACING.xs,
     padding: SPACING.sm,
   },
   adminLinkText: { fontSize: 13, color: COLORS.textLight },

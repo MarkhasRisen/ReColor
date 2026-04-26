@@ -1,8 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as Haptics from 'expo-haptics';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
 import React, { useState } from 'react';
-import { ActivityIndicator, Dimensions, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { decodeJpegBase64, encodeToDataUri, getCVDRows } from '../../tensorHelper';
 import { CAPTURE_SIZE } from '../utils/constants';
 import { COLORS } from '../theme/colors';
@@ -17,12 +20,32 @@ export default function CVDGalleryScreen({ navigation }) {
   const [processing, setProcessing] = useState(false);
 
   const pickImage = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 1 });
     if (!result.canceled) {
       const uri = result.assets[0].uri;
       setOriginalUri(uri);
       setDisplayUri(uri);
       setMode('Off');
+    }
+  };
+
+  const handleSave = async () => {
+    if (!displayUri) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permission needed', 'Please allow access to save photos.'); return; }
+      let savePath = displayUri;
+      if (displayUri.startsWith('data:')) {
+        const b64 = displayUri.split(',')[1];
+        savePath = `${FileSystem.cacheDirectory}recolor_gallery_${Date.now()}.jpg`;
+        await FileSystem.writeAsStringAsync(savePath, b64, { encoding: FileSystem.EncodingType.Base64 });
+      }
+      await MediaLibrary.saveToLibraryAsync(savePath);
+      Alert.alert('Saved', 'Image saved to your gallery.');
+    } catch (e) {
+      Alert.alert('Error', 'Could not save image.');
     }
   };
 
@@ -87,12 +110,27 @@ export default function CVDGalleryScreen({ navigation }) {
         </View>
 
         {originalUri && (
-          <View style={{ flexDirection: 'row', justifyContent: 'center', paddingBottom: 30, gap: 10 }}>
-            {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
-              <TouchableOpacity key={m} onPress={() => applyFilter(m)} disabled={processing} style={{ backgroundColor: mode === m ? COLORS.primary : '#333', padding: 10, borderRadius: 20, paddingHorizontal: 20, opacity: processing ? 0.5 : 1 }}>
-                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{m}</Text>
-              </TouchableOpacity>
-            ))}
+          <View style={{ paddingBottom: 30 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 14 }}>
+              {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
+                <TouchableOpacity
+                  key={m}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); applyFilter(m); }}
+                  disabled={processing}
+                  style={{ backgroundColor: mode === m ? COLORS.primary : '#333', padding: 10, borderRadius: 20, paddingHorizontal: 20, opacity: processing ? 0.5 : 1 }}
+                >
+                  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{m}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={processing}
+              style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.primary, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 24, opacity: processing ? 0.5 : 1 }}
+            >
+              <Ionicons name="download-outline" size={20} color="#FFF" />
+              <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 15 }}>Save to Gallery</Text>
+            </TouchableOpacity>
           </View>
         )}
       </SafeAreaView>

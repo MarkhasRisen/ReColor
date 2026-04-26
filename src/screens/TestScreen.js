@@ -13,8 +13,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { auth } from "../../firebaseConfig";
-import { saveTestSession } from "../database/client";
+import { auth, saveExamResult } from "../../firebaseConfig";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 import {
     buildTestQueue,
@@ -138,16 +137,13 @@ export default function TestScreen({ route, navigation }) {
           const shuffledOrder = queue.map((p) => p.id);
 
           if (auth.currentUser) {
-            await saveTestSession({
-              userId: auth.currentUser.uid,
-              score: stage1Result.correctCount,
-              maxScore: stage1Result.totalStage1,
-              diagnosis: result.diagnosis,
-              diagnosisCode: result.diagnosisCode,
-              severity: result.severity,
-              total: stage1Result.totalStage1,
-              shuffledOrder,
-            });
+            await saveExamResult(
+              auth.currentUser.uid,
+              stage1Result.correctCount,
+              result.diagnosis,
+              result.severity,
+              stage1Result.totalStage1,
+            );
           }
 
           setTimeout(() => {
@@ -180,16 +176,13 @@ export default function TestScreen({ route, navigation }) {
         setCalculating(true);
 
         if (auth.currentUser) {
-          await saveTestSession({
-            userId: auth.currentUser.uid,
-            score: result.score,
-            maxScore: result.maxScore,
-            diagnosis: result.diagnosis,
-            diagnosisCode: result.diagnosisCode,
-            severity: result.severity,
-            total: queue.length,
-            shuffledOrder,
-          });
+          await saveExamResult(
+            auth.currentUser.uid,
+            result.score,
+            result.diagnosis,
+            result.severity,
+            queue.length,
+          );
         }
 
         setTimeout(() => {

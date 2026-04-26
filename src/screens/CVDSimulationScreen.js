@@ -2,6 +2,7 @@ import { Canvas, Image as SkiaImage, RuntimeShader, useCanvasRef, useImage } fro
 import { Ionicons } from '@expo/vector-icons';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
+import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -49,11 +50,19 @@ function CVDSimulationScreenInner({ navigation, route }) {
 
   const handleFreeze = useCallback(async () => {
     if (!cameraRef.current) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setProcessing(true);
     try {
       const photo = await cameraRef.current.takePhoto({ qualityPrioritization: 'quality', enableShutterSound: false });
       if (!photo?.path) throw new Error('takePhoto returned no path');
       const fileUri = `file://${photo.path}`;
+
+      // Save original to gallery
+      const { status: mlStatus } = await MediaLibrary.requestPermissionsAsync();
+      if (mlStatus === 'granted') {
+        MediaLibrary.saveToLibraryAsync(fileUri).catch(() => {});
+      }
+
       const SIM_MAX = 1040;
       const resized = await ImageManipulator.manipulateAsync(
         fileUri,
@@ -72,6 +81,7 @@ function CVDSimulationScreenInner({ navigation, route }) {
   const handleReset = useCallback(() => { setFrozen(false); setFrozenUri(null); setProcessing(false); }, []);
 
   const handleSave = useCallback(async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') { Alert.alert('Permission needed', 'Please allow access to save photos.'); return; }
@@ -131,13 +141,15 @@ function CVDSimulationScreenInner({ navigation, route }) {
           </View>
         </View>
 
-        <View style={{ position: 'absolute', top: 100, right: 20, alignItems: 'center', zIndex: 2 }}>
-          {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
-            <TouchableOpacity key={m} onPress={() => setCvdType(m)} disabled={processing} style={[styles.filterBtn, { backgroundColor: cvdType === m ? COLORS.primary : 'rgba(0,0,0,0.5)', marginBottom: 15, opacity: processing ? 0.4 : 1 }]}>
-              <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 10 }}>{m === 'Off' ? 'Off' : m.charAt(0)}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {frozen && (
+          <View style={{ position: 'absolute', top: 100, right: 20, alignItems: 'center', zIndex: 2 }}>
+            {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
+              <TouchableOpacity key={m} onPress={() => setCvdType(m)} disabled={processing} style={[styles.filterBtn, { backgroundColor: cvdType === m ? COLORS.primary : 'rgba(0,0,0,0.5)', marginBottom: 15, opacity: processing ? 0.4 : 1 }]}>
+                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 10 }}>{m === 'Off' ? 'Off' : m.charAt(0)}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         <View style={{ position: 'absolute', bottom: 30, left: 0, right: 0, zIndex: 2 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>

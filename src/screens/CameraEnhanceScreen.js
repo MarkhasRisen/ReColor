@@ -1,6 +1,8 @@
+import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
+import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -32,11 +34,16 @@ function CameraEnhanceScreenInner({ navigation }) {
   const decodedRef = useRef(null);
   const frozenUriRef = useRef(null);
   const intensityRef = useRef(100);
+  const [intensity, setIntensity] = useState(100);
   const device = useCameraDevice(cameraPosition);
 
   useEffect(() => {
     AsyncStorage.getItem('@recolor_intensity').then((val) => {
-      if (val !== null) intensityRef.current = Number(val);
+      if (val !== null) {
+        const v = Number(val);
+        intensityRef.current = v;
+        setIntensity(v);
+      }
     });
   }, []);
 
@@ -79,8 +86,31 @@ function CameraEnhanceScreenInner({ navigation }) {
     return encodeToDataUri(blended, w, h);
   }, []);
 
+  const handleIntensityChange = useCallback((val) => {
+    intensityRef.current = val;
+    setIntensity(val);
+  }, []);
+
+  const handleIntensityCommit = useCallback((val) => {
+    intensityRef.current = val;
+    setIntensity(val);
+    AsyncStorage.setItem('@recolor_intensity', String(val));
+    if (!frozen || !decodedRef.current) return;
+    setProcessing(true);
+    setProgress('Adjusting...');
+    setTimeout(() => {
+      const uri = runEnhancement(cvdType, algorithm);
+      if (isMountedRef.current) {
+        setResultUri(uri || frozenUriRef.current);
+        setProcessing(false);
+        setProgress('');
+      }
+    }, 50);
+  }, [frozen, cvdType, algorithm, runEnhancement]);
+
   const handleFreeze = useCallback(async () => {
     if (!cameraRef.current) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setProcessing(true);
     setProgress('Capturing...');
     AppLog.log('CameraEnhance', 'freeze: capturing photo');
@@ -89,6 +119,12 @@ function CameraEnhanceScreenInner({ navigation }) {
       const photo = await cameraRef.current.takePhoto({ qualityPrioritization: 'quality', enableShutterSound: false });
       if (!photo?.path) throw new Error('takePhoto returned no path');
       const fileUri = `file://${photo.path}`;
+
+      // Save original to gallery
+      const { status: mlStatus } = await MediaLibrary.requestPermissionsAsync();
+      if (mlStatus === 'granted') {
+        MediaLibrary.saveToLibraryAsync(fileUri).catch(() => {});
+      }
 
       setProgress('Resizing...');
       const SIM_MAX = 1040;
@@ -161,6 +197,7 @@ function CameraEnhanceScreenInner({ navigation }) {
   }, []);
 
   const handleSave = useCallback(async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') { Alert.alert('Permission needed', 'Please allow access to save photos.'); return; }
@@ -226,13 +263,15 @@ function CameraEnhanceScreenInner({ navigation }) {
           </View>
         </View>
 
-        <View style={{ position: 'absolute', top: 100, right: 20, alignItems: 'center', zIndex: 2 }}>
-          {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
-            <TouchableOpacity key={m} onPress={() => handleCvdChange(m)} disabled={processing} style={[styles.filterBtn, { backgroundColor: cvdType === m ? COLORS.primary : 'rgba(0,0,0,0.5)', marginBottom: 15, opacity: processing ? 0.4 : 1 }]}>
-              <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 10 }}>{m === 'Off' ? 'Off' : m.charAt(0)}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {frozen && (
+          <View style={{ position: 'absolute', top: 100, right: 20, alignItems: 'center', zIndex: 2 }}>
+            {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
+              <TouchableOpacity key={m} onPress={() => handleCvdChange(m)} disabled={processing} style={[styles.filterBtn, { backgroundColor: cvdType === m ? COLORS.primary : 'rgba(0,0,0,0.5)', marginBottom: 15, opacity: processing ? 0.4 : 1 }]}>
+                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 10 }}>{m === 'Off' ? 'Off' : m.charAt(0)}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {frozen && (
           <View style={{ position: 'absolute', top: 100, left: 20, alignItems: 'center', zIndex: 2 }}>
@@ -253,6 +292,25 @@ function CameraEnhanceScreenInner({ navigation }) {
         )}
 
         <View style={{ position: 'absolute', bottom: 30, left: 0, right: 0, zIndex: 2 }}>
+          {frozen && !processing && cvdType !== 'Off' && (
+            <View style={{ alignItems: 'center', marginBottom: 12, paddingHorizontal: 30 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, marginBottom: 2 }}>
+                Intensity: {Math.round(intensity)}%
+              </Text>
+              <Slider
+                style={{ width: '80%', height: 36 }}
+                minimumValue={0}
+                maximumValue={100}
+                step={1}
+                value={intensity}
+                minimumTrackTintColor={COLORS.primary}
+                maximumTrackTintColor="rgba(255,255,255,0.3)"
+                thumbTintColor="#FFF"
+                onValueChange={handleIntensityChange}
+                onSlidingComplete={handleIntensityCommit}
+              />
+            </View>
+          )}
           <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
             {frozen ? (
               <>
