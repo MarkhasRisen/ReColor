@@ -33,7 +33,7 @@ WebBrowser.maybeCompleteAuthSession();
 // 2. Register SHA-1 fingerprint (from: eas credentials or keytool)
 // 3. Download google-services.json and place in project root
 // 4. Replace placeholder below with your OAuth Web Client ID
-const GOOGLE_WEB_CLIENT_ID = '912342727884-YOUR_OAUTH_WEB_CLIENT_ID.apps.googleusercontent.com';
+const GOOGLE_WEB_CLIENT_ID = '1047364142133-g2bl9ki2t2o1jvvie6b89m3ugkoptf3c.apps.googleusercontent.com';
 const GOOGLE_CONFIGURED = !GOOGLE_WEB_CLIENT_ID.includes('YOUR_OAUTH');
 
 const APP_VERSION = 'v1.0.4-thesis';
@@ -170,6 +170,7 @@ export default function LoginScreen({ navigation }) {
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPass}
+              autoCapitalize="none"
             />
             <TouchableOpacity onPress={() => setShowPass(!showPass)}>
               <Ionicons

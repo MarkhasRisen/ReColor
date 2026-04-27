@@ -1,10 +1,10 @@
-This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+This file is a merged representation of a subset of the codebase, containing files not matching ignore patterns, combined into a single document by Repomix.
 
 <file_summary>
 This section contains a summary of this file.
 
 <purpose>
-This file contains a packed representation of the entire repository's contents.
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
 It is designed to be easily consumable by AI systems for analysis, code review,
 or other automated processes.
 </purpose>
@@ -32,6 +32,7 @@ The content is organized as follows:
 <notes>
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching these patterns are excluded: android/**, ios/**, .expo/**, node_modules/**, package-lock.json, yarn.lock, assets/**
 - Files matching patterns in .gitignore are excluded
 - Files matching default ignore patterns are excluded
 - Files are sorted by Git change count (files with more changes are at the bottom)
@@ -57,72 +58,6 @@ algo/color_segmenter.keras
 algo/test_image.jpg
 App.js
 app.json
-assets/1.png
-assets/10.png
-assets/11.png
-assets/12.png
-assets/13.png
-assets/14.png
-assets/15.png
-assets/16.png
-assets/17.png
-assets/18.png
-assets/19.png
-assets/2.png
-assets/20.png
-assets/21.png
-assets/22.png
-assets/23.png
-assets/24.png
-assets/25.png
-assets/26.png
-assets/27.png
-assets/28.png
-assets/29.png
-assets/3.png
-assets/30.png
-assets/31.png
-assets/32.png
-assets/33.png
-assets/34.png
-assets/35.png
-assets/36.png
-assets/37.png
-assets/38.png
-assets/4.png
-assets/5.png
-assets/6.png
-assets/7.png
-assets/8.png
-assets/9.png
-assets/access.png
-assets/adaptive-icon.png
-assets/art.png
-assets/color_identifier.tflite
-assets/color_model.tflite
-assets/domore.png
-assets/eye.png
-assets/favicon.png
-assets/icon.png
-assets/images/android-icon-background.png
-assets/images/android-icon-foreground.png
-assets/images/android-icon-monochrome.png
-assets/images/favicon.png
-assets/images/icon.png
-assets/images/old android-icon-background.png
-assets/images/old android-icon-foreground.png
-assets/images/old android-icon-monochrome.png
-assets/images/old icon.png
-assets/images/partial-react-logo.png
-assets/images/react-logo.png
-assets/images/react-logo@2x.png
-assets/images/react-logo@3x.png
-assets/images/splash-icon.png
-assets/logo_row.png
-assets/logo_stack.png
-assets/peri.png
-assets/snack-icon.png
-assets/splash-icon.png
 clean_tree.txt
 components/external-link.tsx
 components/haptic-tab.tsx
@@ -228,280 +163,6 @@ tsconfig.json
 
 <files>
 This section contains the contents of the repository's files.
-
-<file path="src/screens/SignUp.js">
-import { Ionicons } from '@expo/vector-icons';
-import { MotiView } from 'moti';
-import React, { useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { auth, createUserWithEmailAndPassword } from '../../firebaseConfig';
-import { COLORS, RADIUS, SHADOW, SPACING } from '../theme/colors';
-
-const APP_VERSION = 'v1.0.4-thesis';
-
-export default function SignUp({ navigation }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const handleSignUp = async () => {
-    if (!email.trim() || !password || !confirmPassword) {
-      Alert.alert('Missing Fields', 'Please fill in all fields.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      Alert.alert('Password Mismatch', 'Passwords do not match. Please try again.');
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert('Weak Password', 'Password must be at least 6 characters.');
-      return;
-    }
-    setLoading(true);
-    try {
-      await createUserWithEmailAndPassword(auth, email.trim(), password);
-      navigation.replace('MainTabs');
-    } catch (err) {
-      if (err.code === 'auth/email-already-in-use') {
-        Alert.alert('Account Exists', 'An account with this email already exists. Please log in instead.');
-      } else if (err.code === 'auth/invalid-email') {
-        Alert.alert('Invalid Email', 'Please enter a valid email address.');
-      } else {
-        Alert.alert('Sign Up Error', err.message);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <View style={styles.blob1} />
-      <View style={styles.blob2} />
-      <View style={styles.blob3} />
-
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <MotiView
-          from={{ opacity: 0, translateY: -20 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: 'spring', damping: 18 }}
-          style={styles.logoWrap}
-        >
-          <Image
-            source={require('../../assets/logo_stack.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </MotiView>
-
-        <MotiView
-          from={{ opacity: 0, translateY: 30 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: 'spring', damping: 18, delay: 150 }}
-          style={styles.card}
-        >
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join ReColor to track your colour perception</Text>
-
-          {/* Email */}
-          <View style={styles.inputRow}>
-            <Ionicons name="mail-outline" size={18} color={COLORS.textLight} />
-            <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
-              placeholderTextColor={COLORS.textLight}
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-          </View>
-
-          {/* Password */}
-          <View style={styles.inputRow}>
-            <Ionicons name="key-outline" size={18} color={COLORS.textLight} />
-            <TextInput
-              style={styles.input}
-              placeholder="Password (min 6 characters)"
-              placeholderTextColor={COLORS.textLight}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPass}
-            />
-            <TouchableOpacity onPress={() => setShowPass(!showPass)}>
-              <Ionicons
-                name={showPass ? 'eye-off-outline' : 'eye-outline'}
-                size={18}
-                color={COLORS.textLight}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* Confirm Password */}
-          <View style={styles.inputRow}>
-            <Ionicons name="shield-checkmark-outline" size={18} color={COLORS.textLight} />
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm password"
-              placeholderTextColor={COLORS.textLight}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirm}
-            />
-            <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
-              <Ionicons
-                name={showConfirm ? 'eye-off-outline' : 'eye-outline'}
-                size={18}
-                color={COLORS.textLight}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* Create Account button */}
-          <TouchableOpacity
-            style={styles.signUpBtn}
-            onPress={handleSignUp}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.signUpBtnText}>Create Account</Text>
-            )}
-          </TouchableOpacity>
-
-          {/* Back to Login */}
-          <TouchableOpacity
-            style={styles.loginLink}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.loginLinkText}>
-              Already have an account?{' '}
-              <Text style={{ color: COLORS.primary, fontWeight: '700' }}>Log In</Text>
-            </Text>
-          </TouchableOpacity>
-        </MotiView>
-
-        <MotiView
-          from={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 500 }}
-          style={styles.versionBadge}
-        >
-          <Text style={styles.versionText}>{APP_VERSION}</Text>
-        </MotiView>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-}
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.background },
-  blob1: {
-    position: 'absolute', top: -60, left: -60, width: 220, height: 220,
-    borderRadius: 110, backgroundColor: '#FFCDD2', opacity: 0.45,
-  },
-  blob2: {
-    position: 'absolute', bottom: -80, right: -60, width: 280, height: 280,
-    borderRadius: 140, backgroundColor: '#BBDEFB', opacity: 0.4,
-  },
-  blob3: {
-    position: 'absolute', top: '40%', right: -40, width: 150, height: 150,
-    borderRadius: 75, backgroundColor: '#E1BEE7', opacity: 0.35,
-  },
-  scroll: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xl,
-  },
-  logoWrap: { alignItems: 'center', marginBottom: SPACING.lg },
-  logo: { width: 180, height: 100 },
-  card: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-    ...SHADOW.lg,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    textAlign: 'center',
-    marginBottom: SPACING.lg,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 12,
-    marginBottom: SPACING.sm,
-    backgroundColor: COLORS.background,
-    gap: SPACING.sm,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: COLORS.text,
-  },
-  signUpBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: SPACING.md,
-    ...SHADOW.sm,
-  },
-  signUpBtnText: { color: '#FFF', fontWeight: '700', fontSize: 16 },
-  loginLink: {
-    alignItems: 'center',
-    marginTop: SPACING.lg,
-    padding: SPACING.sm,
-  },
-  loginLinkText: { fontSize: 14, color: COLORS.textLight },
-  versionBadge: {
-    alignSelf: 'center',
-    marginTop: SPACING.lg,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: COLORS.surfaceAlt,
-  },
-  versionText: { fontSize: 11, color: COLORS.primary, fontWeight: '600' },
-});
-</file>
 
 <file path=".easignore">
 # Python / ML training environment — must not be uploaded to EAS
@@ -71652,362 +71313,6 @@ const styles = StyleSheet.create({
 });
 </file>
 
-<file path="src/screens/CameraEnhanceScreen.js">
-import Slider from '@react-native-community/slider';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImageManipulator from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
-import * as Haptics from 'expo-haptics';
-import * as MediaLibrary from 'expo-media-library';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
-import { useIsFocused } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { applyDaltonization, applyHueRotation, decodeJpegBase64, encodeToDataUri } from '../../tensorHelper';
-import { AppLog, ScreenErrorBoundary } from '../utils/logger';
-import ModeSelector from '../components/ModeSelector';
-import { COLORS } from '../theme/colors';
-import { styles } from '../theme/styles';
-
-function CameraEnhanceScreenInner({ navigation }) {
-  const { hasPermission, requestPermission } = useCameraPermission();
-  const isFocused = useIsFocused();
-  const [cameraPosition, setCameraPosition] = useState('back');
-  const [cvdType, setCvdType] = useState('Protan');
-  const [algorithm, setAlgorithm] = useState('daltonization');
-  const [showModal, setShowModal] = useState(false);
-  const [cameraReady, setCameraReady] = useState(false);
-  const [frozen, setFrozen] = useState(false);
-  const [processing, setProcessing] = useState(false);
-  const [progress, setProgress] = useState('');
-  const [resultUri, setResultUri] = useState(null);
-  const [showOriginal, setShowOriginal] = useState(false);
-
-  const cameraRef = useRef(null);
-  const isMountedRef = useRef(true);
-  const decodedRef = useRef(null);
-  const frozenUriRef = useRef(null);
-  const intensityRef = useRef(100);
-  const [intensity, setIntensity] = useState(100);
-  const device = useCameraDevice(cameraPosition);
-
-  useEffect(() => {
-    AsyncStorage.getItem('@recolor_intensity').then((val) => {
-      if (val !== null) {
-        const v = Number(val);
-        intensityRef.current = v;
-        setIntensity(v);
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => { isMountedRef.current = false; };
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => { if (isMountedRef.current) setCameraReady(true); }, 700);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    const unsub = navigation.addListener('beforeRemove', () => setCameraReady(false));
-    return unsub;
-  }, [navigation]);
-
-  useEffect(() => {
-    if (!hasPermission) requestPermission();
-  }, []);
-
-  const runEnhancement = useCallback((cvd, algo) => {
-    if (!decodedRef.current) return null;
-    if (cvd === 'Off') return null;
-    const { data, width: w, height: h } = decodedRef.current;
-    const src = { data, width: w, height: h };
-    const enhanced = algo === 'hue_rotation' ? applyHueRotation(src, cvd) : applyDaltonization(src, null, cvd);
-
-    const blend = intensityRef.current / 100;
-    if (blend >= 1) return encodeToDataUri(enhanced, w, h);
-
-    const blended = new Uint8Array(data.length);
-    for (let i = 0; i < data.length; i += 4) {
-      blended[i]     = Math.round(data[i]     * (1 - blend) + enhanced[i]     * blend);
-      blended[i + 1] = Math.round(data[i + 1] * (1 - blend) + enhanced[i + 1] * blend);
-      blended[i + 2] = Math.round(data[i + 2] * (1 - blend) + enhanced[i + 2] * blend);
-      blended[i + 3] = data[i + 3];
-    }
-    return encodeToDataUri(blended, w, h);
-  }, []);
-
-  const handleIntensityChange = useCallback((val) => {
-    intensityRef.current = val;
-    setIntensity(val);
-  }, []);
-
-  const handleIntensityCommit = useCallback((val) => {
-    intensityRef.current = val;
-    setIntensity(val);
-    AsyncStorage.setItem('@recolor_intensity', String(val));
-    if (!frozen || !decodedRef.current) return;
-    setProcessing(true);
-    setProgress('Adjusting...');
-    setTimeout(() => {
-      const uri = runEnhancement(cvdType, algorithm);
-      if (isMountedRef.current) {
-        setResultUri(uri || frozenUriRef.current);
-        setProcessing(false);
-        setProgress('');
-      }
-    }, 50);
-  }, [frozen, cvdType, algorithm, runEnhancement]);
-
-  const handleFreeze = useCallback(async () => {
-    if (!cameraRef.current) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    setProcessing(true);
-    setProgress('Capturing...');
-    AppLog.log('CameraEnhance', 'freeze: capturing photo');
-
-    try {
-      const photo = await cameraRef.current.takePhoto({ qualityPrioritization: 'quality', enableShutterSound: false });
-      if (!photo?.path) throw new Error('takePhoto returned no path');
-      const fileUri = `file://${photo.path}`;
-
-      // Save original to gallery
-      const { status: mlStatus } = await MediaLibrary.requestPermissionsAsync();
-      if (mlStatus === 'granted') {
-        MediaLibrary.saveToLibraryAsync(fileUri).catch(() => {});
-      }
-
-      setProgress('Resizing...');
-      const SIM_MAX = 1040;
-      const resized = await ImageManipulator.manipulateAsync(
-        fileUri,
-        [{ resize: photo.width >= photo.height ? { width: Math.min(SIM_MAX, photo.width) } : { height: Math.min(SIM_MAX, photo.height) } }],
-        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.92 },
-      );
-      if (!isMountedRef.current) return;
-
-      frozenUriRef.current = resized.uri;
-      setProgress('Decoding...');
-      const decoded = decodeJpegBase64(resized.base64);
-      decodedRef.current = decoded;
-      AppLog.log('CameraEnhance', `decoded: ${decoded.width}x${decoded.height}`);
-
-      setProgress('Enhancing...');
-      await new Promise((r) => setTimeout(r, 0));
-      const uri = runEnhancement(cvdType, algorithm);
-
-      if (isMountedRef.current) {
-        setResultUri(uri || frozenUriRef.current);
-        setFrozen(true);
-        setProcessing(false);
-        setProgress('');
-      }
-    } catch (e) {
-      AppLog.log('CameraEnhance', `freeze error: ${e?.message || e}`);
-      if (isMountedRef.current) {
-        setProcessing(false);
-        setProgress('');
-        Alert.alert('Error', `Processing failed: ${e?.message || 'unknown error'}`);
-      }
-    }
-  }, [cvdType, algorithm, runEnhancement]);
-
-  const handleCvdChange = useCallback((newType) => {
-    if (newType === cvdType) return;
-    setCvdType(newType);
-    if (!frozen || !decodedRef.current) return;
-    setProcessing(true);
-    setProgress('Re-enhancing...');
-    setTimeout(() => {
-      const uri = runEnhancement(newType, algorithm);
-      if (isMountedRef.current) { setResultUri(uri || frozenUriRef.current); setProcessing(false); setProgress(''); }
-    }, 50);
-  }, [cvdType, frozen, algorithm, runEnhancement]);
-
-  const handleAlgorithmChange = useCallback((newAlgo) => {
-    if (newAlgo === algorithm) return;
-    setAlgorithm(newAlgo);
-    if (!frozen || !decodedRef.current) return;
-    setProcessing(true);
-    setProgress('Re-enhancing...');
-    setTimeout(() => {
-      const uri = runEnhancement(cvdType, newAlgo);
-      if (isMountedRef.current) { setResultUri(uri || frozenUriRef.current); setProcessing(false); setProgress(''); }
-    }, 50);
-  }, [algorithm, frozen, cvdType, runEnhancement]);
-
-  const handleReset = useCallback(() => {
-    setFrozen(false);
-    setResultUri(null);
-    setProcessing(false);
-    setProgress('');
-    setShowOriginal(false);
-    decodedRef.current = null;
-    frozenUriRef.current = null;
-    AppLog.log('CameraEnhance', 'reset to live preview');
-  }, []);
-
-  const handleSave = useCallback(async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permission needed', 'Please allow access to save photos.'); return; }
-      if (!resultUri) { Alert.alert('Error', 'Nothing to save.'); return; }
-      const b64 = resultUri.split(',')[1];
-      const tmpPath = `${FileSystem.cacheDirectory}recolor_enhance_${Date.now()}.jpg`;
-      await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: FileSystem.EncodingType.Base64 });
-      await MediaLibrary.saveToLibraryAsync(tmpPath);
-      Alert.alert('Saved', 'Enhanced photo saved to your gallery.');
-    } catch (e) {
-      AppLog.log('CameraEnhance', `save error: ${e?.message || e}`);
-      Alert.alert('Error', 'Could not save photo.');
-    }
-  }, [resultUri]);
-
-  if (!hasPermission) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ textAlign: 'center', marginBottom: 20 }}>We need camera access for color enhancement.</Text>
-        <TouchableOpacity style={styles.btnPrimary} onPress={requestPermission}>
-          <Text style={styles.btnText}>Grant Permission</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const displayUri = frozen ? (showOriginal ? frozenUriRef.current : resultUri) : null;
-
-  return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
-      {device && cameraReady && !frozen && (
-        <Camera ref={cameraRef} style={StyleSheet.absoluteFill} device={device} isActive={isFocused && !frozen} photo enableShutterSound={false} />
-      )}
-      {frozen && displayUri && <Image source={{ uri: displayUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />}
-
-      {processing && (
-        <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
-          <ActivityIndicator size="large" color="#FFF" />
-          <Text style={{ color: '#FFF', fontSize: 14, marginTop: 12, fontWeight: '600' }}>{progress || 'Processing...'}</Text>
-        </View>
-      )}
-
-      {frozen && !processing && (
-        <View
-          style={{ position: 'absolute', top: 120, left: 80, right: 80, bottom: 140, zIndex: 1 }}
-          onStartShouldSetResponder={() => true}
-          onResponderGrant={() => setShowOriginal(true)}
-          onResponderRelease={() => setShowOriginal(false)}
-          onResponderTerminate={() => setShowOriginal(false)}
-        />
-      )}
-
-      <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
-        <View style={styles.camTopBar}>
-          <TouchableOpacity onPress={() => { if (frozen) handleReset(); else navigation.goBack(); }} style={{ padding: 5 }}>
-            <Ionicons name={frozen ? 'close' : 'arrow-back'} size={24} color="#FFF" />
-          </TouchableOpacity>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ color: '#FFF', fontWeight: 'bold', marginRight: 10, textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: -1, height: 1 }, textShadowRadius: 10 }}>
-              {frozen ? (cvdType === 'Off' ? 'Original' : `${cvdType} · ${algorithm === 'hue_rotation' ? 'Hue Rotate' : 'Daltonize'}`) : 'Color Enhancement'}
-            </Text>
-            {!frozen && <TouchableOpacity onPress={() => setShowModal(true)}><Ionicons name="menu" size={28} color="#FFF" /></TouchableOpacity>}
-          </View>
-        </View>
-
-        {frozen && (
-          <View style={{ position: 'absolute', top: 100, right: 20, alignItems: 'center', zIndex: 2 }}>
-            {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
-              <TouchableOpacity key={m} onPress={() => handleCvdChange(m)} disabled={processing} style={[styles.filterBtn, { backgroundColor: cvdType === m ? COLORS.primary : 'rgba(0,0,0,0.5)', marginBottom: 15, opacity: processing ? 0.4 : 1 }]}>
-                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 10 }}>{m === 'Off' ? 'Off' : m.charAt(0)}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        {frozen && (
-          <View style={{ position: 'absolute', top: 100, left: 20, alignItems: 'center', zIndex: 2 }}>
-            {[{ key: 'daltonization', label: 'DAL' }, { key: 'hue_rotation', label: 'HUE' }].map((a) => (
-              <TouchableOpacity key={a.key} onPress={() => handleAlgorithmChange(a.key)} disabled={processing || cvdType === 'Off'} style={[styles.filterBtn, { backgroundColor: algorithm === a.key ? COLORS.primary : 'rgba(0,0,0,0.5)', marginBottom: 15, opacity: processing || cvdType === 'Off' ? 0.4 : 1, minWidth: 42 }]}>
-                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 10 }}>{a.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        {frozen && !processing && (
-          <View style={{ position: 'absolute', top: '55%', alignSelf: 'center', pointerEvents: 'none' }}>
-            <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 }}>
-              <Text style={{ color: '#AAA', fontSize: 11 }}>{showOriginal ? 'Showing original' : 'Long-press for original'}</Text>
-            </View>
-          </View>
-        )}
-
-        <View style={{ position: 'absolute', bottom: 30, left: 0, right: 0, zIndex: 2 }}>
-          {frozen && !processing && cvdType !== 'Off' && (
-            <View style={{ alignItems: 'center', marginBottom: 12, paddingHorizontal: 30 }}>
-              <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, marginBottom: 2 }}>
-                Intensity: {Math.round(intensity)}%
-              </Text>
-              <Slider
-                style={{ width: '80%', height: 36 }}
-                minimumValue={0}
-                maximumValue={100}
-                step={1}
-                value={intensity}
-                minimumTrackTintColor={COLORS.primary}
-                maximumTrackTintColor="rgba(255,255,255,0.3)"
-                thumbTintColor="#FFF"
-                onValueChange={handleIntensityChange}
-                onSlidingComplete={handleIntensityCommit}
-              />
-            </View>
-          )}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
-            {frozen ? (
-              <>
-                <TouchableOpacity onPress={handleReset}><Ionicons name="refresh" size={30} color="#FFF" /></TouchableOpacity>
-                <View style={{ width: 70 }} />
-                <TouchableOpacity onPress={handleSave} disabled={!resultUri || processing}>
-                  <Ionicons name="download-outline" size={30} color={!resultUri || processing ? '#666' : '#FFF'} />
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <TouchableOpacity onPress={() => setCameraPosition((p) => (p === 'back' ? 'front' : 'back'))}>
-                  <Ionicons name="camera-reverse" size={30} color="#FFF" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.shutterBtn} onPress={handleFreeze}>
-                  <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' }}>
-                    <Ionicons name="snow" size={24} color="#333" />
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => navigation.navigate('CVDGallery')}>
-                  <Ionicons name="images" size={30} color="#FFF" />
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-
-        <ModeSelector visible={showModal} onClose={() => setShowModal(false)} navigation={navigation} currentMode="Enhancement" />
-      </SafeAreaView>
-    </View>
-  );
-}
-
-export default function CameraEnhanceScreen(props) {
-  return (
-    <ScreenErrorBoundary navigation={props.navigation}>
-      <CameraEnhanceScreenInner {...props} />
-    </ScreenErrorBoundary>
-  );
-}
-</file>
-
 <file path="src/screens/ColorIdentifierScreen.js">
 import { Ionicons } from '@expo/vector-icons';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -72196,345 +71501,6 @@ export default function ColorIdentifierScreen(props) {
 }
 </file>
 
-<file path="src/screens/CVDGalleryScreen.js">
-import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
-import * as Haptics from 'expo-haptics';
-import * as ImageManipulator from 'expo-image-manipulator';
-import * as ImagePicker from 'expo-image-picker';
-import * as MediaLibrary from 'expo-media-library';
-import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { decodeJpegBase64, encodeToDataUri, getCVDRows } from '../../tensorHelper';
-import { CAPTURE_SIZE } from '../utils/constants';
-import { COLORS } from '../theme/colors';
-import { styles } from '../theme/styles';
-
-const { width } = Dimensions.get('window');
-
-export default function CVDGalleryScreen({ navigation }) {
-  const [originalUri, setOriginalUri] = useState(null);
-  const [displayUri, setDisplayUri] = useState(null);
-  const [mode, setMode] = useState('Off');
-  const [processing, setProcessing] = useState(false);
-
-  const pickImage = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 1 });
-    if (!result.canceled) {
-      const uri = result.assets[0].uri;
-      setOriginalUri(uri);
-      setDisplayUri(uri);
-      setMode('Off');
-    }
-  };
-
-  const handleSave = async () => {
-    if (!displayUri) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permission needed', 'Please allow access to save photos.'); return; }
-      let savePath = displayUri;
-      if (displayUri.startsWith('data:')) {
-        const b64 = displayUri.split(',')[1];
-        savePath = `${FileSystem.cacheDirectory}recolor_gallery_${Date.now()}.jpg`;
-        await FileSystem.writeAsStringAsync(savePath, b64, { encoding: FileSystem.EncodingType.Base64 });
-      }
-      await MediaLibrary.saveToLibraryAsync(savePath);
-      Alert.alert('Saved', 'Image saved to your gallery.');
-    } catch (e) {
-      Alert.alert('Error', 'Could not save image.');
-    }
-  };
-
-  const applyFilter = async (cvdMode) => {
-    setMode(cvdMode);
-    if (cvdMode === 'Off' || !originalUri) { setDisplayUri(originalUri); return; }
-    setProcessing(true);
-    try {
-      const resized = await ImageManipulator.manipulateAsync(originalUri, [{ resize: { width: CAPTURE_SIZE } }], { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 });
-      const rawImage = decodeJpegBase64(resized.base64);
-      const { row0, row1, row2 } = getCVDRows(cvdMode);
-      const pixels = rawImage.data;
-      for (let i = 0; i < pixels.length; i += 4) {
-        const r = Math.pow(pixels[i] / 255, 2.2);
-        const g = Math.pow(pixels[i + 1] / 255, 2.2);
-        const b = Math.pow(pixels[i + 2] / 255, 2.2);
-        const sr = Math.max(0, Math.min(1, row0[0] * r + row0[1] * g + row0[2] * b));
-        const sg = Math.max(0, Math.min(1, row1[0] * r + row1[1] * g + row1[2] * b));
-        const sb = Math.max(0, Math.min(1, row2[0] * r + row2[1] * g + row2[2] * b));
-        pixels[i] = Math.round(Math.pow(sr, 1 / 2.2) * 255);
-        pixels[i + 1] = Math.round(Math.pow(sg, 1 / 2.2) * 255);
-        pixels[i + 2] = Math.round(Math.pow(sb, 1 / 2.2) * 255);
-      }
-      setDisplayUri(encodeToDataUri(pixels, rawImage.width, rawImage.height));
-    } catch (e) {
-      console.warn('[CVDGallery] filter error:', e);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
-      <SafeAreaView style={{ flex: 1 }}>
-        <View style={styles.camTopBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
-          </TouchableOpacity>
-          <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Gallery Analysis</Text>
-          <TouchableOpacity onPress={pickImage}>
-            <Ionicons name="add-circle" size={28} color="#FFF" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          {displayUri ? (
-            <View style={{ width, height: width * 1.3 }}>
-              <Image source={{ uri: displayUri }} style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
-              {processing && (
-                <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }]}>
-                  <ActivityIndicator size="large" color="#FFF" />
-                  <Text style={{ color: '#FFF', marginTop: 10 }}>Applying simulation...</Text>
-                </View>
-              )}
-            </View>
-          ) : (
-            <TouchableOpacity onPress={pickImage} style={{ alignItems: 'center' }}>
-              <Ionicons name="images-outline" size={60} color="#555" />
-              <Text style={{ color: '#777', marginTop: 10 }}>Tap to pick an image</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {originalUri && (
-          <View style={{ paddingBottom: 30 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 14 }}>
-              {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
-                <TouchableOpacity
-                  key={m}
-                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); applyFilter(m); }}
-                  disabled={processing}
-                  style={{ backgroundColor: mode === m ? COLORS.primary : '#333', padding: 10, borderRadius: 20, paddingHorizontal: 20, opacity: processing ? 0.5 : 1 }}
-                >
-                  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{m}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity
-              onPress={handleSave}
-              disabled={processing}
-              style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.primary, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 24, opacity: processing ? 0.5 : 1 }}
-            >
-              <Ionicons name="download-outline" size={20} color="#FFF" />
-              <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 15 }}>Save to Gallery</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </SafeAreaView>
-    </View>
-  );
-}
-</file>
-
-<file path="src/screens/CVDSimulationScreen.js">
-import { Canvas, Image as SkiaImage, RuntimeShader, useCanvasRef, useImage } from '@shopify/react-native-skia';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImageManipulator from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
-import * as Haptics from 'expo-haptics';
-import * as MediaLibrary from 'expo-media-library';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
-import { useIsFocused } from '@react-navigation/native';
-import { getCVDRows } from '../../tensorHelper';
-import { ScreenErrorBoundary } from '../utils/logger';
-import { CVD_EFFECT } from '../utils/constants';
-import ModeSelector from '../components/ModeSelector';
-import { COLORS } from '../theme/colors';
-import { styles } from '../theme/styles';
-
-const { width, height: screenHeight } = Dimensions.get('window');
-
-function CVDSimulationScreenInner({ navigation, route }) {
-  const { hasPermission, requestPermission } = useCameraPermission();
-  const isFocused = useIsFocused();
-  const [cameraPosition, setCameraPosition] = useState('back');
-  const [cvdType, setCvdType] = useState(route?.params?.initialCvdType || 'Protan');
-  const [showModal, setShowModal] = useState(false);
-  const [frozen, setFrozen] = useState(false);
-  const [frozenUri, setFrozenUri] = useState(null);
-  const [processing, setProcessing] = useState(false);
-
-  const cameraRef = useRef(null);
-  const isMountedRef = useRef(true);
-  const canvasRef = useCanvasRef();
-  const device = useCameraDevice(cameraPosition);
-  const skImage = useImage(frozenUri);
-  const cvdUniforms = useMemo(() => getCVDRows(cvdType), [cvdType]);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => { isMountedRef.current = false; };
-  }, []);
-
-  useEffect(() => {
-    if (!hasPermission) requestPermission();
-  }, []);
-
-  useEffect(() => {
-    const unsub = navigation.addListener('beforeRemove', () => setFrozen(true));
-    return unsub;
-  }, [navigation]);
-
-  const handleFreeze = useCallback(async () => {
-    if (!cameraRef.current) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    setProcessing(true);
-    try {
-      const photo = await cameraRef.current.takePhoto({ qualityPrioritization: 'quality', enableShutterSound: false });
-      if (!photo?.path) throw new Error('takePhoto returned no path');
-      const fileUri = `file://${photo.path}`;
-
-      // Save original to gallery
-      const { status: mlStatus } = await MediaLibrary.requestPermissionsAsync();
-      if (mlStatus === 'granted') {
-        MediaLibrary.saveToLibraryAsync(fileUri).catch(() => {});
-      }
-
-      const SIM_MAX = 1040;
-      const resized = await ImageManipulator.manipulateAsync(
-        fileUri,
-        [{ resize: photo.width >= photo.height ? { width: Math.min(SIM_MAX, photo.width) } : { height: Math.min(SIM_MAX, photo.height) } }],
-        { format: ImageManipulator.SaveFormat.JPEG, compress: 0.92 },
-      );
-      if (!isMountedRef.current) return;
-      setFrozenUri(resized.uri);
-      setFrozen(true);
-      setProcessing(false);
-    } catch (e) {
-      if (isMountedRef.current) { setProcessing(false); Alert.alert('Error', `Capture failed: ${e?.message || 'unknown error'}`); }
-    }
-  }, []);
-
-  const handleReset = useCallback(() => { setFrozen(false); setFrozenUri(null); setProcessing(false); }, []);
-
-  const handleSave = useCallback(async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permission needed', 'Please allow access to save photos.'); return; }
-      const snapshot = canvasRef.current?.makeImageSnapshot();
-      if (!snapshot) { Alert.alert('Error', 'Nothing to save.'); return; }
-      const b64 = snapshot.encodeToBase64();
-      const tmpPath = `${FileSystem.cacheDirectory}recolor_sim_${Date.now()}.png`;
-      await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: FileSystem.EncodingType.Base64 });
-      await MediaLibrary.saveToLibraryAsync(tmpPath);
-      Alert.alert('Saved', 'Photo saved to your gallery.');
-    } catch (e) {
-      Alert.alert('Error', 'Could not save photo.');
-    }
-  }, []);
-
-  if (!hasPermission) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ marginBottom: 20 }}>Camera access is needed for simulation.</Text>
-        <TouchableOpacity style={styles.btnPrimary} onPress={requestPermission}>
-          <Text style={styles.btnText}>Grant Permission</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
-      {device && !frozen && (
-        <Camera ref={cameraRef} style={StyleSheet.absoluteFill} device={device} isActive={isFocused && !frozen} photo />
-      )}
-      {frozen && skImage && (
-        <Canvas ref={canvasRef} style={StyleSheet.absoluteFill}>
-          <SkiaImage image={skImage} x={0} y={0} width={width} height={screenHeight} fit="cover">
-            {cvdType !== 'Off' && CVD_EFFECT && <RuntimeShader source={CVD_EFFECT} uniforms={cvdUniforms} />}
-          </SkiaImage>
-        </Canvas>
-      )}
-
-      {(processing || (frozen && frozenUri && !skImage)) && (
-        <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
-          <ActivityIndicator size="large" color="#FFF" />
-          <Text style={{ color: '#FFF', fontSize: 14, marginTop: 12, fontWeight: '600' }}>{processing ? 'Capturing...' : 'Loading image...'}</Text>
-        </View>
-      )}
-
-      <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
-        <View style={styles.camTopBar}>
-          <TouchableOpacity onPress={() => { if (frozen) handleReset(); else navigation.goBack(); }} style={{ padding: 5 }}>
-            <Ionicons name={frozen ? 'close' : 'arrow-back'} size={24} color="#FFF" />
-          </TouchableOpacity>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ color: '#FFF', fontWeight: 'bold', marginRight: 10, textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: -1, height: 1 }, textShadowRadius: 10 }}>
-              {frozen ? (cvdType === 'Off' ? 'Original' : `${cvdType} Simulation`) : 'CVD Simulation'}
-            </Text>
-            {!frozen && <TouchableOpacity onPress={() => setShowModal(true)}><Ionicons name="menu" size={28} color="#FFF" /></TouchableOpacity>}
-          </View>
-        </View>
-
-        {frozen && (
-          <View style={{ position: 'absolute', top: 100, right: 20, alignItems: 'center', zIndex: 2 }}>
-            {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
-              <TouchableOpacity key={m} onPress={() => setCvdType(m)} disabled={processing} style={[styles.filterBtn, { backgroundColor: cvdType === m ? COLORS.primary : 'rgba(0,0,0,0.5)', marginBottom: 15, opacity: processing ? 0.4 : 1 }]}>
-                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 10 }}>{m === 'Off' ? 'Off' : m.charAt(0)}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        <View style={{ position: 'absolute', bottom: 30, left: 0, right: 0, zIndex: 2 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
-            {frozen ? (
-              <>
-                <TouchableOpacity onPress={handleReset}><Ionicons name="refresh" size={30} color="#FFF" /></TouchableOpacity>
-                <View style={{ width: 70 }} />
-                <TouchableOpacity onPress={handleSave} disabled={!skImage}>
-                  <Ionicons name="download-outline" size={30} color={!skImage ? '#666' : '#FFF'} />
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <TouchableOpacity onPress={() => setCameraPosition((p) => (p === 'back' ? 'front' : 'back'))}>
-                  <Ionicons name="camera-reverse" size={30} color="#FFF" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.shutterBtn} onPress={handleFreeze}>
-                  <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' }}>
-                    <Ionicons name="snow" size={24} color="#333" />
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => navigation.navigate('CVDGallery')}>
-                  <Ionicons name="images" size={30} color="#FFF" />
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-
-        <ModeSelector visible={showModal} onClose={() => setShowModal(false)} navigation={navigation} currentMode="Simulation" />
-      </SafeAreaView>
-    </View>
-  );
-}
-
-export default function CVDSimulationScreen(props) {
-  return (
-    <ScreenErrorBoundary navigation={props.navigation}>
-      <CVDSimulationScreenInner {...props} />
-    </ScreenErrorBoundary>
-  );
-}
-</file>
-
 <file path="src/screens/EducationListScreen.js">
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -72685,6 +71651,280 @@ export default function ProfileScreen({ navigation }) {
     </View>
   );
 }
+</file>
+
+<file path="src/screens/SignUp.js">
+import { Ionicons } from '@expo/vector-icons';
+import { MotiView } from 'moti';
+import React, { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { auth, createUserWithEmailAndPassword } from '../../firebaseConfig';
+import { COLORS, RADIUS, SHADOW, SPACING } from '../theme/colors';
+
+const APP_VERSION = 'v1.0.4-thesis';
+
+export default function SignUp({ navigation }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSignUp = async () => {
+    if (!email.trim() || !password || !confirmPassword) {
+      Alert.alert('Missing Fields', 'Please fill in all fields.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert('Password Mismatch', 'Passwords do not match. Please try again.');
+      return;
+    }
+    if (password.length < 6) {
+      Alert.alert('Weak Password', 'Password must be at least 6 characters.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await createUserWithEmailAndPassword(auth, email.trim(), password);
+      navigation.replace('MainTabs');
+    } catch (err) {
+      if (err.code === 'auth/email-already-in-use') {
+        Alert.alert('Account Exists', 'An account with this email already exists. Please log in instead.');
+      } else if (err.code === 'auth/invalid-email') {
+        Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      } else {
+        Alert.alert('Sign Up Error', err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <View style={styles.blob1} />
+      <View style={styles.blob2} />
+      <View style={styles.blob3} />
+
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <MotiView
+          from={{ opacity: 0, translateY: -20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'spring', damping: 18 }}
+          style={styles.logoWrap}
+        >
+          <Image
+            source={require('../../assets/logo_stack.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </MotiView>
+
+        <MotiView
+          from={{ opacity: 0, translateY: 30 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'spring', damping: 18, delay: 150 }}
+          style={styles.card}
+        >
+          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.subtitle}>Join ReColor to track your colour perception</Text>
+
+          {/* Email */}
+          <View style={styles.inputRow}>
+            <Ionicons name="mail-outline" size={18} color={COLORS.textLight} />
+            <TextInput
+              style={styles.input}
+              placeholder="you@example.com"
+              placeholderTextColor={COLORS.textLight}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+          </View>
+
+          {/* Password */}
+          <View style={styles.inputRow}>
+            <Ionicons name="key-outline" size={18} color={COLORS.textLight} />
+            <TextInput
+              style={styles.input}
+              placeholder="Password (min 6 characters)"
+              placeholderTextColor={COLORS.textLight}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPass}
+            />
+            <TouchableOpacity onPress={() => setShowPass(!showPass)}>
+              <Ionicons
+                name={showPass ? 'eye-off-outline' : 'eye-outline'}
+                size={18}
+                color={COLORS.textLight}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Confirm Password */}
+          <View style={styles.inputRow}>
+            <Ionicons name="shield-checkmark-outline" size={18} color={COLORS.textLight} />
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm password"
+              placeholderTextColor={COLORS.textLight}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirm}
+            />
+            <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
+              <Ionicons
+                name={showConfirm ? 'eye-off-outline' : 'eye-outline'}
+                size={18}
+                color={COLORS.textLight}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Create Account button */}
+          <TouchableOpacity
+            style={styles.signUpBtn}
+            onPress={handleSignUp}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.signUpBtnText}>Create Account</Text>
+            )}
+          </TouchableOpacity>
+
+          {/* Back to Login */}
+          <TouchableOpacity
+            style={styles.loginLink}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.loginLinkText}>
+              Already have an account?{' '}
+              <Text style={{ color: COLORS.primary, fontWeight: '700' }}>Log In</Text>
+            </Text>
+          </TouchableOpacity>
+        </MotiView>
+
+        <MotiView
+          from={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 500 }}
+          style={styles.versionBadge}
+        >
+          <Text style={styles.versionText}>{APP_VERSION}</Text>
+        </MotiView>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: COLORS.background },
+  blob1: {
+    position: 'absolute', top: -60, left: -60, width: 220, height: 220,
+    borderRadius: 110, backgroundColor: '#FFCDD2', opacity: 0.45,
+  },
+  blob2: {
+    position: 'absolute', bottom: -80, right: -60, width: 280, height: 280,
+    borderRadius: 140, backgroundColor: '#BBDEFB', opacity: 0.4,
+  },
+  blob3: {
+    position: 'absolute', top: '40%', right: -40, width: 150, height: 150,
+    borderRadius: 75, backgroundColor: '#E1BEE7', opacity: 0.35,
+  },
+  scroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xl,
+  },
+  logoWrap: { alignItems: 'center', marginBottom: SPACING.lg },
+  logo: { width: 180, height: 100 },
+  card: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    ...SHADOW.lg,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: COLORS.textLight,
+    textAlign: 'center',
+    marginBottom: SPACING.lg,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 12,
+    marginBottom: SPACING.sm,
+    backgroundColor: COLORS.background,
+    gap: SPACING.sm,
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: COLORS.text,
+  },
+  signUpBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: SPACING.md,
+    ...SHADOW.sm,
+  },
+  signUpBtnText: { color: '#FFF', fontWeight: '700', fontSize: 16 },
+  loginLink: {
+    alignItems: 'center',
+    marginTop: SPACING.lg,
+    padding: SPACING.sm,
+  },
+  loginLinkText: { fontSize: 14, color: COLORS.textLight },
+  versionBadge: {
+    alignSelf: 'center',
+    marginTop: SPACING.lg,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: COLORS.surfaceAlt,
+  },
+  versionText: { fontSize: 11, color: COLORS.primary, fontWeight: '600' },
+});
 </file>
 
 <file path="src/screens/SplashScreen.js">
@@ -75929,6 +75169,701 @@ const styles = StyleSheet.create({
 });
 </file>
 
+<file path="src/screens/CameraEnhanceScreen.js">
+import Slider from '@react-native-community/slider';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as FileSystem from 'expo-file-system';
+import * as Haptics from 'expo-haptics';
+import * as MediaLibrary from 'expo-media-library';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
+import { useIsFocused } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { applyDaltonization, applyHueRotation, decodeJpegBase64, encodeToDataUri } from '../../tensorHelper';
+import { AppLog, ScreenErrorBoundary } from '../utils/logger';
+import ModeSelector from '../components/ModeSelector';
+import { COLORS } from '../theme/colors';
+import { styles } from '../theme/styles';
+
+function CameraEnhanceScreenInner({ navigation }) {
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const isFocused = useIsFocused();
+  const [cameraPosition, setCameraPosition] = useState('back');
+  const [cvdType, setCvdType] = useState('Protan');
+  const [algorithm, setAlgorithm] = useState('daltonization');
+  const [showModal, setShowModal] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [frozen, setFrozen] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [progress, setProgress] = useState('');
+  const [resultUri, setResultUri] = useState(null);
+  const [showOriginal, setShowOriginal] = useState(false);
+
+  const cameraRef = useRef(null);
+  const isMountedRef = useRef(true);
+  const decodedRef = useRef(null);
+  const frozenUriRef = useRef(null);
+  const intensityRef = useRef(100);
+  const [intensity, setIntensity] = useState(100);
+  const device = useCameraDevice(cameraPosition);
+
+  useEffect(() => {
+    AsyncStorage.getItem('@recolor_intensity').then((val) => {
+      if (val !== null) {
+        const v = Number(val);
+        intensityRef.current = v;
+        setIntensity(v);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => { if (isMountedRef.current) setCameraReady(true); }, 700);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const unsub = navigation.addListener('beforeRemove', () => setCameraReady(false));
+    return unsub;
+  }, [navigation]);
+
+  useEffect(() => {
+    if (!hasPermission) requestPermission();
+  }, []);
+
+  const runEnhancement = useCallback((cvd, algo) => {
+    if (!decodedRef.current) return null;
+    if (cvd === 'Off') return null;
+    const { data, width: w, height: h } = decodedRef.current;
+    const src = { data, width: w, height: h };
+    const enhanced = algo === 'hue_rotation' ? applyHueRotation(src, cvd) : applyDaltonization(src, null, cvd);
+
+    const blend = intensityRef.current / 100;
+    if (blend >= 1) return encodeToDataUri(enhanced, w, h);
+
+    const blended = new Uint8Array(data.length);
+    for (let i = 0; i < data.length; i += 4) {
+      blended[i]     = Math.round(data[i]     * (1 - blend) + enhanced[i]     * blend);
+      blended[i + 1] = Math.round(data[i + 1] * (1 - blend) + enhanced[i + 1] * blend);
+      blended[i + 2] = Math.round(data[i + 2] * (1 - blend) + enhanced[i + 2] * blend);
+      blended[i + 3] = data[i + 3];
+    }
+    return encodeToDataUri(blended, w, h);
+  }, []);
+
+  const handleIntensityChange = useCallback((val) => {
+    intensityRef.current = val;
+    setIntensity(val);
+  }, []);
+
+  const handleIntensityCommit = useCallback((val) => {
+    intensityRef.current = val;
+    setIntensity(val);
+    AsyncStorage.setItem('@recolor_intensity', String(val));
+    if (!frozen || !decodedRef.current) return;
+    setProcessing(true);
+    setProgress('Adjusting...');
+    setTimeout(() => {
+      const uri = runEnhancement(cvdType, algorithm);
+      if (isMountedRef.current) {
+        setResultUri(uri || frozenUriRef.current);
+        setProcessing(false);
+        setProgress('');
+      }
+    }, 50);
+  }, [frozen, cvdType, algorithm, runEnhancement]);
+
+  const handleFreeze = useCallback(async () => {
+    if (!cameraRef.current) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setProcessing(true);
+    setProgress('Capturing...');
+    AppLog.log('CameraEnhance', 'freeze: capturing photo');
+
+    try {
+      const photo = await cameraRef.current.takePhoto({ qualityPrioritization: 'quality', enableShutterSound: false });
+      if (!photo?.path) throw new Error('takePhoto returned no path');
+      const fileUri = `file://${photo.path}`;
+
+      // Save original to gallery
+      const { status: mlStatus } = await MediaLibrary.requestPermissionsAsync();
+      if (mlStatus === 'granted') {
+        MediaLibrary.saveToLibraryAsync(fileUri).catch(() => {});
+      }
+
+      setProgress('Resizing...');
+      const SIM_MAX = 1040;
+      const resized = await ImageManipulator.manipulateAsync(
+        fileUri,
+        [{ resize: photo.width >= photo.height ? { width: Math.min(SIM_MAX, photo.width) } : { height: Math.min(SIM_MAX, photo.height) } }],
+        { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.92 },
+      );
+      if (!isMountedRef.current) return;
+
+      frozenUriRef.current = resized.uri;
+      setProgress('Decoding...');
+      const decoded = decodeJpegBase64(resized.base64);
+      decodedRef.current = decoded;
+      AppLog.log('CameraEnhance', `decoded: ${decoded.width}x${decoded.height}`);
+
+      setProgress('Enhancing...');
+      await new Promise((r) => setTimeout(r, 0));
+      const uri = runEnhancement(cvdType, algorithm);
+
+      if (isMountedRef.current) {
+        setResultUri(uri || frozenUriRef.current);
+        setFrozen(true);
+        setProcessing(false);
+        setProgress('');
+      }
+    } catch (e) {
+      AppLog.log('CameraEnhance', `freeze error: ${e?.message || e}`);
+      if (isMountedRef.current) {
+        setProcessing(false);
+        setProgress('');
+        Alert.alert('Error', `Processing failed: ${e?.message || 'unknown error'}`);
+      }
+    }
+  }, [cvdType, algorithm, runEnhancement]);
+
+  const handleCvdChange = useCallback((newType) => {
+    if (newType === cvdType) return;
+    setCvdType(newType);
+    if (!frozen || !decodedRef.current) return;
+    setProcessing(true);
+    setProgress('Re-enhancing...');
+    setTimeout(() => {
+      const uri = runEnhancement(newType, algorithm);
+      if (isMountedRef.current) { setResultUri(uri || frozenUriRef.current); setProcessing(false); setProgress(''); }
+    }, 50);
+  }, [cvdType, frozen, algorithm, runEnhancement]);
+
+  const handleAlgorithmChange = useCallback((newAlgo) => {
+    if (newAlgo === algorithm) return;
+    setAlgorithm(newAlgo);
+    if (!frozen || !decodedRef.current) return;
+    setProcessing(true);
+    setProgress('Re-enhancing...');
+    setTimeout(() => {
+      const uri = runEnhancement(cvdType, newAlgo);
+      if (isMountedRef.current) { setResultUri(uri || frozenUriRef.current); setProcessing(false); setProgress(''); }
+    }, 50);
+  }, [algorithm, frozen, cvdType, runEnhancement]);
+
+  const handleReset = useCallback(() => {
+    setFrozen(false);
+    setResultUri(null);
+    setProcessing(false);
+    setProgress('');
+    setShowOriginal(false);
+    decodedRef.current = null;
+    frozenUriRef.current = null;
+    AppLog.log('CameraEnhance', 'reset to live preview');
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permission needed', 'Please allow access to save photos.'); return; }
+      if (!resultUri) { Alert.alert('Error', 'Nothing to save.'); return; }
+      const b64 = resultUri.split(',')[1];
+      const tmpPath = `${FileSystem.cacheDirectory}recolor_enhance_${Date.now()}.jpg`;
+      await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: FileSystem.EncodingType.Base64 });
+      await MediaLibrary.saveToLibraryAsync(tmpPath);
+      Alert.alert('Saved', 'Enhanced photo saved to your gallery.');
+    } catch (e) {
+      AppLog.log('CameraEnhance', `save error: ${e?.message || e}`);
+      Alert.alert('Error', 'Could not save photo.');
+    }
+  }, [resultUri]);
+
+  if (!hasPermission) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ textAlign: 'center', marginBottom: 20 }}>We need camera access for color enhancement.</Text>
+        <TouchableOpacity style={styles.btnPrimary} onPress={requestPermission}>
+          <Text style={styles.btnText}>Grant Permission</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const displayUri = frozen ? (showOriginal ? frozenUriRef.current : resultUri) : null;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
+      {device && cameraReady && !frozen && (
+        <Camera ref={cameraRef} style={StyleSheet.absoluteFill} device={device} isActive={isFocused && !frozen} photo enableShutterSound={false} />
+      )}
+      {frozen && displayUri && <Image source={{ uri: displayUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />}
+
+      {processing && (
+        <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
+          <ActivityIndicator size="large" color="#FFF" />
+          <Text style={{ color: '#FFF', fontSize: 14, marginTop: 12, fontWeight: '600' }}>{progress || 'Processing...'}</Text>
+        </View>
+      )}
+
+      {frozen && !processing && (
+        <View
+          style={{ position: 'absolute', top: 120, left: 80, right: 80, bottom: 140, zIndex: 1 }}
+          onStartShouldSetResponder={() => true}
+          onResponderGrant={() => setShowOriginal(true)}
+          onResponderRelease={() => setShowOriginal(false)}
+          onResponderTerminate={() => setShowOriginal(false)}
+        />
+      )}
+
+      <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
+        <View style={styles.camTopBar}>
+          <TouchableOpacity onPress={() => { if (frozen) handleReset(); else navigation.goBack(); }} style={{ padding: 5 }}>
+            <Ionicons name={frozen ? 'close' : 'arrow-back'} size={24} color="#FFF" />
+          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ color: '#FFF', fontWeight: 'bold', marginRight: 10, textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: -1, height: 1 }, textShadowRadius: 10 }}>
+              {frozen ? (cvdType === 'Off' ? 'Original' : `${cvdType} · ${algorithm === 'hue_rotation' ? 'Hue Rotate' : 'Daltonize'}`) : 'Color Enhancement'}
+            </Text>
+            {!frozen && <TouchableOpacity onPress={() => setShowModal(true)}><Ionicons name="menu" size={28} color="#FFF" /></TouchableOpacity>}
+          </View>
+        </View>
+
+        {frozen && (
+          <View style={{ position: 'absolute', top: 100, right: 20, alignItems: 'center', zIndex: 2 }}>
+            {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
+              <TouchableOpacity key={m} onPress={() => handleCvdChange(m)} disabled={processing} style={[styles.filterBtn, { backgroundColor: cvdType === m ? COLORS.primary : 'rgba(0,0,0,0.5)', marginBottom: 15, opacity: processing ? 0.4 : 1 }]}>
+                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 10 }}>{m === 'Off' ? 'Off' : m.charAt(0)}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {frozen && (
+          <View style={{ position: 'absolute', top: 100, left: 20, alignItems: 'center', zIndex: 2 }}>
+            {[{ key: 'daltonization', label: 'DAL' }, { key: 'hue_rotation', label: 'HUE' }].map((a) => (
+              <TouchableOpacity key={a.key} onPress={() => handleAlgorithmChange(a.key)} disabled={processing || cvdType === 'Off'} style={[styles.filterBtn, { backgroundColor: algorithm === a.key ? COLORS.primary : 'rgba(0,0,0,0.5)', marginBottom: 15, opacity: processing || cvdType === 'Off' ? 0.4 : 1, minWidth: 42 }]}>
+                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 10 }}>{a.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {frozen && !processing && (
+          <View style={{ position: 'absolute', top: '55%', alignSelf: 'center', pointerEvents: 'none' }}>
+            <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 }}>
+              <Text style={{ color: '#AAA', fontSize: 11 }}>{showOriginal ? 'Showing original' : 'Long-press for original'}</Text>
+            </View>
+          </View>
+        )}
+
+        <View style={{ position: 'absolute', bottom: 30, left: 0, right: 0, zIndex: 2 }}>
+          {frozen && !processing && cvdType !== 'Off' && (
+            <View style={{ alignItems: 'center', marginBottom: 12, paddingHorizontal: 30 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, marginBottom: 2 }}>
+                Intensity: {Math.round(intensity)}%
+              </Text>
+              <Slider
+                style={{ width: '80%', height: 36 }}
+                minimumValue={0}
+                maximumValue={100}
+                step={1}
+                value={intensity}
+                minimumTrackTintColor={COLORS.primary}
+                maximumTrackTintColor="rgba(255,255,255,0.3)"
+                thumbTintColor="#FFF"
+                onValueChange={handleIntensityChange}
+                onSlidingComplete={handleIntensityCommit}
+              />
+            </View>
+          )}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
+            {frozen ? (
+              <>
+                <TouchableOpacity onPress={handleReset}><Ionicons name="refresh" size={30} color="#FFF" /></TouchableOpacity>
+                <View style={{ width: 70 }} />
+                <TouchableOpacity onPress={handleSave} disabled={!resultUri || processing}>
+                  <Ionicons name="download-outline" size={30} color={!resultUri || processing ? '#666' : '#FFF'} />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <TouchableOpacity onPress={() => setCameraPosition((p) => (p === 'back' ? 'front' : 'back'))}>
+                  <Ionicons name="camera-reverse" size={30} color="#FFF" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.shutterBtn} onPress={handleFreeze}>
+                  <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' }}>
+                    <Ionicons name="snow" size={24} color="#333" />
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate('CVDGallery')}>
+                  <Ionicons name="images" size={30} color="#FFF" />
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+
+        <ModeSelector visible={showModal} onClose={() => setShowModal(false)} navigation={navigation} currentMode="Enhancement" />
+      </SafeAreaView>
+    </View>
+  );
+}
+
+export default function CameraEnhanceScreen(props) {
+  return (
+    <ScreenErrorBoundary navigation={props.navigation}>
+      <CameraEnhanceScreenInner {...props} />
+    </ScreenErrorBoundary>
+  );
+}
+</file>
+
+<file path="src/screens/CVDGalleryScreen.js">
+import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as Haptics from 'expo-haptics';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, Dimensions, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { decodeJpegBase64, encodeToDataUri, getCVDRows } from '../../tensorHelper';
+import { CAPTURE_SIZE } from '../utils/constants';
+import { COLORS } from '../theme/colors';
+import { styles } from '../theme/styles';
+
+const { width } = Dimensions.get('window');
+
+export default function CVDGalleryScreen({ navigation }) {
+  const [originalUri, setOriginalUri] = useState(null);
+  const [displayUri, setDisplayUri] = useState(null);
+  const [mode, setMode] = useState('Off');
+  const [processing, setProcessing] = useState(false);
+
+  const pickImage = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 1 });
+    if (!result.canceled) {
+      const uri = result.assets[0].uri;
+      setOriginalUri(uri);
+      setDisplayUri(uri);
+      setMode('Off');
+    }
+  };
+
+  const handleSave = async () => {
+    if (!displayUri) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permission needed', 'Please allow access to save photos.'); return; }
+      let savePath = displayUri;
+      if (displayUri.startsWith('data:')) {
+        const b64 = displayUri.split(',')[1];
+        savePath = `${FileSystem.cacheDirectory}recolor_gallery_${Date.now()}.jpg`;
+        await FileSystem.writeAsStringAsync(savePath, b64, { encoding: FileSystem.EncodingType.Base64 });
+      }
+      await MediaLibrary.saveToLibraryAsync(savePath);
+      Alert.alert('Saved', 'Image saved to your gallery.');
+    } catch (e) {
+      Alert.alert('Error', 'Could not save image.');
+    }
+  };
+
+  const applyFilter = async (cvdMode) => {
+    setMode(cvdMode);
+    if (cvdMode === 'Off' || !originalUri) { setDisplayUri(originalUri); return; }
+    setProcessing(true);
+    try {
+      const resized = await ImageManipulator.manipulateAsync(originalUri, [{ resize: { width: CAPTURE_SIZE } }], { base64: true, format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 });
+      const rawImage = decodeJpegBase64(resized.base64);
+      const { row0, row1, row2 } = getCVDRows(cvdMode);
+      const pixels = rawImage.data;
+      for (let i = 0; i < pixels.length; i += 4) {
+        const r = Math.pow(pixels[i] / 255, 2.2);
+        const g = Math.pow(pixels[i + 1] / 255, 2.2);
+        const b = Math.pow(pixels[i + 2] / 255, 2.2);
+        const sr = Math.max(0, Math.min(1, row0[0] * r + row0[1] * g + row0[2] * b));
+        const sg = Math.max(0, Math.min(1, row1[0] * r + row1[1] * g + row1[2] * b));
+        const sb = Math.max(0, Math.min(1, row2[0] * r + row2[1] * g + row2[2] * b));
+        pixels[i] = Math.round(Math.pow(sr, 1 / 2.2) * 255);
+        pixels[i + 1] = Math.round(Math.pow(sg, 1 / 2.2) * 255);
+        pixels[i + 2] = Math.round(Math.pow(sb, 1 / 2.2) * 255);
+      }
+      setDisplayUri(encodeToDataUri(pixels, rawImage.width, rawImage.height));
+    } catch (e) {
+      console.warn('[CVDGallery] filter error:', e);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <View style={styles.camTopBar}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color="#FFF" />
+          </TouchableOpacity>
+          <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Gallery Analysis</Text>
+          <TouchableOpacity onPress={pickImage}>
+            <Ionicons name="add-circle" size={28} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          {displayUri ? (
+            <View style={{ width, height: width * 1.3 }}>
+              <Image source={{ uri: displayUri }} style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
+              {processing && (
+                <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }]}>
+                  <ActivityIndicator size="large" color="#FFF" />
+                  <Text style={{ color: '#FFF', marginTop: 10 }}>Applying simulation...</Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <TouchableOpacity onPress={pickImage} style={{ alignItems: 'center' }}>
+              <Ionicons name="images-outline" size={60} color="#555" />
+              <Text style={{ color: '#777', marginTop: 10 }}>Tap to pick an image</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {originalUri && (
+          <View style={{ paddingBottom: 30 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 14 }}>
+              {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
+                <TouchableOpacity
+                  key={m}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); applyFilter(m); }}
+                  disabled={processing}
+                  style={{ backgroundColor: mode === m ? COLORS.primary : '#333', padding: 10, borderRadius: 20, paddingHorizontal: 20, opacity: processing ? 0.5 : 1 }}
+                >
+                  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{m}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={processing}
+              style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.primary, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 24, opacity: processing ? 0.5 : 1 }}
+            >
+              <Ionicons name="download-outline" size={20} color="#FFF" />
+              <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 15 }}>Save to Gallery</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </SafeAreaView>
+    </View>
+  );
+}
+</file>
+
+<file path="src/screens/CVDSimulationScreen.js">
+import { Canvas, Image as SkiaImage, RuntimeShader, useCanvasRef, useImage } from '@shopify/react-native-skia';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as FileSystem from 'expo-file-system';
+import * as Haptics from 'expo-haptics';
+import * as MediaLibrary from 'expo-media-library';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Dimensions, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
+import { useIsFocused } from '@react-navigation/native';
+import { getCVDRows } from '../../tensorHelper';
+import { ScreenErrorBoundary } from '../utils/logger';
+import { CVD_EFFECT } from '../utils/constants';
+import ModeSelector from '../components/ModeSelector';
+import { COLORS } from '../theme/colors';
+import { styles } from '../theme/styles';
+
+const { width, height: screenHeight } = Dimensions.get('window');
+
+function CVDSimulationScreenInner({ navigation, route }) {
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const isFocused = useIsFocused();
+  const [cameraPosition, setCameraPosition] = useState('back');
+  const [cvdType, setCvdType] = useState(route?.params?.initialCvdType || 'Protan');
+  const [showModal, setShowModal] = useState(false);
+  const [frozen, setFrozen] = useState(false);
+  const [frozenUri, setFrozenUri] = useState(null);
+  const [processing, setProcessing] = useState(false);
+
+  const cameraRef = useRef(null);
+  const isMountedRef = useRef(true);
+  const canvasRef = useCanvasRef();
+  const device = useCameraDevice(cameraPosition);
+  const skImage = useImage(frozenUri);
+  const cvdUniforms = useMemo(() => getCVDRows(cvdType), [cvdType]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!hasPermission) requestPermission();
+  }, []);
+
+  useEffect(() => {
+    const unsub = navigation.addListener('beforeRemove', () => setFrozen(true));
+    return unsub;
+  }, [navigation]);
+
+  const handleFreeze = useCallback(async () => {
+    if (!cameraRef.current) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setProcessing(true);
+    try {
+      const photo = await cameraRef.current.takePhoto({ qualityPrioritization: 'quality', enableShutterSound: false });
+      if (!photo?.path) throw new Error('takePhoto returned no path');
+      const fileUri = `file://${photo.path}`;
+
+      // Save original to gallery
+      const { status: mlStatus } = await MediaLibrary.requestPermissionsAsync();
+      if (mlStatus === 'granted') {
+        MediaLibrary.saveToLibraryAsync(fileUri).catch(() => {});
+      }
+
+      const SIM_MAX = 1040;
+      const resized = await ImageManipulator.manipulateAsync(
+        fileUri,
+        [{ resize: photo.width >= photo.height ? { width: Math.min(SIM_MAX, photo.width) } : { height: Math.min(SIM_MAX, photo.height) } }],
+        { format: ImageManipulator.SaveFormat.JPEG, compress: 0.92 },
+      );
+      if (!isMountedRef.current) return;
+      setFrozenUri(resized.uri);
+      setFrozen(true);
+      setProcessing(false);
+    } catch (e) {
+      if (isMountedRef.current) { setProcessing(false); Alert.alert('Error', `Capture failed: ${e?.message || 'unknown error'}`); }
+    }
+  }, []);
+
+  const handleReset = useCallback(() => { setFrozen(false); setFrozenUri(null); setProcessing(false); }, []);
+
+  const handleSave = useCallback(async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permission needed', 'Please allow access to save photos.'); return; }
+      const snapshot = canvasRef.current?.makeImageSnapshot();
+      if (!snapshot) { Alert.alert('Error', 'Nothing to save.'); return; }
+      const b64 = snapshot.encodeToBase64();
+      const tmpPath = `${FileSystem.cacheDirectory}recolor_sim_${Date.now()}.png`;
+      await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: FileSystem.EncodingType.Base64 });
+      await MediaLibrary.saveToLibraryAsync(tmpPath);
+      Alert.alert('Saved', 'Photo saved to your gallery.');
+    } catch (e) {
+      Alert.alert('Error', 'Could not save photo.');
+    }
+  }, []);
+
+  if (!hasPermission) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ marginBottom: 20 }}>Camera access is needed for simulation.</Text>
+        <TouchableOpacity style={styles.btnPrimary} onPress={requestPermission}>
+          <Text style={styles.btnText}>Grant Permission</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
+      {device && !frozen && (
+        <Camera ref={cameraRef} style={StyleSheet.absoluteFill} device={device} isActive={isFocused && !frozen} photo />
+      )}
+      {frozen && skImage && (
+        <Canvas ref={canvasRef} style={StyleSheet.absoluteFill}>
+          <SkiaImage image={skImage} x={0} y={0} width={width} height={screenHeight} fit="cover">
+            {cvdType !== 'Off' && CVD_EFFECT && <RuntimeShader source={CVD_EFFECT} uniforms={cvdUniforms} />}
+          </SkiaImage>
+        </Canvas>
+      )}
+
+      {(processing || (frozen && frozenUri && !skImage)) && (
+        <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
+          <ActivityIndicator size="large" color="#FFF" />
+          <Text style={{ color: '#FFF', fontSize: 14, marginTop: 12, fontWeight: '600' }}>{processing ? 'Capturing...' : 'Loading image...'}</Text>
+        </View>
+      )}
+
+      <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
+        <View style={styles.camTopBar}>
+          <TouchableOpacity onPress={() => { if (frozen) handleReset(); else navigation.goBack(); }} style={{ padding: 5 }}>
+            <Ionicons name={frozen ? 'close' : 'arrow-back'} size={24} color="#FFF" />
+          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ color: '#FFF', fontWeight: 'bold', marginRight: 10, textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: -1, height: 1 }, textShadowRadius: 10 }}>
+              {frozen ? (cvdType === 'Off' ? 'Original' : `${cvdType} Simulation`) : 'CVD Simulation'}
+            </Text>
+            {!frozen && <TouchableOpacity onPress={() => setShowModal(true)}><Ionicons name="menu" size={28} color="#FFF" /></TouchableOpacity>}
+          </View>
+        </View>
+
+        {frozen && (
+          <View style={{ position: 'absolute', top: 100, right: 20, alignItems: 'center', zIndex: 2 }}>
+            {['Off', 'Protan', 'Deutan', 'Tritan'].map((m) => (
+              <TouchableOpacity key={m} onPress={() => setCvdType(m)} disabled={processing} style={[styles.filterBtn, { backgroundColor: cvdType === m ? COLORS.primary : 'rgba(0,0,0,0.5)', marginBottom: 15, opacity: processing ? 0.4 : 1 }]}>
+                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 10 }}>{m === 'Off' ? 'Off' : m.charAt(0)}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        <View style={{ position: 'absolute', bottom: 30, left: 0, right: 0, zIndex: 2 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
+            {frozen ? (
+              <>
+                <TouchableOpacity onPress={handleReset}><Ionicons name="refresh" size={30} color="#FFF" /></TouchableOpacity>
+                <View style={{ width: 70 }} />
+                <TouchableOpacity onPress={handleSave} disabled={!skImage}>
+                  <Ionicons name="download-outline" size={30} color={!skImage ? '#666' : '#FFF'} />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <TouchableOpacity onPress={() => setCameraPosition((p) => (p === 'back' ? 'front' : 'back'))}>
+                  <Ionicons name="camera-reverse" size={30} color="#FFF" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.shutterBtn} onPress={handleFreeze}>
+                  <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' }}>
+                    <Ionicons name="snow" size={24} color="#333" />
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate('CVDGallery')}>
+                  <Ionicons name="images" size={30} color="#FFF" />
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+
+        <ModeSelector visible={showModal} onClose={() => setShowModal(false)} navigation={navigation} currentMode="Simulation" />
+      </SafeAreaView>
+    </View>
+  );
+}
+
+export default function CVDSimulationScreen(props) {
+  return (
+    <ScreenErrorBoundary navigation={props.navigation}>
+      <CVDSimulationScreenInner {...props} />
+    </ScreenErrorBoundary>
+  );
+}
+</file>
+
 <file path="src/screens/HistoryScreen.js">
 import { Ionicons } from "@expo/vector-icons";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
@@ -76571,383 +76506,6 @@ const styles = StyleSheet.create({
 });
 </file>
 
-<file path="src/screens/LoginScreen.js">
-import { Ionicons } from '@expo/vector-icons';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
-import { MotiView } from 'moti';
-import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import * as Haptics from 'expo-haptics';
-import {
-  GoogleAuthProvider,
-  auth,
-  sendPasswordResetEmail,
-  signInWithCredential,
-  signInWithEmailAndPassword,
-} from '../../firebaseConfig';
-import { COLORS, RADIUS, SHADOW, SPACING } from '../theme/colors';
-
-WebBrowser.maybeCompleteAuthSession();
-
-// To enable Google Sign-In:
-// 1. Firebase Console → Project Settings → General → Your Apps → Add Android app
-// 2. Register SHA-1 fingerprint (from: eas credentials or keytool)
-// 3. Download google-services.json and place in project root
-// 4. Replace placeholder below with your OAuth Web Client ID
-const GOOGLE_WEB_CLIENT_ID = '912342727884-YOUR_OAUTH_WEB_CLIENT_ID.apps.googleusercontent.com';
-const GOOGLE_CONFIGURED = !GOOGLE_WEB_CLIENT_ID.includes('YOUR_OAUTH');
-
-const APP_VERSION = 'v1.0.4-thesis';
-
-export default function LoginScreen({ navigation }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showPass, setShowPass] = useState(false);
-
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: GOOGLE_WEB_CLIENT_ID,
-    androidClientId: GOOGLE_WEB_CLIENT_ID,
-  });
-
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { id_token } = response.params;
-      if (!id_token) { Alert.alert('Sign-in failed', 'Google did not return a token.'); return; }
-      setLoading(true);
-      const credential = GoogleAuthProvider.credential(id_token);
-      signInWithCredential(auth, credential)
-        .then(() => navigation.replace('MainTabs'))
-        .catch((err) => Alert.alert('Google Sign-in Failed', err.message))
-        .finally(() => setLoading(false));
-    } else if (response?.type === 'error') {
-      Alert.alert('Sign-in Failed', response.error?.message || 'Google Sign-in was unsuccessful.');
-    }
-  }, [response]);
-
-  const handleForgotPassword = async () => {
-    const target = email.trim();
-    if (!target) {
-      Alert.alert('Enter your email', 'Type your email address above, then tap "Forgot password?".');
-      return;
-    }
-    try {
-      await sendPasswordResetEmail(auth, target);
-      Alert.alert('Email sent', `A password reset link has been sent to ${target}.`);
-    } catch (err) {
-      if (err.code === 'auth/user-not-found') {
-        Alert.alert('Not found', 'No account found with that email address.');
-      } else {
-        Alert.alert('Error', err.message);
-      }
-    }
-  };
-
-  const handleLogin = async () => {
-    if (!email.trim() || !password) {
-      Alert.alert('Missing Fields', 'Please enter your email and password.');
-      return;
-    }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    setLoading(true);
-    try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      navigation.replace('MainTabs');
-    } catch (err) {
-      if (
-        err.code === 'auth/user-not-found' ||
-        err.code === 'auth/invalid-credential' ||
-        err.code === 'auth/wrong-password'
-      ) {
-        Alert.alert('Login Failed', 'Incorrect email or password. New user? Tap "Create an account" below.');
-      } else {
-        Alert.alert('Error', err.message);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      {/* Background blobs */}
-      <View style={styles.blob1} />
-      <View style={styles.blob2} />
-      <View style={styles.blob3} />
-
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Logo */}
-        <MotiView
-          from={{ opacity: 0, translateY: -20 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: 'spring', damping: 18 }}
-          style={styles.logoWrap}
-        >
-          <Image
-            source={require('../../assets/logo_stack.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </MotiView>
-
-        {/* Card */}
-        <MotiView
-          from={{ opacity: 0, translateY: 30 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: 'spring', damping: 18, delay: 150 }}
-          style={styles.card}
-        >
-          <Text style={styles.welcomeTitle}>Welcome Back</Text>
-          <Text style={styles.welcomeSub}>Sign in to enhance your colour perception</Text>
-
-          {/* Email */}
-          <View style={styles.inputRow}>
-            <Ionicons name="mail-outline" size={18} color={COLORS.textLight} />
-            <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
-              placeholderTextColor={COLORS.textLight}
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-          </View>
-
-          {/* Password */}
-          <View style={styles.inputRow}>
-            <Ionicons name="key-outline" size={18} color={COLORS.textLight} />
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor={COLORS.textLight}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPass}
-            />
-            <TouchableOpacity onPress={() => setShowPass(!showPass)}>
-              <Ionicons
-                name={showPass ? 'eye-off-outline' : 'eye-outline'}
-                size={18}
-                color={COLORS.textLight}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* Forgot password */}
-          <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotBtn}>
-            <Text style={styles.forgotText}>Forgot password?</Text>
-          </TouchableOpacity>
-
-          {/* Login button */}
-          <TouchableOpacity
-            style={styles.loginBtn}
-            onPress={handleLogin}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.loginBtnText}>Login / Sign Up</Text>
-            )}
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Google Sign-in */}
-          <TouchableOpacity
-            style={[styles.googleBtn, !GOOGLE_CONFIGURED && { opacity: 0.5 }]}
-            onPress={() => {
-              if (!GOOGLE_CONFIGURED) {
-                Alert.alert('Not Configured', 'Google Sign-In requires SHA-1 fingerprint registration in Firebase Console. Use email login for now.');
-                return;
-              }
-              promptAsync();
-            }}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="logo-google" size={20} color="#DB4437" />
-            <Text style={styles.googleBtnText}>Continue with Google</Text>
-          </TouchableOpacity>
-
-          {/* Sign Up link */}
-          <TouchableOpacity
-            style={styles.createAccountLink}
-            onPress={() => navigation.navigate('SignUp')}
-          >
-            <Text style={styles.createAccountText}>
-              New here?{' '}
-              <Text style={{ color: COLORS.primary, fontWeight: '700' }}>Create an account</Text>
-            </Text>
-          </TouchableOpacity>
-
-          {/* Admin link */}
-          <TouchableOpacity
-            style={styles.adminLink}
-            onPress={() => navigation.navigate('AdminLogin')}
-          >
-            <Ionicons name="lock-closed" size={13} color={COLORS.warning} />
-            <Text style={styles.adminLinkText}> Admin / Expert Portal</Text>
-          </TouchableOpacity>
-        </MotiView>
-
-        {/* Version badge */}
-        <MotiView
-          from={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 500 }}
-          style={styles.versionBadge}
-        >
-          <Text style={styles.versionText}>{APP_VERSION}</Text>
-        </MotiView>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-}
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.background },
-  blob1: {
-    position: 'absolute', top: -60, left: -60, width: 220, height: 220,
-    borderRadius: 110, backgroundColor: '#FFCDD2', opacity: 0.45,
-  },
-  blob2: {
-    position: 'absolute', bottom: -80, right: -60, width: 280, height: 280,
-    borderRadius: 140, backgroundColor: '#BBDEFB', opacity: 0.4,
-  },
-  blob3: {
-    position: 'absolute', top: '40%', right: -40, width: 150, height: 150,
-    borderRadius: 75, backgroundColor: '#E1BEE7', opacity: 0.35,
-  },
-  scroll: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xl,
-  },
-  logoWrap: { alignItems: 'center', marginBottom: SPACING.lg },
-  logo: { width: 180, height: 100 },
-  card: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-    ...SHADOW.lg,
-  },
-  welcomeTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  welcomeSub: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    textAlign: 'center',
-    marginBottom: SPACING.lg,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 12,
-    marginBottom: SPACING.sm,
-    backgroundColor: COLORS.background,
-    gap: SPACING.sm,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: COLORS.text,
-  },
-  forgotBtn: { alignSelf: 'flex-end', marginTop: 4, marginBottom: 2, padding: 4 },
-  forgotText: { fontSize: 13, color: COLORS.primary, fontWeight: '600' },
-  loginBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: SPACING.md,
-    ...SHADOW.sm,
-  },
-  loginBtnText: { color: '#FFF', fontWeight: '700', fontSize: 16 },
-  createAccountLink: {
-    alignItems: 'center',
-    marginTop: SPACING.md,
-    padding: SPACING.sm,
-  },
-  createAccountText: { fontSize: 14, color: COLORS.textLight },
-  adminLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: SPACING.xs,
-    padding: SPACING.sm,
-  },
-  adminLinkText: { fontSize: 13, color: COLORS.textLight },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: SPACING.md,
-    gap: SPACING.sm,
-  },
-  dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
-  dividerText: { fontSize: 12, color: COLORS.textLight },
-  googleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.sm,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    paddingVertical: 13,
-    backgroundColor: COLORS.background,
-    marginBottom: SPACING.sm,
-  },
-  googleBtnText: { color: COLORS.text, fontWeight: '600', fontSize: 15 },
-  versionBadge: {
-    alignSelf: 'center',
-    marginTop: SPACING.lg,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: COLORS.surfaceAlt,
-  },
-  versionText: { fontSize: 11, color: COLORS.primary, fontWeight: '600' },
-});
-</file>
-
 <file path="src/screens/SettingsScreen.js">
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -77464,6 +77022,383 @@ export const SHADOW = {
 };
 </file>
 
+<file path="src/screens/LoginScreen.js">
+import { Ionicons } from '@expo/vector-icons';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import { MotiView } from 'moti';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import * as Haptics from 'expo-haptics';
+import {
+  GoogleAuthProvider,
+  auth,
+  sendPasswordResetEmail,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+} from '../../firebaseConfig';
+import { COLORS, RADIUS, SHADOW, SPACING } from '../theme/colors';
+
+WebBrowser.maybeCompleteAuthSession();
+
+// To enable Google Sign-In:
+// 1. Firebase Console → Project Settings → General → Your Apps → Add Android app
+// 2. Register SHA-1 fingerprint (from: eas credentials or keytool)
+// 3. Download google-services.json and place in project root
+// 4. Replace placeholder below with your OAuth Web Client ID
+const GOOGLE_WEB_CLIENT_ID = '912342727884-YOUR_OAUTH_WEB_CLIENT_ID.apps.googleusercontent.com';
+const GOOGLE_CONFIGURED = !GOOGLE_WEB_CLIENT_ID.includes('YOUR_OAUTH');
+
+const APP_VERSION = 'v1.0.4-thesis';
+
+export default function LoginScreen({ navigation }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPass, setShowPass] = useState(false);
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    androidClientId: GOOGLE_WEB_CLIENT_ID,
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.params;
+      if (!id_token) { Alert.alert('Sign-in failed', 'Google did not return a token.'); return; }
+      setLoading(true);
+      const credential = GoogleAuthProvider.credential(id_token);
+      signInWithCredential(auth, credential)
+        .then(() => navigation.replace('MainTabs'))
+        .catch((err) => Alert.alert('Google Sign-in Failed', err.message))
+        .finally(() => setLoading(false));
+    } else if (response?.type === 'error') {
+      Alert.alert('Sign-in Failed', response.error?.message || 'Google Sign-in was unsuccessful.');
+    }
+  }, [response]);
+
+  const handleForgotPassword = async () => {
+    const target = email.trim();
+    if (!target) {
+      Alert.alert('Enter your email', 'Type your email address above, then tap "Forgot password?".');
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, target);
+      Alert.alert('Email sent', `A password reset link has been sent to ${target}.`);
+    } catch (err) {
+      if (err.code === 'auth/user-not-found') {
+        Alert.alert('Not found', 'No account found with that email address.');
+      } else {
+        Alert.alert('Error', err.message);
+      }
+    }
+  };
+
+  const handleLogin = async () => {
+    if (!email.trim() || !password) {
+      Alert.alert('Missing Fields', 'Please enter your email and password.');
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email.trim(), password);
+      navigation.replace('MainTabs');
+    } catch (err) {
+      if (
+        err.code === 'auth/user-not-found' ||
+        err.code === 'auth/invalid-credential' ||
+        err.code === 'auth/wrong-password'
+      ) {
+        Alert.alert('Login Failed', 'Incorrect email or password. New user? Tap "Create an account" below.');
+      } else {
+        Alert.alert('Error', err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      {/* Background blobs */}
+      <View style={styles.blob1} />
+      <View style={styles.blob2} />
+      <View style={styles.blob3} />
+
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Logo */}
+        <MotiView
+          from={{ opacity: 0, translateY: -20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'spring', damping: 18 }}
+          style={styles.logoWrap}
+        >
+          <Image
+            source={require('../../assets/logo_stack.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </MotiView>
+
+        {/* Card */}
+        <MotiView
+          from={{ opacity: 0, translateY: 30 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'spring', damping: 18, delay: 150 }}
+          style={styles.card}
+        >
+          <Text style={styles.welcomeTitle}>Welcome Back</Text>
+          <Text style={styles.welcomeSub}>Sign in to enhance your colour perception</Text>
+
+          {/* Email */}
+          <View style={styles.inputRow}>
+            <Ionicons name="mail-outline" size={18} color={COLORS.textLight} />
+            <TextInput
+              style={styles.input}
+              placeholder="you@example.com"
+              placeholderTextColor={COLORS.textLight}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+          </View>
+
+          {/* Password */}
+          <View style={styles.inputRow}>
+            <Ionicons name="key-outline" size={18} color={COLORS.textLight} />
+            <TextInput
+              style={styles.input}
+              placeholder="••••••••"
+              placeholderTextColor={COLORS.textLight}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPass}
+            />
+            <TouchableOpacity onPress={() => setShowPass(!showPass)}>
+              <Ionicons
+                name={showPass ? 'eye-off-outline' : 'eye-outline'}
+                size={18}
+                color={COLORS.textLight}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Forgot password */}
+          <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotBtn}>
+            <Text style={styles.forgotText}>Forgot password?</Text>
+          </TouchableOpacity>
+
+          {/* Login button */}
+          <TouchableOpacity
+            style={styles.loginBtn}
+            onPress={handleLogin}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.loginBtnText}>Login / Sign Up</Text>
+            )}
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Google Sign-in */}
+          <TouchableOpacity
+            style={[styles.googleBtn, !GOOGLE_CONFIGURED && { opacity: 0.5 }]}
+            onPress={() => {
+              if (!GOOGLE_CONFIGURED) {
+                Alert.alert('Not Configured', 'Google Sign-In requires SHA-1 fingerprint registration in Firebase Console. Use email login for now.');
+                return;
+              }
+              promptAsync();
+            }}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="logo-google" size={20} color="#DB4437" />
+            <Text style={styles.googleBtnText}>Continue with Google</Text>
+          </TouchableOpacity>
+
+          {/* Sign Up link */}
+          <TouchableOpacity
+            style={styles.createAccountLink}
+            onPress={() => navigation.navigate('SignUp')}
+          >
+            <Text style={styles.createAccountText}>
+              New here?{' '}
+              <Text style={{ color: COLORS.primary, fontWeight: '700' }}>Create an account</Text>
+            </Text>
+          </TouchableOpacity>
+
+          {/* Admin link */}
+          <TouchableOpacity
+            style={styles.adminLink}
+            onPress={() => navigation.navigate('AdminLogin')}
+          >
+            <Ionicons name="lock-closed" size={13} color={COLORS.warning} />
+            <Text style={styles.adminLinkText}> Admin / Expert Portal</Text>
+          </TouchableOpacity>
+        </MotiView>
+
+        {/* Version badge */}
+        <MotiView
+          from={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 500 }}
+          style={styles.versionBadge}
+        >
+          <Text style={styles.versionText}>{APP_VERSION}</Text>
+        </MotiView>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: COLORS.background },
+  blob1: {
+    position: 'absolute', top: -60, left: -60, width: 220, height: 220,
+    borderRadius: 110, backgroundColor: '#FFCDD2', opacity: 0.45,
+  },
+  blob2: {
+    position: 'absolute', bottom: -80, right: -60, width: 280, height: 280,
+    borderRadius: 140, backgroundColor: '#BBDEFB', opacity: 0.4,
+  },
+  blob3: {
+    position: 'absolute', top: '40%', right: -40, width: 150, height: 150,
+    borderRadius: 75, backgroundColor: '#E1BEE7', opacity: 0.35,
+  },
+  scroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xl,
+  },
+  logoWrap: { alignItems: 'center', marginBottom: SPACING.lg },
+  logo: { width: 180, height: 100 },
+  card: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    ...SHADOW.lg,
+  },
+  welcomeTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  welcomeSub: {
+    fontSize: 13,
+    color: COLORS.textLight,
+    textAlign: 'center',
+    marginBottom: SPACING.lg,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 12,
+    marginBottom: SPACING.sm,
+    backgroundColor: COLORS.background,
+    gap: SPACING.sm,
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: COLORS.text,
+  },
+  forgotBtn: { alignSelf: 'flex-end', marginTop: 4, marginBottom: 2, padding: 4 },
+  forgotText: { fontSize: 13, color: COLORS.primary, fontWeight: '600' },
+  loginBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: SPACING.md,
+    ...SHADOW.sm,
+  },
+  loginBtnText: { color: '#FFF', fontWeight: '700', fontSize: 16 },
+  createAccountLink: {
+    alignItems: 'center',
+    marginTop: SPACING.md,
+    padding: SPACING.sm,
+  },
+  createAccountText: { fontSize: 14, color: COLORS.textLight },
+  adminLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: SPACING.xs,
+    padding: SPACING.sm,
+  },
+  adminLinkText: { fontSize: 13, color: COLORS.textLight },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: SPACING.md,
+    gap: SPACING.sm,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
+  dividerText: { fontSize: 12, color: COLORS.textLight },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    paddingVertical: 13,
+    backgroundColor: COLORS.background,
+    marginBottom: SPACING.sm,
+  },
+  googleBtnText: { color: COLORS.text, fontWeight: '600', fontSize: 15 },
+  versionBadge: {
+    alignSelf: 'center',
+    marginTop: SPACING.lg,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: COLORS.surfaceAlt,
+  },
+  versionText: { fontSize: 11, color: COLORS.primary, fontWeight: '600' },
+});
+</file>
+
 <file path="src/screens/ResearchDashboardScreen.js">
 import { Ionicons } from '@expo/vector-icons';
 import { collection, getDocs, onSnapshot, orderBy, query } from 'firebase/firestore';
@@ -77814,104 +77749,6 @@ app-example
 venv/
 __pycache__/
 *.pyc
-</file>
-
-<file path="firebaseConfig.js">
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { initializeApp } from "firebase/app";
-import {
-  GoogleAuthProvider,
-  createUserWithEmailAndPassword,
-  getReactNativePersistence,
-  initializeAuth,
-  onAuthStateChanged,
-  sendPasswordResetEmail,
-  signInWithCredential,
-  signInWithEmailAndPassword,
-  signOut,
-} from "firebase/auth";
-import {
-  addDoc,
-  collection,
-  initializeFirestore,
-  persistentLocalCache,
-  serverTimestamp,
-} from "firebase/firestore";
-
-// --- 1. NEW RECOLOR-DEV KEYS ---
-const firebaseConfig = {
-  apiKey: "AIzaSyCc_EYXVkqwSLYm67K5x-JGazLxxa-Vi7M",
-  authDomain: "recolor-dev.firebaseapp.com",
-  projectId: "recolor-dev",
-  storageBucket: "recolor-dev.firebasestorage.app",
-  messagingSenderId: "1047364142133",
-  appId: "1:1047364142133:web:a0b3deb67836acf727dd7c",
-  measurementId: "G-VEPWR9T85C",
-};
-
-// --- 2. INITIALIZE APP ---
-const app = initializeApp(firebaseConfig);
-
-// --- 3. AUTHENTICATION (With Persistence) ---
-// This keeps you logged in even if you close the app—crucial for the "User Profiling" requirement.
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage),
-});
-
-// --- 4. DATABASE (OFFLINE FIRST) ---
-// This allows the app to work without Wi-Fi and sync later—a major requirement for your thesis.
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache(),
-});
-
-// --- 5. HELPER: DUAL WRITE FOR PRIVACY ---
-// This anonymizes data for PERI Researchers (Slide 56).
-export const saveExamResult = async (
-  userId,
-  score,
-  diagnosis,
-  severity,
-  total = 14,
-) => {
-  try {
-    // WRITE 1: Private User History
-    await addDoc(collection(db, "users", userId, "history"), {
-      score,
-      total,
-      diagnosis,
-      severity,
-      date: serverTimestamp(),
-    });
-
-    // WRITE 2: Anonymized Research Data
-    await addDoc(collection(db, "research_data_anonymized"), {
-      diagnosis,
-      severity,
-      score,
-      total,
-      device: "Mobile_Client",
-      timestamp: serverTimestamp(),
-    });
-
-    console.log("Dual write successful: Private + Research");
-    return true;
-  } catch (error) {
-    console.error("Save failed", error);
-    return false;
-  }
-};
-
-export {
-  GoogleAuthProvider,
-  auth,
-  createUserWithEmailAndPassword,
-  db,
-  onAuthStateChanged,
-  sendPasswordResetEmail,
-  signInWithCredential,
-  signInWithEmailAndPassword,
-  signOut
-};
 </file>
 
 <file path="README.md">
@@ -80014,6 +79851,104 @@ export const ISHIHARA_PLATES = [
 }
 </file>
 
+<file path="firebaseConfig.js">
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { initializeApp } from "firebase/app";
+import {
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  getReactNativePersistence,
+  initializeAuth,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
+import {
+  addDoc,
+  collection,
+  initializeFirestore,
+  persistentLocalCache,
+  serverTimestamp,
+} from "firebase/firestore";
+
+// --- 1. NEW RECOLOR-DEV KEYS ---
+const firebaseConfig = {
+  apiKey: "AIzaSyCc_EYXVkqwSLYm67K5x-JGazLxxa-Vi7M",
+  authDomain: "recolor-dev.firebaseapp.com",
+  projectId: "recolor-dev",
+  storageBucket: "recolor-dev.firebasestorage.app",
+  messagingSenderId: "1047364142133",
+  appId: "1:1047364142133:web:a0b3deb67836acf727dd7c",
+  measurementId: "G-VEPWR9T85C",
+};
+
+// --- 2. INITIALIZE APP ---
+const app = initializeApp(firebaseConfig);
+
+// --- 3. AUTHENTICATION (With Persistence) ---
+// This keeps you logged in even if you close the app—crucial for the "User Profiling" requirement.
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage),
+});
+
+// --- 4. DATABASE (OFFLINE FIRST) ---
+// This allows the app to work without Wi-Fi and sync later—a major requirement for your thesis.
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache(),
+});
+
+// --- 5. HELPER: DUAL WRITE FOR PRIVACY ---
+// This anonymizes data for PERI Researchers (Slide 56).
+export const saveExamResult = async (
+  userId,
+  score,
+  diagnosis,
+  severity,
+  total = 14,
+) => {
+  try {
+    // WRITE 1: Private User History
+    await addDoc(collection(db, "users", userId, "history"), {
+      score,
+      total,
+      diagnosis,
+      severity,
+      date: serverTimestamp(),
+    });
+
+    // WRITE 2: Anonymized Research Data
+    await addDoc(collection(db, "research_data_anonymized"), {
+      diagnosis,
+      severity,
+      score,
+      total,
+      device: "Mobile_Client",
+      timestamp: serverTimestamp(),
+    });
+
+    console.log("Dual write successful: Private + Research");
+    return true;
+  } catch (error) {
+    console.error("Save failed", error);
+    return false;
+  }
+};
+
+export {
+  GoogleAuthProvider,
+  auth,
+  createUserWithEmailAndPassword,
+  db,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+  signOut
+};
+</file>
+
 <file path="src/screens/HomeScreen.js">
 import { Ionicons } from "@expo/vector-icons";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
@@ -80766,6 +80701,78 @@ export function computeDiagnosis(answers, testType = "comprehensive") {
 }
 </file>
 
+<file path="app.json">
+{
+  "expo": {
+    "name": "ReColor",
+    "slug": "ReColor",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "recolor",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "ReColor needs camera access for CVD simulation"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.recolor.app",
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
+    },
+    "web": {
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      "react-native-fast-tflite",
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "ReColor needs camera access for CVD simulation"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "550110bf-4c3a-4375-8cc6-200316d985c8"
+      }
+    },
+    "owner": "decolor2027"
+  }
+}
+</file>
+
 <file path="src/screens/TestScreen.js">
 import { Ionicons } from "@expo/vector-icons";
 import * as Brightness from "expo-brightness";
@@ -81414,78 +81421,6 @@ const styles = StyleSheet.create({
     ...SHADOW.md,
   },
 });
-</file>
-
-<file path="app.json">
-{
-  "expo": {
-    "name": "ReColor",
-    "slug": "ReColor",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "scheme": "recolor",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true,
-      "infoPlist": {
-        "NSCameraUsageDescription": "ReColor needs camera access for CVD simulation"
-      }
-    },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "com.recolor.app",
-      "permissions": [
-        "android.permission.CAMERA"
-      ]
-    },
-    "web": {
-      "output": "single",
-      "favicon": "./assets/images/favicon.png"
-    },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
-        }
-      ],
-      "react-native-fast-tflite",
-      [
-        "react-native-vision-camera",
-        {
-          "cameraPermissionText": "ReColor needs camera access for CVD simulation"
-        }
-      ]
-    ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
-    },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "550110bf-4c3a-4375-8cc6-200316d985c8"
-      }
-    },
-    "owner": "decolor2027"
-  }
-}
 </file>
 
 <file path="algo/cnn.ipynb">
