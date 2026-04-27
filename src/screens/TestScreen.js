@@ -5,21 +5,21 @@ import * as Speech from "expo-speech";
 import { MotiView } from "moti";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { auth } from "../../firebaseConfig";
 import { saveTestSession } from "../database/client";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 import {
-    buildTestQueue,
-    computeDiagnosis,
-    evaluateStage1,
+  buildTestQueue,
+  computeDiagnosis,
+  evaluateStage1,
 } from "../utils/colorLogic";
 
 const { width } = Dimensions.get("window");
@@ -54,7 +54,7 @@ export default function TestScreen({ route, navigation }) {
     return () => {
       if (prevBrightnessRef.current !== null) {
         Brightness.setBrightnessAsync(prevBrightnessRef.current).catch(
-          () => {},
+          () => { },
         );
       }
     };
@@ -109,7 +109,7 @@ export default function TestScreen({ route, navigation }) {
         isCorrect
           ? Haptics.ImpactFeedbackStyle.Light
           : Haptics.ImpactFeedbackStyle.Medium,
-      ).catch(() => {});
+      ).catch(() => { });
 
       const newAnswers = [
         ...answers,
@@ -283,13 +283,13 @@ export default function TestScreen({ route, navigation }) {
             </View>
           )}
 
-          {/* Debug overlay — shows correct answer */}
-          <View style={styles.debugOverlay}>
+
+          {/* <View style={styles.debugOverlay}>
             <Text style={styles.debugLabel}>ANS:</Text>
             <Text style={styles.debugAnswer}>
               {current.category === "hidden" ? "—" : current.answer}
             </Text>
-          </View>
+          </View> */}
         </MotiView>
 
         {/* Timer */}
