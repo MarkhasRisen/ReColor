@@ -19,10 +19,7 @@ export default function CareerDetail({ route, navigation }) {
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Learn & Understand</Text>
-        <Image
-          source={require("../../assets/images/logo_small.png")}
-          style={styles.logo}
-        />
+        <Image source={require("../../assets/icon.png")} style={styles.logo} />
       </View>
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>

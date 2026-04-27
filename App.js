@@ -23,7 +23,7 @@ import AdminLoginScreen from "./src/screens/AdminLoginScreen";
 import AppOnboarding from "./src/screens/AppOnboarding";
 import ArticleScreen from "./src/screens/ArticleScreen";
 import CameraEnhanceScreen from "./src/screens/CameraEnhanceScreen";
-import CareerDetailScreen from "./src/screens/CareerDetail"; // Added for Career Awareness
+import CareerDetail from "./src/screens/CareerDetail";
 import ColorIdentifierScreen from "./src/screens/ColorIdentifierScreen";
 import CVDGalleryScreen from "./src/screens/CVDGalleryScreen";
 import CVDSimulationScreen from "./src/screens/CVDSimulationScreen";
@@ -125,7 +125,7 @@ export default function App() {
               component={EducationListScreen}
             />
             <Stack.Screen name="Article" component={ArticleScreen} />
-            <Stack.Screen name="CareerDetail" component={CareerDetailScreen} />
+            <Stack.Screen name="CareerDetail" component={CareerDetail} />
           </Stack.Navigator>
         </NavigationContainer>
       </ScreenErrorBoundary>
