@@ -27,9 +27,8 @@ const DISPLAY_TIME = 3; // seconds each plate is shown
 export default function TestScreen({ route, navigation }) {
   const { testType = "comprehensive" } = route?.params || {};
   const isQuick = testType === "quick";
-  const stage1Length = isQuick ? 11 : 21; // demo + 10 scored (quick) or demo + 20 scored (comprehensive)
+  const stage1Length = isQuick ? 11 : 21;
 
-  // Build queue once on mount — plate #1 always first, rest randomised
   const [queue] = useState(() => buildTestQueue(testType));
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState([]);
@@ -37,11 +36,10 @@ export default function TestScreen({ route, navigation }) {
   const [timeLeft, setTimeLeft] = useState(DISPLAY_TIME);
   const [showImage, setShowImage] = useState(true);
   const [calculating, setCalculating] = useState(false);
-  const [stage, setStage] = useState(1); // Track current stage (1 or 2)
+  const [stage, setStage] = useState(1);
   const timerRef = useRef(null);
   const prevBrightnessRef = useRef(null);
 
-  // Set brightness to 80% on mount, restore on unmount
   useEffect(() => {
     Brightness.requestPermissionsAsync().then(({ granted }) => {
       if (!granted) return;
@@ -53,7 +51,7 @@ export default function TestScreen({ route, navigation }) {
     return () => {
       if (prevBrightnessRef.current !== null) {
         Brightness.setBrightnessAsync(prevBrightnessRef.current).catch(
-          () => { },
+          () => {},
         );
       }
     };
@@ -65,6 +63,10 @@ export default function TestScreen({ route, navigation }) {
   useEffect(() => {
     setTimeLeft(DISPLAY_TIME);
     setShowImage(true);
+
+    // DEMO MOD: Disable the timer and image-hiding for Plate #1 (index 0)
+    // This allows the presenter to explain the test baseline without it timing out.
+    if (index === 0) return;
 
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
@@ -92,35 +94,26 @@ export default function TestScreen({ route, navigation }) {
     async (inputOverride) => {
       clearInterval(timerRef.current);
 
-      // Only accept string overrides — TouchableOpacity's onPress passes a
-      // GestureResponderEvent object as the first arg, which must NOT be treated
-      // as an answer (would score every plate wrong).
-      const input = typeof inputOverride === "string" ? inputOverride : userInput;
-      // Scoring:
-      //   hidden → correct if user enters nothing
-      //   everything else → correct if input matches plate.answer exactly
-      //   (tracing plates supply their own string via button onPress)
+      const input =
+        typeof inputOverride === "string" ? inputOverride : userInput;
       const isCorrect =
         current.category === "hidden" ? input === "" : input === current.answer;
 
-      // Haptic feedback
       Haptics.impactAsync(
         isCorrect
           ? Haptics.ImpactFeedbackStyle.Light
           : Haptics.ImpactFeedbackStyle.Medium,
-      ).catch(() => { });
+      ).catch(() => {});
 
       const newAnswers = [
         ...answers,
         { plate: current, userAnswer: input, isCorrect },
       ];
 
-      // End of Stage 1 (comprehensive: 21 answers, quick: 11 answers)
       if (newAnswers.length === stage1Length && stage === 1) {
         const stage1Result = evaluateStage1(newAnswers, testType);
 
         if (stage1Result.shouldProceedToStage2) {
-          // Stage 1 score below normal threshold → proceed to Stage 2 classification
           setAnswers(newAnswers);
           setUserInput("");
           setStage(2);
@@ -131,7 +124,6 @@ export default function TestScreen({ route, navigation }) {
             pitch: 1.0,
           });
         } else {
-          // Stage 1 score at/above threshold → Normal or Indeterminate, skip Stage 2
           setCalculating(true);
           const result = computeDiagnosis(newAnswers, testType);
           const shuffledOrder = queue.map((p) => p.id);
@@ -159,7 +151,6 @@ export default function TestScreen({ route, navigation }) {
           }, 1500);
         }
       } else if (index < queue.length - 1) {
-        // Continue normally
         setAnswers(newAnswers);
         setUserInput("");
         setIndex(index + 1);
@@ -169,7 +160,6 @@ export default function TestScreen({ route, navigation }) {
           Speech.speak(`Plate ${nextNum}`, { rate: 1.1, pitch: 1.0 });
         }
       } else {
-        // Test complete (all plates done, including Stage 2)
         const result = computeDiagnosis(newAnswers, testType);
         const shuffledOrder = queue.map((p) => p.id);
 
@@ -198,7 +188,17 @@ export default function TestScreen({ route, navigation }) {
         }, 1500);
       }
     },
-    [index, queue, answers, userInput, current, navigation, stage, testType, stage1Length],
+    [
+      index,
+      queue,
+      answers,
+      userInput,
+      current,
+      navigation,
+      stage,
+      testType,
+      stage1Length,
+    ],
   );
 
   if (!current) return <View style={styles.root} />;
@@ -217,7 +217,6 @@ export default function TestScreen({ route, navigation }) {
     );
   }
 
-  // Progress display: Stage 1 spans stage1Length plates; Stage 2 runs to the full queue length
   const stageMaxPlates = stage === 1 ? stage1Length : queue.length;
   const progress = ((index + 1) / stageMaxPlates) * 100;
   const stageLabel = stage === 1 ? `Screening` : `Diagnostic`;
@@ -230,7 +229,6 @@ export default function TestScreen({ route, navigation }) {
 
   return (
     <View style={styles.root}>
-      {/* ── STICKY DISCLAIMER ── */}
       <View style={styles.disclaimerBanner}>
         <Ionicons name="warning-outline" size={13} color={COLORS.warning} />
         <Text style={styles.disclaimerText}>
@@ -238,7 +236,6 @@ export default function TestScreen({ route, navigation }) {
         </Text>
       </View>
 
-      {/* ── HEADER & PROGRESS ── */}
       <View style={styles.header}>
         <Text style={styles.headerLabel}>Ishihara Test</Text>
         <Text style={styles.headerSub}>
@@ -253,7 +250,6 @@ export default function TestScreen({ route, navigation }) {
         />
       </View>
 
-      {/* ── PLATE AREA ── */}
       <View style={styles.plateArea}>
         <MotiView
           key={index}
@@ -275,17 +271,8 @@ export default function TestScreen({ route, navigation }) {
               <Text style={styles.hiddenSub}>Enter what you saw</Text>
             </View>
           )}
-
-
-          {/* <View style={styles.debugOverlay}>
-            <Text style={styles.debugLabel}>ANS:</Text>
-            <Text style={styles.debugAnswer}>
-              {current.category === "hidden" ? "—" : current.answer}
-            </Text>
-          </View> */}
         </MotiView>
 
-        {/* Timer */}
         <View style={styles.timerRow}>
           <MotiView
             animate={{ backgroundColor: timerColor }}
@@ -294,13 +281,16 @@ export default function TestScreen({ route, navigation }) {
           >
             <Ionicons name="timer-outline" size={14} color="#FFF" />
             <Text style={styles.timerText}>
-              {showImage ? `${timeLeft}s` : "Time's up"}
+              {index === 0
+                ? "Demo Plate"
+                : showImage
+                  ? `${timeLeft}s`
+                  : "Time's up"}
             </Text>
           </MotiView>
         </View>
       </View>
 
-      {/* ── INPUT PANEL ── */}
       {isTracingYesNo ? (
         <View style={styles.tracingPanel}>
           <Text style={styles.tracingQuestion}>
@@ -332,7 +322,10 @@ export default function TestScreen({ route, navigation }) {
           </Text>
           <View style={styles.tracingMultiBtns}>
             <TouchableOpacity
-              style={[styles.tracingMultiBtn, { backgroundColor: COLORS.success }]}
+              style={[
+                styles.tracingMultiBtn,
+                { backgroundColor: COLORS.success },
+              ]}
               onPress={() => handleNext("both")}
               activeOpacity={0.85}
             >
@@ -347,7 +340,10 @@ export default function TestScreen({ route, navigation }) {
               <Text style={styles.tracingBtnText}>Purple only</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.tracingMultiBtn, { backgroundColor: COLORS.danger }]}
+              style={[
+                styles.tracingMultiBtn,
+                { backgroundColor: COLORS.danger },
+              ]}
               onPress={() => handleNext("red")}
               activeOpacity={0.85}
             >
@@ -357,13 +353,11 @@ export default function TestScreen({ route, navigation }) {
         </View>
       ) : (
         <View style={styles.inputPanel}>
-          {/* Answer display */}
           <View style={styles.answerDisplay}>
             <Text style={styles.answerLabel}>YOUR ANSWER</Text>
             <Text style={styles.answerValue}>{userInput || "—"}</Text>
           </View>
 
-          {/* Numpad */}
           <View style={styles.numpad}>
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
               <NumKey
@@ -382,10 +376,10 @@ export default function TestScreen({ route, navigation }) {
             />
           </View>
 
-          {/* Skip — always visible for numeric inputs.
-              For hidden plates this submits empty (correct).
-              For other plates this submits empty (wrong) but lets the user move on. */}
-          <TouchableOpacity style={styles.skipBtn} onPress={() => handleNext("")}>
+          <TouchableOpacity
+            style={styles.skipBtn}
+            onPress={() => handleNext("")}
+          >
             <Text style={styles.skipText}>
               {current.category === "hidden"
                 ? "I see nothing → Skip"
@@ -446,7 +440,6 @@ function NumKey({ label, onPress, variant, disabled }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background },
-
   disclaimerBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -462,7 +455,6 @@ const styles = StyleSheet.create({
     color: COLORS.warning,
     letterSpacing: 0.5,
   },
-
   header: {
     backgroundColor: COLORS.card,
     paddingHorizontal: SPACING.md,
@@ -470,7 +462,6 @@ const styles = StyleSheet.create({
   },
   headerLabel: { fontSize: 17, fontWeight: "800", color: COLORS.text },
   headerSub: { fontSize: 12, color: COLORS.textLight, marginTop: 1 },
-
   progressTrack: {
     height: 3,
     backgroundColor: COLORS.border,
@@ -481,7 +472,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderRadius: 2,
   },
-
   plateArea: {
     flex: 1,
     justifyContent: "center",
@@ -502,33 +492,6 @@ const styles = StyleSheet.create({
   hiddenState: { alignItems: "center", gap: SPACING.sm },
   hiddenLabel: { fontSize: 16, fontWeight: "700", color: "#AAA" },
   hiddenSub: { fontSize: 12, color: "#CCC" },
-
-  debugOverlay: {
-    position: "absolute",
-    top: SPACING.md,
-    right: SPACING.md,
-    backgroundColor: "rgba(255, 193, 7, 0.9)",
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 4,
-    borderRadius: RADIUS.md,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    ...SHADOW.md,
-  },
-  debugLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#333",
-    letterSpacing: 0.5,
-  },
-  debugAnswer: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: "#333",
-    letterSpacing: 1,
-  },
-
   timerRow: { alignItems: "center" },
   timerPill: {
     flexDirection: "row",
@@ -539,7 +502,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   timerText: { fontSize: 13, fontWeight: "700", color: "#FFF" },
-
   inputPanel: {
     backgroundColor: COLORS.card,
     borderTopLeftRadius: RADIUS.xl,
@@ -549,7 +511,6 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xl,
     ...SHADOW.lg,
   },
-
   answerDisplay: { alignItems: "center", marginBottom: SPACING.md },
   answerLabel: {
     fontSize: 10,
@@ -564,7 +525,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     letterSpacing: 4,
   },
-
   numpad: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -578,14 +538,12 @@ const styles = StyleSheet.create({
   },
   numKeyInner: { flex: 1, alignItems: "center", justifyContent: "center" },
   numKeyText: { fontSize: 20, fontWeight: "700" },
-
   skipBtn: {
     alignSelf: "center",
     marginTop: SPACING.sm,
     paddingVertical: SPACING.sm,
   },
   skipText: { fontSize: 13, color: COLORS.textLight, fontWeight: "500" },
-
   calculatingOverlay: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -595,7 +553,6 @@ const styles = StyleSheet.create({
   },
   calculatingText: { fontSize: 18, fontWeight: "700", color: COLORS.text },
   calculatingHint: { fontSize: 13, color: COLORS.textLight },
-
   tracingPanel: {
     backgroundColor: COLORS.card,
     borderTopLeftRadius: RADIUS.xl,
