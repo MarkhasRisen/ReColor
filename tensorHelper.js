@@ -506,26 +506,26 @@ export function applyDaltonization(rawImageData, mask, cvdType) {
     const gOut = g + ERR[1][0] * rErr + ERR[1][1] * gErr + ERR[1][2] * bErr;
     const bOut = b + ERR[2][0] * rErr + ERR[2][1] * gErr + ERR[2][2] * bErr;
 
-    // linear → sRGB (gamma encode)
+    // linear to sRGB (gamma encode)
     pixels[rIdx] = Math.min(
       255,
       Math.max(
         0,
-        Math.round(Math.pow(Math.max(0, Math.min(1, rOut)), 1 / 2.2) * 255),
+        Math.round(Math.pow(Math.max(0, Math.min(1, rOut)), 1 / 2.4) * 255),
       ),
     );
     pixels[rIdx + 1] = Math.min(
       255,
       Math.max(
         0,
-        Math.round(Math.pow(Math.max(0, Math.min(1, gOut)), 1 / 2.2) * 255),
+        Math.round(Math.pow(Math.max(0, Math.min(1, gOut)), 1 / 2.4) * 255),
       ),
     );
     pixels[rIdx + 2] = Math.min(
       255,
       Math.max(
         0,
-        Math.round(Math.pow(Math.max(0, Math.min(1, bOut)), 1 / 2.2) * 255),
+        Math.round(Math.pow(Math.max(0, Math.min(1, bOut)), 1 / 2.4) * 255),
       ),
     );
   }
