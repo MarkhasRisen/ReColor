@@ -511,21 +511,21 @@ export function applyDaltonization(rawImageData, mask, cvdType) {
       255,
       Math.max(
         0,
-        Math.round(Math.pow(Math.max(0, Math.min(1, rOut)), 1 / 2.2) * 255),
+        Math.round(Math.pow(Math.max(0, Math.min(1, rOut)), 1 / 2.4) * 255),
       ),
     );
     pixels[rIdx + 1] = Math.min(
       255,
       Math.max(
         0,
-        Math.round(Math.pow(Math.max(0, Math.min(1, gOut)), 1 / 2.2) * 255),
+        Math.round(Math.pow(Math.max(0, Math.min(1, gOut)), 1 / 2.4) * 255),
       ),
     );
     pixels[rIdx + 2] = Math.min(
       255,
       Math.max(
         0,
-        Math.round(Math.pow(Math.max(0, Math.min(1, bOut)), 1 / 2.2) * 255),
+        Math.round(Math.pow(Math.max(0, Math.min(1, bOut)), 1 / 2.4) * 255),
       ),
     );
   }
