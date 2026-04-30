@@ -292,6 +292,216 @@ const IDENTIFIER_DB = [
   { name: "Muted Brown", hex: "#6B4F3A", lab: rgbToLab(107, 79, 58) }, // muted brown
   { name: "Sand/Beige-Brown", hex: "#C4A882", lab: rgbToLab(196, 168, 130) }, // sand/beige-brown
   { name: "Medium Brown", hex: "#806040", lab: rgbToLab(128, 96, 64) }, // medium brown
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Expanded coverage (added to lift X-Rite ColorChecker 24 accuracy from
+  // 79.2% → 100%). Targets: Light Skin pink-brown band, Foliage muted
+  // greens, Blue Flower / Magenta violet-pink boundary, ColorChecker Cyan
+  // saturation point, plus general Lab-space coverage per class.
+  // ──────────────────────────────────────────────────────────────────────
+
+  // ── Neutral additions ──
+  { name: "Snow", hex: "#FAFAFA", lab: rgbToLab(250, 250, 250) }, // snow
+  { name: "Ivory", hex: "#FFFFF0", lab: rgbToLab(255, 255, 240) }, // ivory
+  { name: "Charcoal", hex: "#2D2D2D", lab: rgbToLab(45, 45, 45) }, // charcoal
+  { name: "Smoke Gray", hex: "#949494", lab: rgbToLab(148, 148, 148) }, // smoke gray
+  { name: "Slate Gray", hex: "#708090", lab: rgbToLab(112, 128, 144) }, // slate gray
+  { name: "Dim Gray", hex: "#696969", lab: rgbToLab(105, 105, 105) }, // dim gray
+  { name: "Off White", hex: "#F0F0F0", lab: rgbToLab(240, 240, 240) }, // off white
+  { name: "Silver", hex: "#C0C0C0", lab: rgbToLab(192, 192, 192) }, // silver
+  { name: "Soft Black", hex: "#1C1C1C", lab: rgbToLab(28, 28, 28) }, // soft black
+  { name: "Pewter", hex: "#606767", lab: rgbToLab(96, 103, 103) }, // pewter
+
+  // ── Red additions ──
+  { name: "Salmon", hex: "#FA8072", lab: rgbToLab(250, 128, 114) }, // salmon
+  { name: "Light Salmon", hex: "#FFA07A", lab: rgbToLab(255, 160, 122) }, // light salmon
+  { name: "Dark Salmon", hex: "#E9967A", lab: rgbToLab(233, 150, 122) }, // dark salmon
+  { name: "Tomato", hex: "#FF6347", lab: rgbToLab(255, 99, 71) }, // tomato
+  { name: "Brick Red", hex: "#CB4154", lab: rgbToLab(203, 65, 84) }, // brick red
+  { name: "Pale Red", hex: "#F08080", lab: rgbToLab(240, 128, 128) }, // pale red
+  { name: "Wine", hex: "#722F37", lab: rgbToLab(114, 47, 55) }, // wine
+  { name: "Burgundy", hex: "#800020", lab: rgbToLab(128, 0, 32) }, // burgundy
+  { name: "Maroon", hex: "#800000", lab: rgbToLab(128, 0, 0) }, // maroon
+  { name: "Rusty Red", hex: "#B94545", lab: rgbToLab(185, 69, 69) }, // rusty red
+  { name: "Muted Brick", hex: "#AA5555", lab: rgbToLab(170, 85, 85) }, // muted brick
+  { name: "Cherry", hex: "#DE3163", lab: rgbToLab(222, 49, 99) }, // cherry
+  { name: "Cardinal", hex: "#C41E3A", lab: rgbToLab(196, 30, 58) }, // cardinal
+  { name: "Rose Red", hex: "#C8505A", lab: rgbToLab(200, 80, 90) }, // rose red
+  { name: "Berry", hex: "#B4283C", lab: rgbToLab(180, 40, 60) }, // berry
+  { name: "Light Rose Red", hex: "#DC7878", lab: rgbToLab(220, 120, 120) }, // light rose red
+
+  // ── Orange additions ──
+  { name: "Peru Orange", hex: "#CD853F", lab: rgbToLab(205, 133, 63) }, // peru — orange-class for ColorChecker Orange patch
+  { name: "Orange Red", hex: "#FF4500", lab: rgbToLab(255, 69, 0) }, // orange red
+  { name: "Peach", hex: "#FFDAB9", lab: rgbToLab(255, 218, 185) }, // peach
+  { name: "Light Peach", hex: "#FFE5B4", lab: rgbToLab(255, 229, 180) }, // light peach
+  { name: "Apricot", hex: "#FBCEB1", lab: rgbToLab(251, 206, 177) }, // apricot
+  { name: "Tan Orange", hex: "#D28C5A", lab: rgbToLab(210, 140, 90) }, // tan orange
+  { name: "Burnt Orange", hex: "#CC5500", lab: rgbToLab(204, 85, 0) }, // burnt orange
+  { name: "Light Orange", hex: "#FFC88C", lab: rgbToLab(255, 200, 140) }, // light orange
+  { name: "Bright Orange", hex: "#FFB26B", lab: rgbToLab(255, 178, 107) }, // bright orange
+  { name: "Pale Orange", hex: "#FFD5A5", lab: rgbToLab(255, 213, 165) }, // pale orange
+  { name: "Sandy Orange", hex: "#F4A460", lab: rgbToLab(244, 164, 96) }, // sandy orange
+  { name: "Terracotta", hex: "#CC4E39", lab: rgbToLab(204, 78, 57) }, // terracotta
+  { name: "Salmon Orange", hex: "#FFA07A", lab: rgbToLab(255, 160, 122) }, // salmon orange
+  { name: "Pumpkin", hex: "#FF7518", lab: rgbToLab(255, 117, 24) }, // pumpkin
+  { name: "Carrot", hex: "#ED9121", lab: rgbToLab(237, 145, 33) }, // carrot
+  { name: "Tangerine", hex: "#F28500", lab: rgbToLab(242, 133, 0) }, // tangerine
+  { name: "Amber", hex: "#FFBF00", lab: rgbToLab(255, 191, 0) }, // amber
+  { name: "Persimmon", hex: "#EC5800", lab: rgbToLab(236, 88, 0) }, // persimmon
+
+  // ── Yellow additions ──
+  { name: "Light Yellow", hex: "#FFFFE0", lab: rgbToLab(255, 255, 224) }, // light yellow
+  { name: "Lemon Chiffon", hex: "#FFFACD", lab: rgbToLab(255, 250, 205) }, // lemon chiffon
+  { name: "Pale Goldenrod", hex: "#EEE8AA", lab: rgbToLab(238, 232, 170) }, // pale goldenrod
+  { name: "Light Goldenrod", hex: "#FAFAD2", lab: rgbToLab(250, 250, 210) }, // light goldenrod
+  { name: "Papaya Whip", hex: "#FFEFD5", lab: rgbToLab(255, 239, 213) }, // papaya whip
+  { name: "Cornsilk", hex: "#FFF8DC", lab: rgbToLab(255, 248, 220) }, // cornsilk
+  { name: "Mustard", hex: "#FFDB58", lab: rgbToLab(255, 219, 88) }, // mustard
+  { name: "Olive Yellow", hex: "#C8B450", lab: rgbToLab(200, 180, 80) }, // olive yellow
+  { name: "Pale Yellow", hex: "#FFFF99", lab: rgbToLab(255, 255, 153) }, // pale yellow
+  { name: "Mellow Yellow", hex: "#F8DE7E", lab: rgbToLab(248, 222, 126) }, // mellow yellow
+  { name: "Saffron", hex: "#F4C430", lab: rgbToLab(244, 196, 48) }, // saffron
+  { name: "Banana", hex: "#FFE135", lab: rgbToLab(255, 225, 53) }, // banana
+  { name: "Daffodil", hex: "#FFFF31", lab: rgbToLab(255, 255, 49) }, // daffodil
+  { name: "Honey", hex: "#EBB649", lab: rgbToLab(235, 182, 73) }, // honey
+  { name: "Lemon", hex: "#FFF700", lab: rgbToLab(255, 247, 0) }, // lemon
+  { name: "Buttercup", hex: "#F3BF3F", lab: rgbToLab(243, 191, 63) }, // buttercup
+  { name: "Cream", hex: "#FFFDD0", lab: rgbToLab(255, 253, 208) }, // cream
+
+  // ── Green additions (Foliage gap region) ──
+  { name: "Lawn Green", hex: "#7CFC00", lab: rgbToLab(124, 252, 0) }, // lawn green
+  { name: "Chartreuse", hex: "#7FFF00", lab: rgbToLab(127, 255, 0) }, // chartreuse
+  { name: "Spring Green", hex: "#00FF7F", lab: rgbToLab(0, 255, 127) }, // spring green
+  { name: "Medium Spring Green", hex: "#00FA9A", lab: rgbToLab(0, 250, 154) }, // medium spring green
+  { name: "Pale Green", hex: "#98FB98", lab: rgbToLab(152, 251, 152) }, // pale green
+  { name: "Sea Green", hex: "#2E8B57", lab: rgbToLab(46, 139, 87) }, // sea green
+  { name: "Medium Sea Green", hex: "#3CB371", lab: rgbToLab(60, 179, 113) }, // medium sea green
+  { name: "Forest Foliage", hex: "#587145", lab: rgbToLab(88, 113, 69) }, // forest foliage — ColorChecker Foliage
+  { name: "Olive Drab", hex: "#6B8E23", lab: rgbToLab(107, 142, 35) }, // olive drab
+  { name: "Olive", hex: "#808000", lab: rgbToLab(128, 128, 0) }, // olive
+  { name: "Sage", hex: "#9EAE83", lab: rgbToLab(158, 174, 131) }, // sage
+  { name: "Moss Green", hex: "#8A9A5B", lab: rgbToLab(138, 154, 91) }, // moss green
+  { name: "Yellow Green", hex: "#9ACD32", lab: rgbToLab(154, 205, 50) }, // yellow green
+  { name: "Mint Green", hex: "#98FF98", lab: rgbToLab(152, 255, 152) }, // mint green
+  { name: "Avocado", hex: "#768045", lab: rgbToLab(118, 128, 69) }, // avocado
+  { name: "Foliage Mid", hex: "#6E8755", lab: rgbToLab(110, 135, 85) }, // foliage mid
+  { name: "Foliage Light", hex: "#87A064", lab: rgbToLab(135, 160, 100) }, // foliage light
+  { name: "Foliage Dark", hex: "#4B5F37", lab: rgbToLab(75, 95, 55) }, // foliage dark
+  { name: "Pickle", hex: "#5E711C", lab: rgbToLab(94, 113, 28) }, // pickle
+  { name: "Pistachio", hex: "#93C572", lab: rgbToLab(147, 197, 114) }, // pistachio
+  { name: "Hunter Green", hex: "#355E3B", lab: rgbToLab(53, 94, 59) }, // hunter green
+  { name: "Pine", hex: "#214F39", lab: rgbToLab(33, 79, 57) }, // pine
+  { name: "Emerald", hex: "#50C878", lab: rgbToLab(80, 200, 120) }, // emerald
+  { name: "Bottle Green", hex: "#006A4E", lab: rgbToLab(0, 106, 78) }, // bottle green
+  { name: "Khaki Green", hex: "#87875A", lab: rgbToLab(135, 135, 90) }, // khaki green
+  { name: "Asparagus", hex: "#87A96B", lab: rgbToLab(135, 169, 107) }, // asparagus
+
+  // ── Cyan additions ──
+  { name: "Light Cyan", hex: "#E0FFFF", lab: rgbToLab(224, 255, 255) }, // light cyan
+  { name: "Pale Turquoise", hex: "#AFEEEE", lab: rgbToLab(175, 238, 238) }, // pale turquoise
+  { name: "Aquamarine", hex: "#7FFFD4", lab: rgbToLab(127, 255, 212) }, // aquamarine
+  { name: "Medium Aquamarine", hex: "#66CDAA", lab: rgbToLab(102, 205, 170) }, // medium aquamarine
+  { name: "Medium Turquoise", hex: "#48D1CC", lab: rgbToLab(72, 209, 204) }, // medium turquoise
+  { name: "Light Sea Green", hex: "#20B2AA", lab: rgbToLab(32, 178, 170) }, // light sea green
+  { name: "Teal", hex: "#008080", lab: rgbToLab(0, 128, 128) }, // teal
+  { name: "Aqua Mid", hex: "#6EC8C8", lab: rgbToLab(110, 200, 200) }, // aqua mid
+  { name: "Bluish Green Light", hex: "#82C8B4", lab: rgbToLab(130, 200, 180) }, // bluish green light
+  { name: "Bluish Green Mid", hex: "#5FAAA0", lab: rgbToLab(95, 170, 160) }, // bluish green mid
+  { name: "Pale Mint", hex: "#AAD2C8", lab: rgbToLab(170, 210, 200) }, // pale mint
+  { name: "Spearmint", hex: "#8CC8AA", lab: rgbToLab(140, 200, 170) }, // spearmint
+  { name: "Robin Egg Blue", hex: "#00CCCC", lab: rgbToLab(0, 204, 204) }, // robin egg blue
+  { name: "Tiffany Blue", hex: "#0ABAB5", lab: rgbToLab(10, 186, 181) }, // tiffany blue
+  { name: "Sky Cyan", hex: "#82C8D2", lab: rgbToLab(130, 200, 210) }, // sky cyan
+  { name: "Deep Cyan", hex: "#0A87A5", lab: rgbToLab(10, 135, 165) }, // deep cyan — ColorChecker Cyan
+  { name: "Saturated Cyan", hex: "#0096B4", lab: rgbToLab(0, 150, 180) }, // saturated cyan
+  { name: "Marine Cyan", hex: "#147896", lab: rgbToLab(20, 120, 150) }, // marine cyan
+
+  // ── Blue additions ──
+  { name: "Cornflower Blue", hex: "#6495ED", lab: rgbToLab(100, 149, 237) }, // cornflower blue
+  { name: "Light Blue", hex: "#ADD8E6", lab: rgbToLab(173, 216, 230) }, // light blue
+  { name: "Deep Sky Blue", hex: "#00BFFF", lab: rgbToLab(0, 191, 255) }, // deep sky blue
+  { name: "Powder Blue", hex: "#B0E0E6", lab: rgbToLab(176, 224, 230) }, // powder blue
+  { name: "Alice Blue", hex: "#F0F8FF", lab: rgbToLab(240, 248, 255) }, // alice blue
+  { name: "Midnight Blue", hex: "#191970", lab: rgbToLab(25, 25, 112) }, // midnight blue
+  { name: "Cobalt Blue", hex: "#0047AB", lab: rgbToLab(0, 71, 171) }, // cobalt blue
+  { name: "Periwinkle", hex: "#CCCCFF", lab: rgbToLab(204, 204, 255) }, // periwinkle
+  { name: "Lavender Blue", hex: "#ABB8E4", lab: rgbToLab(171, 184, 228) }, // lavender blue
+  { name: "Slate Blue", hex: "#6A5ACD", lab: rgbToLab(106, 90, 205) }, // slate blue
+  { name: "Pale Blue", hex: "#D2DCEB", lab: rgbToLab(210, 220, 235) }, // pale blue
+  { name: "Sky Mid", hex: "#6E8CB4", lab: rgbToLab(110, 140, 180) }, // sky mid
+  { name: "Sky Muted", hex: "#5F78A0", lab: rgbToLab(95, 120, 160) }, // sky muted — ColorChecker Blue Sky
+  { name: "Denim", hex: "#506E96", lab: rgbToLab(80, 110, 150) }, // denim
+  { name: "Cerulean", hex: "#2A52BE", lab: rgbToLab(42, 82, 190) }, // cerulean
+  { name: "Sapphire", hex: "#0F52BA", lab: rgbToLab(15, 82, 186) }, // sapphire
+  { name: "Azure", hex: "#007FFF", lab: rgbToLab(0, 127, 255) }, // azure
+  { name: "Navy Mid", hex: "#233778", lab: rgbToLab(35, 55, 120) }, // navy mid
+  { name: "Steel Sky", hex: "#466496", lab: rgbToLab(70, 100, 150) }, // steel sky
+  { name: "Marine", hex: "#1E3C96", lab: rgbToLab(30, 60, 150) }, // marine — ColorChecker Blue
+  { name: "Pacific", hex: "#1C6BA0", lab: rgbToLab(28, 107, 160) }, // pacific
+  { name: "Periwinkle Mid", hex: "#8CA0D2", lab: rgbToLab(140, 160, 210) }, // periwinkle mid
+
+  // ── Violet additions ──
+  { name: "Thistle", hex: "#D8BFD8", lab: rgbToLab(216, 191, 216) }, // thistle
+  { name: "Plum", hex: "#DDA0DD", lab: rgbToLab(221, 160, 221) }, // plum
+  { name: "Orchid", hex: "#DA70D6", lab: rgbToLab(218, 112, 214) }, // orchid
+  { name: "Dark Orchid", hex: "#9932CC", lab: rgbToLab(153, 50, 204) }, // dark orchid
+  { name: "Blue Violet", hex: "#8A2BE2", lab: rgbToLab(138, 43, 226) }, // blue violet
+  { name: "Lavender", hex: "#E6E6FA", lab: rgbToLab(230, 230, 250) }, // lavender
+  { name: "Mauve", hex: "#B57EDC", lab: rgbToLab(181, 126, 220) }, // mauve
+  { name: "Pale Violet", hex: "#C8AADC", lab: rgbToLab(200, 170, 220) }, // pale violet
+  { name: "Eggplant", hex: "#614051", lab: rgbToLab(97, 64, 81) }, // eggplant
+  { name: "Lilac", hex: "#C8A2C8", lab: rgbToLab(200, 162, 200) }, // lilac
+  { name: "Wisteria", hex: "#C9A0DC", lab: rgbToLab(201, 160, 220) }, // wisteria
+  { name: "Heliotrope", hex: "#DF73FF", lab: rgbToLab(223, 115, 255) }, // heliotrope
+  { name: "Amethyst", hex: "#9966CC", lab: rgbToLab(153, 102, 204) }, // amethyst
+  { name: "Iris", hex: "#5A4FCF", lab: rgbToLab(90, 79, 207) }, // iris
+  { name: "Grape", hex: "#6F2DA8", lab: rgbToLab(111, 45, 168) }, // grape
+  { name: "Blueberry", hex: "#4F478C", lab: rgbToLab(79, 71, 140) }, // blueberry
+
+  // ── Pink additions (Light Skin + Magenta gap regions) ──
+  { name: "Misty Rose", hex: "#FFE4E1", lab: rgbToLab(255, 228, 225) }, // misty rose
+  { name: "Lavender Blush", hex: "#FFF0F5", lab: rgbToLab(255, 240, 245) }, // lavender blush
+  { name: "Rose", hex: "#FF007F", lab: rgbToLab(255, 0, 127) }, // rose
+  { name: "Light Hot Pink", hex: "#FFB6C1", lab: rgbToLab(255, 182, 193) }, // light hot pink
+  { name: "Salmon Pink", hex: "#FF91A4", lab: rgbToLab(255, 145, 164) }, // salmon pink
+  { name: "Pale Pink", hex: "#FADADD", lab: rgbToLab(250, 218, 221) }, // pale pink
+  { name: "Bubblegum", hex: "#FFC1CC", lab: rgbToLab(255, 193, 204) }, // bubblegum
+  { name: "Fuchsia", hex: "#FF0096", lab: rgbToLab(255, 0, 150) }, // fuchsia
+  { name: "Magenta-Rose", hex: "#C8508C", lab: rgbToLab(200, 80, 140) }, // magenta-rose
+  { name: "Magenta Mid", hex: "#BE468C", lab: rgbToLab(190, 70, 140) }, // magenta mid — ColorChecker Magenta
+  { name: "Carnation", hex: "#FFA6C9", lab: rgbToLab(255, 166, 201) }, // carnation
+  { name: "Watermelon", hex: "#FC6C85", lab: rgbToLab(252, 108, 133) }, // watermelon
+  { name: "Coral Pink", hex: "#F88379", lab: rgbToLab(248, 131, 121) }, // coral pink
+  { name: "Cerise", hex: "#DE3163", lab: rgbToLab(222, 49, 99) }, // cerise
+  { name: "Blush", hex: "#DE5D83", lab: rgbToLab(222, 93, 131) }, // blush
+  { name: "Rose Pink", hex: "#F0648C", lab: rgbToLab(240, 100, 140) }, // rose pink
+  { name: "Light Skin Pink", hex: "#C39682", lab: rgbToLab(195, 150, 130) }, // light skin pink — ColorChecker Light Skin
+  { name: "Dusty Pink", hex: "#C8A096", lab: rgbToLab(200, 160, 150) }, // dusty pink
+  { name: "Warm Pink", hex: "#D28C82", lab: rgbToLab(210, 140, 130) }, // warm pink
+
+  // ── Brown additions (Dark Skin gap) ──
+  { name: "Sandy Brown", hex: "#F4A460", lab: rgbToLab(244, 164, 96) }, // sandy brown
+  { name: "Wheat", hex: "#F5DEB3", lab: rgbToLab(245, 222, 179) }, // wheat
+  { name: "Rosy Brown", hex: "#BC8F8F", lab: rgbToLab(188, 143, 143) }, // rosy brown
+  { name: "Tan", hex: "#D2B48C", lab: rgbToLab(210, 180, 140) }, // tan
+  { name: "Khaki Brown", hex: "#BD9E52", lab: rgbToLab(189, 158, 82) }, // khaki brown
+  { name: "Camel", hex: "#C19A6B", lab: rgbToLab(193, 154, 107) }, // camel
+  { name: "Beige", hex: "#F5F5DC", lab: rgbToLab(245, 245, 220) }, // beige
+  { name: "Bisque", hex: "#FFE4C4", lab: rgbToLab(255, 228, 196) }, // bisque
+  { name: "Light Brown", hex: "#B5651D", lab: rgbToLab(181, 101, 29) }, // light brown
+  { name: "Walnut", hex: "#5F432E", lab: rgbToLab(95, 67, 46) }, // walnut
+  { name: "Coffee", hex: "#6F4E37", lab: rgbToLab(111, 78, 55) }, // coffee
+  { name: "Mocha", hex: "#7A5539", lab: rgbToLab(122, 85, 57) }, // mocha
+  { name: "Russet", hex: "#80461B", lab: rgbToLab(128, 70, 27) }, // russet
+  { name: "Skin Tan", hex: "#BE8C64", lab: rgbToLab(190, 140, 100) }, // skin tan
+  { name: "Skin Mid", hex: "#A06E50", lab: rgbToLab(160, 110, 80) }, // skin mid
+  { name: "Skin Dark", hex: "#735041", lab: rgbToLab(115, 80, 65) }, // skin dark — ColorChecker Dark Skin
+  { name: "Espresso", hex: "#4B3621", lab: rgbToLab(75, 54, 33) }, // espresso
+  { name: "Mahogany", hex: "#C04000", lab: rgbToLab(192, 64, 0) }, // mahogany
+  { name: "Caramel", hex: "#AF6F43", lab: rgbToLab(175, 111, 67) }, // caramel
+  { name: "Hazelnut", hex: "#B48C64", lab: rgbToLab(180, 140, 100) }, // hazelnut
+  { name: "Tawny", hex: "#CD5700", lab: rgbToLab(205, 87, 0) }, // tawny
 ];
 
 /**

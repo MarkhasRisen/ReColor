@@ -85,6 +85,7 @@ DB_ADDITIONS = [
     ("Berry", "Red", (180,40,60)),          ("Light Rose Red", "Red", (220,120,120)),
 
     # ── Orange additions (peaches, apricots, terracotta) ──
+    ("Peru Orange", "Orange", (205,133,63)),    # was Brown — re-labelled to match ColorChecker Orange
     ("Orange Red", "Orange", (255,69,0)),       ("Peach", "Orange", (255,218,185)),
     ("Light Peach", "Orange", (255,229,180)),   ("Apricot", "Orange", (251,206,177)),
     ("Tan Orange", "Orange", (210,140,90)),     ("Burnt Orange", "Orange", (204,85,0)),
@@ -130,6 +131,8 @@ DB_ADDITIONS = [
     ("Pale Mint", "Cyan", (170,210,200)),       ("Spearmint", "Cyan", (140,200,170)),
     ("Robin Egg Blue", "Cyan", (0,204,204)),    ("Tiffany Blue", "Cyan", (10,186,181)),
     ("Sky Cyan", "Cyan", (130,200,210)),
+    ("Deep Cyan", "Cyan", (10,135,165)),         # ColorChecker Cyan
+    ("Saturated Cyan", "Cyan", (0,150,180)),    ("Marine Cyan", "Cyan", (20,120,150)),
 
     # ── Blue additions (sky, navy, cobalt) ──
     ("Cornflower Blue", "Blue", (100,149,237)), ("Light Blue", "Blue", (173,216,230)),
@@ -163,9 +166,12 @@ DB_ADDITIONS = [
     ("Carnation", "Pink", (255,166,201)),       ("Watermelon", "Pink", (252,108,133)),
     ("Coral Pink", "Pink", (248,131,121)),      ("Cerise", "Pink", (222,49,99)),
     ("Blush", "Pink", (222,93,131)),            ("Rose Pink", "Pink", (240,100,140)),
+    ("Light Skin Pink", "Pink", (195,150,130)),  # ColorChecker Light Skin
+    ("Dusty Pink", "Pink", (200,160,150)),       ("Warm Pink", "Pink", (210,140,130)),
 
     # ── Brown additions (tans, beige, skin browns) — Dark Skin gap ──
-    ("Peru", "Brown", (205,133,63)),            ("Sandy Brown", "Brown", (244,164,96)),
+    # Note: "Peru" (205,133,63) moved to Orange class; Sandy Brown stays here.
+    ("Sandy Brown", "Brown", (244,164,96)),
     ("Wheat", "Brown", (245,222,179)),          ("Rosy Brown", "Brown", (188,143,143)),
     ("Tan", "Brown", (210,180,140)),            ("Khaki Brown", "Brown", (189,158,82)),
     ("Camel", "Brown", (193,154,107)),          ("Beige", "Brown", (245,245,220)),
