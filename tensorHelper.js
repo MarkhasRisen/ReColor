@@ -4,8 +4,8 @@
  * Provides:
  *  - Color class definitions (matching cnn.ipynb)
  *  - LMS color-space matrices for Daltonization (Brettel/Fidaner method)
- *  - prepareInputTensor()  – JPEG base64 → Float32Array [256*256*3]
- *  - getClassMask()        – TFLite output → Uint8Array class mask [256*256]
+ *  - prepareInputTensor()  – JPEG base64 to Float32Array [256*256*3]
+ *  - getClassMask()        – TFLite output to Uint8Array class mask [256*256]
  *  - applyDaltonization()  – Pixel-level CVD compensation
  */
 
@@ -108,11 +108,6 @@ export function getCVDRows(cvdType) {
   return { row0: [...m[0]], row1: [...m[1]], row2: [...m[2]] };
 }
 
-// ─────────────────────────────────────────────────────────────
-// Error-shift matrices
-// Redistribute the missing-cone error into the surviving channels
-// so the user can perceive the difference.
-// ─────────────────────────────────────────────────────────────
 const CVD_ERR_SHIFT = {
   Protan: [
     [0.0, 0.0, 0.0],
@@ -142,21 +137,18 @@ function srgbToLinear(c) {
 // Color Identifier — CIELAB + Delta-E nearest-neighbor
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Converts sRGB [0-255] to CIELAB using D65 illuminant.
- */
 function rgbToLab(r, g, b) {
-  // sRGB → linear RGB → XYZ (D65)
+  // sRGB to linear RGB to XYZ (D65)
   let rl = srgbToLinear(r / 255);
   let gl = srgbToLinear(g / 255);
   let bl = srgbToLinear(b / 255);
 
-  // Linear RGB → XYZ (sRGB D65 matrix)
+  // Linear RGB to XYZ (sRGB D65 matrix)
   let x = (0.4124564 * rl + 0.3575761 * gl + 0.1804375 * bl) / 0.95047;
   let y = (0.2126729 * rl + 0.7151522 * gl + 0.072175 * bl) / 1.0;
   let z = (0.0193339 * rl + 0.0961964 * gl + 0.9503041 * bl) / 1.08883;
 
-  // XYZ → Lab
+  // XYZ to Lab
   const f = (t) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
   const fx = f(x),
     fy = f(y),
@@ -169,12 +161,7 @@ function rgbToLab(r, g, b) {
   ];
 }
 
-/**
- * Weighted Delta-E distance between two CIELAB colors.
- * L* (lightness) is down-weighted so dark red and bright red both match "Red".
- * a* and b* (chroma/hue) are full-weight since they determine color name.
- */
-const L_WEIGHT = 0.5; // lightness matters less for color naming
+const L_WEIGHT = 0.5;
 function deltaE(lab1, lab2) {
   return Math.sqrt(
     L_WEIGHT * (lab1[0] - lab2[0]) ** 2 +
@@ -183,11 +170,6 @@ function deltaE(lab1, lab2) {
   );
 }
 
-/**
- * Representative colors for each of the 10 classes.
- * Multiple entries per class cover common shades for robust matching.
- * LAB values are pre-computed from the RGB values.
- */
 // Chroma threshold: pixels with C* below this are truly achromatic (Neutral).
 // Pixels above this are forced to match chromatic classes only.
 const NEUTRAL_CHROMA_THRESHOLD = 12;
@@ -309,7 +291,7 @@ const IDENTIFIER_DB = [
 export function identifyColor(r, g, b) {
   const lab = rgbToLab(r, g, b);
 
-  // Chroma gate: C* = sqrt(a² + b²). Low chroma = truly achromatic → Neutral
+  // Chroma gate: C* = sqrt(a² + b²). Low chroma = truly achromatic to Neutral
   const chroma = Math.sqrt(lab[1] * lab[1] + lab[2] * lab[2]);
   const isChromatic = chroma >= NEUTRAL_CHROMA_THRESHOLD;
 
@@ -443,7 +425,7 @@ export function getClassMask(outputTensor, numClasses = 10) {
 // ─────────────────────────────────────────────────────────────
 // decodeJpegBase64
 //
-// Convenience wrapper: base64 JPEG string → jpeg-js rawImageData
+// Convenience wrapper: base64 JPEG string to jpeg-js rawImageData
 // { data: Uint8Array (RGBA), width, height }
 // ─────────────────────────────────────────────────────────────
 export function decodeJpegBase64(base64Jpeg) {
@@ -486,7 +468,7 @@ export function applyDaltonization(rawImageData, mask, cvdType) {
     if (useGate && !confusionSet.has(mask[i])) continue;
 
     const rIdx = i * 4;
-    // sRGB → linear (gamma decode)
+    // sRGB to linear (gamma decode)
     const r = Math.pow(pixels[rIdx] / 255.0, 2.2);
     const g = Math.pow(pixels[rIdx + 1] / 255.0, 2.2);
     const b = Math.pow(pixels[rIdx + 2] / 255.0, 2.2);
@@ -544,9 +526,9 @@ const HUE_ROTATION_CONFIG = {
   // center = hue where confusion is strongest (degrees)
   // range  = half-width of the band (degrees)
   // shift  = rotation applied at band center, tapers linearly to 0 at edges
-  Protan: { center: 0, range: 60, shift: 40 }, // reds (0°) → oranges/yellows
+  Protan: { center: 0, range: 60, shift: 40 }, // reds (0°) to oranges/yellows
   Deutan: { center: 0, range: 60, shift: 40 }, // reds/greens separated by pushing reds toward yellow
-  Tritan: { center: 240, range: 60, shift: -30 }, // blues (240°) → cyan/purple
+  Tritan: { center: 240, range: 60, shift: -30 }, // blues (240°) to cyan/purple
 };
 
 function circularHueDistance(h, center) {
@@ -568,7 +550,7 @@ export function applyHueRotation(rawImageData, cvdType) {
       g = pixels[idx + 1] / 255,
       b = pixels[idx + 2] / 255;
 
-    // RGB → HSV (inline, no allocation)
+    // RGB to HSV (inline, no allocation)
     const max = Math.max(r, g, b),
       min = Math.min(r, g, b);
     const d = max - min;
@@ -592,7 +574,7 @@ export function applyHueRotation(rawImageData, cvdType) {
     let newH = h + cfg.shift * weight;
     newH = ((newH % 360) + 360) % 360;
 
-    // HSV → RGB (inline)
+    // HSV to RGB (inline)
     const c = v * s;
     const hp = newH / 60;
     const x = c * (1 - Math.abs((hp % 2) - 1));
