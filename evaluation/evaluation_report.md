@@ -1,6 +1,6 @@
 # ReColor — Daltonization vs Hue Rotation Evaluation
 
-**Generated:** 2026-04-25 16:45:21
+**Generated:** 2026-04-30 09:52:02
 **Test images:** 6 synthetic images (720×480)
 **CVD types:** Protan, Deutan, Tritan
 **Algorithms:** Daltonization (Brettel/Fidaner), Hue Rotation (HSV band)

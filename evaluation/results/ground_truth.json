@@ -1,0 +1,2218 @@
+{
+  "suite1": {
+    "accuracy_pct": 79.2,
+    "correct": 19,
+    "total": 24,
+    "details": [
+      {
+        "patch": "Dark Skin",
+        "rgb": [
+          115,
+          82,
+          68
+        ],
+        "expected": "Brown",
+        "predicted": "Brown",
+        "predicted_raw": "Brown",
+        "confidence": 90,
+        "correct": true
+      },
+      {
+        "patch": "Light Skin",
+        "rgb": [
+          194,
+          150,
+          130
+        ],
+        "expected": "Orange",
+        "predicted": "Pink",
+        "predicted_raw": "Pink",
+        "confidence": 77,
+        "correct": false
+      },
+      {
+        "patch": "Blue Sky",
+        "rgb": [
+          98,
+          122,
+          157
+        ],
+        "expected": "Blue",
+        "predicted": "Blue",
+        "predicted_raw": "Blue",
+        "confidence": 89,
+        "correct": true
+      },
+      {
+        "patch": "Foliage",
+        "rgb": [
+          87,
+          108,
+          67
+        ],
+        "expected": "Green",
+        "predicted": "Green",
+        "predicted_raw": "Green",
+        "confidence": 78,
+        "correct": true
+      },
+      {
+        "patch": "Blue Flower",
+        "rgb": [
+          133,
+          128,
+          177
+        ],
+        "expected": "Violet",
+        "predicted": "Violet",
+        "predicted_raw": "Violet",
+        "confidence": 78,
+        "correct": true
+      },
+      {
+        "patch": "Bluish Green",
+        "rgb": [
+          103,
+          189,
+          170
+        ],
+        "expected": "Cyan",
+        "predicted": "Cyan",
+        "predicted_raw": "Cyan",
+        "confidence": 78,
+        "correct": true
+      },
+      {
+        "patch": "Orange",
+        "rgb": [
+          214,
+          126,
+          44
+        ],
+        "expected": "Orange",
+        "predicted": "Orange",
+        "predicted_raw": "Orange",
+        "confidence": 81,
+        "correct": true
+      },
+      {
+        "patch": "Purplish Blue",
+        "rgb": [
+          80,
+          91,
+          166
+        ],
+        "expected": "Blue",
+        "predicted": "Violet",
+        "predicted_raw": "Violet",
+        "confidence": 73,
+        "correct": false
+      },
+      {
+        "patch": "Moderate Red",
+        "rgb": [
+          193,
+          90,
+          99
+        ],
+        "expected": "Red",
+        "predicted": "Red",
+        "predicted_raw": "Red",
+        "confidence": 84,
+        "correct": true
+      },
+      {
+        "patch": "Purple",
+        "rgb": [
+          94,
+          60,
+          108
+        ],
+        "expected": "Violet",
+        "predicted": "Violet",
+        "predicted_raw": "Violet",
+        "confidence": 82,
+        "correct": true
+      },
+      {
+        "patch": "Yellow Green",
+        "rgb": [
+          157,
+          188,
+          64
+        ],
+        "expected": "Green",
+        "predicted": "Green",
+        "predicted_raw": "Green",
+        "confidence": 71,
+        "correct": true
+      },
+      {
+        "patch": "Orange Yellow",
+        "rgb": [
+          224,
+          163,
+          46
+        ],
+        "expected": "Orange",
+        "predicted": "Yellow",
+        "predicted_raw": "Yellow",
+        "confidence": 88,
+        "correct": false
+      },
+      {
+        "patch": "Blue",
+        "rgb": [
+          56,
+          61,
+          150
+        ],
+        "expected": "Blue",
+        "predicted": "Violet",
+        "predicted_raw": "Violet",
+        "confidence": 67,
+        "correct": false
+      },
+      {
+        "patch": "Green",
+        "rgb": [
+          70,
+          148,
+          73
+        ],
+        "expected": "Green",
+        "predicted": "Green",
+        "predicted_raw": "Green",
+        "confidence": 66,
+        "correct": true
+      },
+      {
+        "patch": "Red",
+        "rgb": [
+          175,
+          54,
+          60
+        ],
+        "expected": "Red",
+        "predicted": "Brown",
+        "predicted_raw": "Brown",
+        "confidence": 87,
+        "correct": false
+      },
+      {
+        "patch": "Yellow",
+        "rgb": [
+          231,
+          199,
+          31
+        ],
+        "expected": "Yellow",
+        "predicted": "Yellow",
+        "predicted_raw": "Yellow",
+        "confidence": 77,
+        "correct": true
+      },
+      {
+        "patch": "Magenta",
+        "rgb": [
+          187,
+          86,
+          149
+        ],
+        "expected": "Pink",
+        "predicted": "Pink",
+        "predicted_raw": "Pink",
+        "confidence": 65,
+        "correct": true
+      },
+      {
+        "patch": "Cyan",
+        "rgb": [
+          8,
+          133,
+          161
+        ],
+        "expected": "Cyan",
+        "predicted": "Cyan",
+        "predicted_raw": "Cyan",
+        "confidence": 65,
+        "correct": true
+      },
+      {
+        "patch": "White",
+        "rgb": [
+          243,
+          243,
+          242
+        ],
+        "expected": "Neutral",
+        "predicted": "Neutral",
+        "predicted_raw": "Neutral",
+        "confidence": 94,
+        "correct": true
+      },
+      {
+        "patch": "Neutral 8",
+        "rgb": [
+          200,
+          200,
+          200
+        ],
+        "expected": "Neutral",
+        "predicted": "Neutral",
+        "predicted_raw": "Neutral",
+        "confidence": 96,
+        "correct": true
+      },
+      {
+        "patch": "Neutral 6.5",
+        "rgb": [
+          160,
+          160,
+          160
+        ],
+        "expected": "Neutral",
+        "predicted": "Neutral",
+        "predicted_raw": "Neutral",
+        "confidence": 83,
+        "correct": true
+      },
+      {
+        "patch": "Neutral 5",
+        "rgb": [
+          122,
+          122,
+          121
+        ],
+        "expected": "Neutral",
+        "predicted": "Neutral",
+        "predicted_raw": "Neutral",
+        "confidence": 96,
+        "correct": true
+      },
+      {
+        "patch": "Neutral 3.5",
+        "rgb": [
+          85,
+          85,
+          85
+        ],
+        "expected": "Neutral",
+        "predicted": "Neutral",
+        "predicted_raw": "Neutral",
+        "confidence": 87,
+        "correct": true
+      },
+      {
+        "patch": "Black",
+        "rgb": [
+          52,
+          52,
+          52
+        ],
+        "expected": "Neutral",
+        "predicted": "Neutral",
+        "predicted_raw": "Neutral",
+        "confidence": 92,
+        "correct": true
+      }
+    ]
+  },
+  "suite2": {
+    "suites": [
+      {
+        "cvd_type": "Protan",
+        "max_channel_error": "22",
+        "colors": [
+          {
+            "color": "Pure Red",
+            "input_rgb": [
+              255,
+              0,
+              0
+            ],
+            "reference": [
+              "108",
+              "95",
+              "0"
+            ],
+            "app_output": [
+              "108",
+              "95",
+              "0"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Pure Green",
+            "input_rgb": [
+              0,
+              255,
+              0
+            ],
+            "reference": [
+              "255",
+              "229",
+              "0"
+            ],
+            "app_output": [
+              "255",
+              "229",
+              "0"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Pure Blue",
+            "input_rgb": [
+              0,
+              0,
+              255
+            ],
+            "reference": [
+              "0",
+              "89",
+              "255"
+            ],
+            "app_output": [
+              "0",
+              "89",
+              "255"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Yellow",
+            "input_rgb": [
+              255,
+              255,
+              0
+            ],
+            "reference": [
+              "255",
+              "243",
+              "0"
+            ],
+            "app_output": [
+              "255",
+              "243",
+              "0"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Cyan",
+            "input_rgb": [
+              0,
+              255,
+              255
+            ],
+            "reference": [
+              "237",
+              "241",
+              "255"
+            ],
+            "app_output": [
+              "237",
+              "241",
+              "255"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Magenta",
+            "input_rgb": [
+              255,
+              0,
+              255
+            ],
+            "reference": [
+              "0",
+              "126",
+              "255"
+            ],
+            "app_output": [
+              "0",
+              "126",
+              "255"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Orange",
+            "input_rgb": [
+              255,
+              165,
+              0
+            ],
+            "reference": [
+              "194",
+              "170",
+              "0"
+            ],
+            "app_output": [
+              "195",
+              "171",
+              "0"
+            ],
+            "channel_error": [
+              "1",
+              "1",
+              "0"
+            ],
+            "deltaE": 0.487
+          },
+          {
+            "color": "Forest Green",
+            "input_rgb": [
+              34,
+              139,
+              34
+            ],
+            "reference": [
+              "141",
+              "124",
+              "22"
+            ],
+            "app_output": [
+              "142",
+              "125",
+              "0"
+            ],
+            "channel_error": [
+              "1",
+              "1",
+              "22"
+            ],
+            "deltaE": 5.595
+          },
+          {
+            "color": "Sky Blue",
+            "input_rgb": [
+              135,
+              206,
+              235
+            ],
+            "reference": [
+              "189",
+              "201",
+              "236"
+            ],
+            "app_output": [
+              "190",
+              "203",
+              "237"
+            ],
+            "channel_error": [
+              "1",
+              "2",
+              "1"
+            ],
+            "deltaE": 0.921
+          },
+          {
+            "color": "Mid Gray",
+            "input_rgb": [
+              128,
+              128,
+              128
+            ],
+            "reference": [
+              "127",
+              "127",
+              "127"
+            ],
+            "app_output": [
+              "128",
+              "128",
+              "128"
+            ],
+            "channel_error": [
+              "1",
+              "1",
+              "1"
+            ],
+            "deltaE": 0.392
+          },
+          {
+            "color": "White",
+            "input_rgb": [
+              255,
+              255,
+              255
+            ],
+            "reference": [
+              "255",
+              "255",
+              "255"
+            ],
+            "app_output": [
+              "255",
+              "255",
+              "255"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Dark Brown",
+            "input_rgb": [
+              101,
+              67,
+              33
+            ],
+            "reference": [
+              "79",
+              "71",
+              "35"
+            ],
+            "app_output": [
+              "78",
+              "70",
+              "29"
+            ],
+            "channel_error": [
+              "1",
+              "1",
+              "6"
+            ],
+            "deltaE": 3.027
+          }
+        ]
+      },
+      {
+        "cvd_type": "Deutan",
+        "max_channel_error": "4",
+        "colors": [
+          {
+            "color": "Pure Red",
+            "input_rgb": [
+              255,
+              0,
+              0
+            ],
+            "reference": [
+              "162",
+              "143",
+              "0"
+            ],
+            "app_output": [
+              "162",
+              "143",
+              "0"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Pure Green",
+            "input_rgb": [
+              0,
+              255,
+              0
+            ],
+            "reference": [
+              "238",
+              "213",
+              "61"
+            ],
+            "app_output": [
+              "238",
+              "213",
+              "61"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Pure Blue",
+            "input_rgb": [
+              0,
+              0,
+              255
+            ],
+            "reference": [
+              "0",
+              "64",
+              "251"
+            ],
+            "app_output": [
+              "0",
+              "64",
+              "251"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Yellow",
+            "input_rgb": [
+              255,
+              255,
+              0
+            ],
+            "reference": [
+              "255",
+              "249",
+              "53"
+            ],
+            "app_output": [
+              "255",
+              "249",
+              "53"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Cyan",
+            "input_rgb": [
+              0,
+              255,
+              255
+            ],
+            "reference": [
+              "207",
+              "220",
+              "255"
+            ],
+            "app_output": [
+              "207",
+              "220",
+              "255"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Magenta",
+            "input_rgb": [
+              255,
+              0,
+              255
+            ],
+            "reference": [
+              "104",
+              "154",
+              "250"
+            ],
+            "app_output": [
+              "104",
+              "154",
+              "250"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Orange",
+            "input_rgb": [
+              255,
+              165,
+              0
+            ],
+            "reference": [
+              "216",
+              "192",
+              "22"
+            ],
+            "app_output": [
+              "216",
+              "192",
+              "22"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Forest Green",
+            "input_rgb": [
+              34,
+              139,
+              34
+            ],
+            "reference": [
+              "129",
+              "117",
+              "49"
+            ],
+            "app_output": [
+              "130",
+              "117",
+              "46"
+            ],
+            "channel_error": [
+              "1",
+              "0",
+              "3"
+            ],
+            "deltaE": 1.66
+          },
+          {
+            "color": "Sky Blue",
+            "input_rgb": [
+              135,
+              206,
+              235
+            ],
+            "reference": [
+              "174",
+              "190",
+              "234"
+            ],
+            "app_output": [
+              "175",
+              "191",
+              "235"
+            ],
+            "channel_error": [
+              "1",
+              "1",
+              "1"
+            ],
+            "deltaE": 0.364
+          },
+          {
+            "color": "Mid Gray",
+            "input_rgb": [
+              128,
+              128,
+              128
+            ],
+            "reference": [
+              "127",
+              "127",
+              "127"
+            ],
+            "app_output": [
+              "128",
+              "128",
+              "128"
+            ],
+            "channel_error": [
+              "1",
+              "1",
+              "1"
+            ],
+            "deltaE": 0.392
+          },
+          {
+            "color": "White",
+            "input_rgb": [
+              255,
+              255,
+              255
+            ],
+            "reference": [
+              "255",
+              "255",
+              "255"
+            ],
+            "app_output": [
+              "255",
+              "255",
+              "255"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Dark Brown",
+            "input_rgb": [
+              101,
+              67,
+              33
+            ],
+            "reference": [
+              "86",
+              "79",
+              "38"
+            ],
+            "app_output": [
+              "86",
+              "77",
+              "34"
+            ],
+            "channel_error": [
+              "0",
+              "2",
+              "4"
+            ],
+            "deltaE": 1.849
+          }
+        ]
+      },
+      {
+        "cvd_type": "Tritan",
+        "max_channel_error": "3",
+        "colors": [
+          {
+            "color": "Pure Red",
+            "input_rgb": [
+              255,
+              0,
+              0
+            ],
+            "reference": [
+              "255",
+              "0",
+              "22"
+            ],
+            "app_output": [
+              "255",
+              "0",
+              "22"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Pure Green",
+            "input_rgb": [
+              0,
+              255,
+              0
+            ],
+            "reference": [
+              "0",
+              "247",
+              "216"
+            ],
+            "app_output": [
+              "0",
+              "247",
+              "216"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Pure Blue",
+            "input_rgb": [
+              0,
+              0,
+              255
+            ],
+            "reference": [
+              "0",
+              "107",
+              "148"
+            ],
+            "app_output": [
+              "0",
+              "107",
+              "148"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Yellow",
+            "input_rgb": [
+              255,
+              255,
+              0
+            ],
+            "reference": [
+              "255",
+              "237",
+              "216"
+            ],
+            "app_output": [
+              "255",
+              "237",
+              "216"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Cyan",
+            "input_rgb": [
+              0,
+              255,
+              255
+            ],
+            "reference": [
+              "0",
+              "255",
+              "254"
+            ],
+            "app_output": [
+              "0",
+              "255",
+              "254"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Magenta",
+            "input_rgb": [
+              255,
+              0,
+              255
+            ],
+            "reference": [
+              "255",
+              "76",
+              "149"
+            ],
+            "app_output": [
+              "255",
+              "76",
+              "149"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Orange",
+            "input_rgb": [
+              255,
+              165,
+              0
+            ],
+            "reference": [
+              "255",
+              "141",
+              "139"
+            ],
+            "app_output": [
+              "255",
+              "143",
+              "141"
+            ],
+            "channel_error": [
+              "0",
+              "2",
+              "2"
+            ],
+            "deltaE": 1.046
+          },
+          {
+            "color": "Forest Green",
+            "input_rgb": [
+              34,
+              139,
+              34
+            ],
+            "reference": [
+              "0",
+              "134",
+              "118"
+            ],
+            "app_output": [
+              "0",
+              "135",
+              "119"
+            ],
+            "channel_error": [
+              "0",
+              "1",
+              "1"
+            ],
+            "deltaE": 0.395
+          },
+          {
+            "color": "Sky Blue",
+            "input_rgb": [
+              135,
+              206,
+              235
+            ],
+            "reference": [
+              "93",
+              "214",
+              "214"
+            ],
+            "app_output": [
+              "94",
+              "215",
+              "215"
+            ],
+            "channel_error": [
+              "1",
+              "1",
+              "1"
+            ],
+            "deltaE": 0.35
+          },
+          {
+            "color": "Mid Gray",
+            "input_rgb": [
+              128,
+              128,
+              128
+            ],
+            "reference": [
+              "127",
+              "127",
+              "127"
+            ],
+            "app_output": [
+              "128",
+              "128",
+              "128"
+            ],
+            "channel_error": [
+              "1",
+              "1",
+              "1"
+            ],
+            "deltaE": 0.392
+          },
+          {
+            "color": "White",
+            "input_rgb": [
+              255,
+              255,
+              255
+            ],
+            "reference": [
+              "255",
+              "255",
+              "255"
+            ],
+            "app_output": [
+              "255",
+              "255",
+              "255"
+            ],
+            "channel_error": [
+              "0",
+              "0",
+              "0"
+            ],
+            "deltaE": 0.0
+          },
+          {
+            "color": "Dark Brown",
+            "input_rgb": [
+              101,
+              67,
+              33
+            ],
+            "reference": [
+              "110",
+              "62",
+              "62"
+            ],
+            "app_output": [
+              "110",
+              "59",
+              "59"
+            ],
+            "channel_error": [
+              "0",
+              "3",
+              "3"
+            ],
+            "deltaE": 1.819
+          }
+        ]
+      }
+    ],
+    "verdict": "CHECK"
+  },
+  "suite3": [
+    {
+      "cvd_type": "Protan",
+      "num_pairs": 20,
+      "dal_mean_gain": 22.06,
+      "hue_mean_gain": 8.39,
+      "dal_median_gain": 17.64,
+      "hue_median_gain": 0.0,
+      "dal_positive_pct": 95.0,
+      "hue_positive_pct": 45.0,
+      "pairs": [
+        {
+          "c1": [
+            216,
+            32,
+            64
+          ],
+          "c2": [
+            75,
+            85,
+            56
+          ],
+          "de_original": 80.05,
+          "de_confused": 4.21,
+          "de_after_dal": 47.9,
+          "de_after_hue": 39.51,
+          "dal_gain": 43.69,
+          "hue_gain": 35.3
+        },
+        {
+          "c1": [
+            131,
+            162,
+            92
+          ],
+          "c2": [
+            221,
+            134,
+            87
+          ],
+          "de_original": 52.34,
+          "de_confused": 4.22,
+          "de_after_dal": 55.09,
+          "de_after_hue": 25.82,
+          "dal_gain": 50.87,
+          "hue_gain": 21.6
+        },
+        {
+          "c1": [
+            100,
+            143,
+            147
+          ],
+          "c2": [
+            170,
+            139,
+            159
+          ],
+          "de_original": 29.17,
+          "de_confused": 4.65,
+          "de_after_dal": 16.85,
+          "de_after_hue": 2.02,
+          "dal_gain": 12.2,
+          "hue_gain": -2.63
+        },
+        {
+          "c1": [
+            42,
+            108,
+            129
+          ],
+          "c2": [
+            213,
+            73,
+            129
+          ],
+          "de_original": 75.62,
+          "de_confused": 1.12,
+          "de_after_dal": 34.39,
+          "de_after_hue": 33.95,
+          "dal_gain": 33.27,
+          "hue_gain": 32.83
+        },
+        {
+          "c1": [
+            96,
+            62,
+            91
+          ],
+          "c2": [
+            166,
+            39,
+            97
+          ],
+          "de_original": 36.73,
+          "de_confused": 2.54,
+          "de_after_dal": 18.33,
+          "de_after_hue": 26.4,
+          "dal_gain": 15.79,
+          "hue_gain": 23.86
+        },
+        {
+          "c1": [
+            67,
+            79,
+            205
+          ],
+          "c2": [
+            172,
+            56,
+            200
+          ],
+          "de_original": 33.96,
+          "de_confused": 4.63,
+          "de_after_dal": 23.38,
+          "de_after_hue": 4.63,
+          "dal_gain": 18.75,
+          "hue_gain": -0.0
+        },
+        {
+          "c1": [
+            196,
+            178,
+            184
+          ],
+          "c2": [
+            77,
+            199,
+            195
+          ],
+          "de_original": 42.48,
+          "de_confused": 3.35,
+          "de_after_dal": 19.03,
+          "de_after_hue": 3.35,
+          "dal_gain": 15.68,
+          "hue_gain": 0.0
+        },
+        {
+          "c1": [
+            190,
+            190,
+            144
+          ],
+          "c2": [
+            52,
+            214,
+            151
+          ],
+          "de_original": 47.89,
+          "de_confused": 4.71,
+          "de_after_dal": 42.56,
+          "de_after_hue": 4.71,
+          "dal_gain": 37.85,
+          "hue_gain": -0.0
+        },
+        {
+          "c1": [
+            124,
+            186,
+            65
+          ],
+          "c2": [
+            71,
+            184,
+            67
+          ],
+          "de_original": 15.86,
+          "de_confused": 3.82,
+          "de_after_dal": 9.96,
+          "de_after_hue": 3.82,
+          "dal_gain": 6.14,
+          "hue_gain": -0.0
+        },
+        {
+          "c1": [
+            155,
+            171,
+            89
+          ],
+          "c2": [
+            189,
+            151,
+            75
+          ],
+          "de_original": 24.35,
+          "de_confused": 4.77,
+          "de_after_dal": 34.03,
+          "de_after_hue": 12.77,
+          "dal_gain": 29.26,
+          "hue_gain": 8.0
+        },
+        {
+          "c1": [
+            198,
+            162,
+            126
+          ],
+          "c2": [
+            133,
+            172,
+            134
+          ],
+          "de_original": 30.3,
+          "de_confused": 3.95,
+          "de_after_dal": 18.85,
+          "de_after_hue": 16.44,
+          "dal_gain": 14.9,
+          "hue_gain": 12.49
+        },
+        {
+          "c1": [
+            184,
+            123,
+            211
+          ],
+          "c2": [
+            149,
+            140,
+            213
+          ],
+          "de_original": 19.48,
+          "de_confused": 4.24,
+          "de_after_dal": 5.96,
+          "de_after_hue": 4.24,
+          "dal_gain": 1.72,
+          "hue_gain": -0.0
+        },
+        {
+          "c1": [
+            164,
+            172,
+            74
+          ],
+          "c2": [
+            61,
+            170,
+            61
+          ],
+          "de_original": 36.57,
+          "de_confused": 4.64,
+          "de_after_dal": 21.29,
+          "de_after_hue": 4.64,
+          "dal_gain": 16.65,
+          "hue_gain": 0.0
+        },
+        {
+          "c1": [
+            162,
+            133,
+            151
+          ],
+          "c2": [
+            211,
+            133,
+            161
+          ],
+          "de_original": 20.52,
+          "de_confused": 3.3,
+          "de_after_dal": 12.3,
+          "de_after_hue": 13.46,
+          "dal_gain": 9.0,
+          "hue_gain": 10.16
+        },
+        {
+          "c1": [
+            55,
+            197,
+            51
+          ],
+          "c2": [
+            204,
+            187,
+            60
+          ],
+          "de_original": 56.0,
+          "de_confused": 4.58,
+          "de_after_dal": 21.22,
+          "de_after_hue": 4.4,
+          "dal_gain": 16.64,
+          "hue_gain": -0.18
+        },
+        {
+          "c1": [
+            69,
+            118,
+            217
+          ],
+          "c2": [
+            181,
+            112,
+            223
+          ],
+          "de_original": 33.27,
+          "de_confused": 4.24,
+          "de_after_dal": 22.86,
+          "de_after_hue": 4.24,
+          "dal_gain": 18.62,
+          "hue_gain": -0.0
+        },
+        {
+          "c1": [
+            149,
+            73,
+            74
+          ],
+          "c2": [
+            52,
+            96,
+            73
+          ],
+          "de_original": 53.53,
+          "de_confused": 4.05,
+          "de_after_dal": 40.25,
+          "de_after_hue": 23.96,
+          "dal_gain": 36.2,
+          "hue_gain": 19.91
+        },
+        {
+          "c1": [
+            35,
+            229,
+            197
+          ],
+          "c2": [
+            145,
+            211,
+            191
+          ],
+          "de_original": 26.78,
+          "de_confused": 4.72,
+          "de_after_dal": 28.6,
+          "de_after_hue": 4.72,
+          "dal_gain": 23.88,
+          "hue_gain": 0.0
+        },
+        {
+          "c1": [
+            107,
+            206,
+            176
+          ],
+          "c2": [
+            193,
+            200,
+            172
+          ],
+          "de_original": 29.95,
+          "de_confused": 3.84,
+          "de_after_dal": 19.96,
+          "de_after_hue": 3.84,
+          "dal_gain": 16.12,
+          "hue_gain": -0.0
+        },
+        {
+          "c1": [
+            88,
+            78,
+            178
+          ],
+          "c2": [
+            198,
+            39,
+            178
+          ],
+          "de_original": 44.92,
+          "de_confused": 2.35,
+          "de_after_dal": 26.29,
+          "de_after_hue": 8.74,
+          "dal_gain": 23.94,
+          "hue_gain": 6.39
+        }
+      ]
+    },
+    {
+      "cvd_type": "Deutan",
+      "num_pairs": 20,
+      "dal_mean_gain": 12.72,
+      "hue_mean_gain": 4.65,
+      "dal_median_gain": 8.12,
+      "hue_median_gain": 0.0,
+      "dal_positive_pct": 90.0,
+      "hue_positive_pct": 25.0,
+      "pairs": [
+        {
+          "c1": [
+            45,
+            182,
+            144
+          ],
+          "c2": [
+            156,
+            143,
+            140
+          ],
+          "de_original": 49.99,
+          "de_confused": 3.65,
+          "de_after_dal": 9.2,
+          "de_after_hue": 3.65,
+          "dal_gain": 5.55,
+          "hue_gain": 0.0
+        },
+        {
+          "c1": [
+            174,
+            195,
+            116
+          ],
+          "c2": [
+            89,
+            223,
+            121
+          ],
+          "de_original": 38.44,
+          "de_confused": 2.52,
+          "de_after_dal": 10.13,
+          "de_after_hue": 2.52,
+          "dal_gain": 7.61,
+          "hue_gain": 0.0
+        },
+        {
+          "c1": [
+            202,
+            35,
+            79
+          ],
+          "c2": [
+            78,
+            120,
+            58
+          ],
+          "de_original": 92.3,
+          "de_confused": 4.47,
+          "de_after_dal": 48.79,
+          "de_after_hue": 26.5,
+          "dal_gain": 44.32,
+          "hue_gain": 22.03
+        },
+        {
+          "c1": [
+            189,
+            198,
+            167
+          ],
+          "c2": [
+            96,
+            220,
+            167
+          ],
+          "de_original": 38.4,
+          "de_confused": 2.3,
+          "de_after_dal": 11.16,
+          "de_after_hue": 2.3,
+          "dal_gain": 8.86,
+          "hue_gain": 0.0
+        },
+        {
+          "c1": [
+            123,
+            94,
+            214
+          ],
+          "c2": [
+            169,
+            68,
+            221
+          ],
+          "de_original": 24.86,
+          "de_confused": 2.52,
+          "de_after_dal": 10.65,
+          "de_after_hue": 2.52,
+          "dal_gain": 8.13,
+          "hue_gain": -0.0
+        },
+        {
+          "c1": [
+            191,
+            54,
+            109
+          ],
+          "c2": [
+            67,
+            126,
+            96
+          ],
+          "de_original": 85.65,
+          "de_confused": 2.94,
+          "de_after_dal": 36.47,
+          "de_after_hue": 30.19,
+          "dal_gain": 33.53,
+          "hue_gain": 27.25
+        },
+        {
+          "c1": [
+            57,
+            203,
+            126
+          ],
+          "c2": [
+            214,
+            163,
+            141
+          ],
+          "de_original": 72.06,
+          "de_confused": 3.42,
+          "de_after_dal": 19.15,
+          "de_after_hue": 12.33,
+          "dal_gain": 15.73,
+          "hue_gain": 8.91
+        },
+        {
+          "c1": [
+            124,
+            89,
+            153
+          ],
+          "c2": [
+            76,
+            117,
+            154
+          ],
+          "de_original": 31.45,
+          "de_confused": 3.58,
+          "de_after_dal": 8.15,
+          "de_after_hue": 3.58,
+          "dal_gain": 4.57,
+          "hue_gain": -0.0
+        },
+        {
+          "c1": [
+            184,
+            123,
+            211
+          ],
+          "c2": [
+            149,
+            140,
+            213
+          ],
+          "de_original": 19.48,
+          "de_confused": 2.34,
+          "de_after_dal": 9.81,
+          "de_after_hue": 2.34,
+          "dal_gain": 7.47,
+          "hue_gain": 0.0
+        },
+        {
+          "c1": [
+            162,
+            188,
+            219
+          ],
+          "c2": [
+            199,
+            178,
+            226
+          ],
+          "de_original": 18.78,
+          "de_confused": 1.78,
+          "de_after_dal": 6.79,
+          "de_after_hue": 1.78,
+          "dal_gain": 5.01,
+          "hue_gain": 0.0
+        },
+        {
+          "c1": [
+            158,
+            33,
+            226
+          ],
+          "c2": [
+            40,
+            96,
+            215
+          ],
+          "de_original": 50.22,
+          "de_confused": 3.87,
+          "de_after_dal": 20.1,
+          "de_after_hue": 3.87,
+          "dal_gain": 16.23,
+          "hue_gain": 0.0
+        },
+        {
+          "c1": [
+            217,
+            96,
+            152
+          ],
+          "c2": [
+            84,
+            158,
+            143
+          ],
+          "de_original": 80.6,
+          "de_confused": 1.66,
+          "de_after_dal": 31.63,
+          "de_after_hue": 23.37,
+          "dal_gain": 29.97,
+          "hue_gain": 21.71
+        },
+        {
+          "c1": [
+            92,
+            224,
+            94
+          ],
+          "c2": [
+            170,
+            198,
+            86
+          ],
+          "de_original": 35.58,
+          "de_confused": 3.51,
+          "de_after_dal": 11.62,
+          "de_after_hue": 3.51,
+          "dal_gain": 8.11,
+          "hue_gain": -0.0
+        },
+        {
+          "c1": [
+            219,
+            85,
+            88
+          ],
+          "c2": [
+            202,
+            101,
+            78
+          ],
+          "de_original": 15.61,
+          "de_confused": 4.49,
+          "de_after_dal": 2.98,
+          "de_after_hue": 2.29,
+          "dal_gain": -1.51,
+          "hue_gain": -2.2
+        },
+        {
+          "c1": [
+            190,
+            40,
+            45
+          ],
+          "c2": [
+            31,
+            144,
+            41
+          ],
+          "de_original": 110.28,
+          "de_confused": 4.21,
+          "de_after_dal": 35.07,
+          "de_after_hue": 19.78,
+          "dal_gain": 30.86,
+          "hue_gain": 15.57
+        },
+        {
+          "c1": [
+            35,
+            229,
+            197
+          ],
+          "c2": [
+            145,
+            211,
+            191
+          ],
+          "de_original": 26.78,
+          "de_confused": 3.39,
+          "de_after_dal": 4.93,
+          "de_after_hue": 3.39,
+          "dal_gain": 1.54,
+          "hue_gain": -0.0
+        },
+        {
+          "c1": [
+            55,
+            86,
+            169
+          ],
+          "c2": [
+            129,
+            60,
+            179
+          ],
+          "de_original": 34.22,
+          "de_confused": 4.0,
+          "de_after_dal": 14.86,
+          "de_after_hue": 4.0,
+          "dal_gain": 10.86,
+          "hue_gain": -0.0
+        },
+        {
+          "c1": [
+            102,
+            222,
+            164
+          ],
+          "c2": [
+            199,
+            179,
+            154
+          ],
+          "de_original": 50.81,
+          "de_confused": 4.09,
+          "de_after_dal": 16.15,
+          "de_after_hue": 6.08,
+          "dal_gain": 12.06,
+          "hue_gain": 1.99
+        },
+        {
+          "c1": [
+            167,
+            170,
+            150
+          ],
+          "c2": [
+            80,
+            191,
+            140
+          ],
+          "de_original": 39.63,
+          "de_confused": 3.53,
+          "de_after_dal": 6.94,
+          "de_after_hue": 3.53,
+          "dal_gain": 3.41,
+          "hue_gain": 0.0
+        },
+        {
+          "c1": [
+            193,
+            218,
+            162
+          ],
+          "c2": [
+            219,
+            199,
+            163
+          ],
+          "de_original": 20.27,
+          "de_confused": 3.78,
+          "de_after_dal": 5.94,
+          "de_after_hue": 1.56,
+          "dal_gain": 2.16,
+          "hue_gain": -2.22
+        }
+      ]
+    },
+    {
+      "cvd_type": "Tritan",
+      "num_pairs": 14,
+      "dal_mean_gain": 3.36,
+      "hue_mean_gain": 1.19,
+      "dal_median_gain": 3.0,
+      "hue_median_gain": 0.1,
+      "dal_positive_pct": 64.3,
+      "hue_positive_pct": 35.7,
+      "pairs": [
+        {
+          "c1": [
+            102,
+            218,
+            155
+          ],
+          "c2": [
+            55,
+            214,
+            189
+          ],
+          "de_original": 21.07,
+          "de_confused": 4.88,
+          "de_after_dal": 4.32,
+          "de_after_hue": 4.88,
+          "dal_gain": -0.56,
+          "hue_gain": -0.0
+        },
+        {
+          "c1": [
+            68,
+            222,
+            135
+          ],
+          "c2": [
+            55,
+            215,
+            99
+          ],
+          "de_original": 15.84,
+          "de_confused": 3.65,
+          "de_after_dal": 5.33,
+          "de_after_hue": 3.65,
+          "dal_gain": 1.68,
+          "hue_gain": -0.0
+        },
+        {
+          "c1": [
+            51,
+            137,
+            141
+          ],
+          "c2": [
+            36,
+            139,
+            174
+          ],
+          "de_original": 18.69,
+          "de_confused": 4.01,
+          "de_after_dal": 9.41,
+          "de_after_hue": 7.74,
+          "dal_gain": 5.4,
+          "hue_gain": 3.73
+        },
+        {
+          "c1": [
+            134,
+            169,
+            78
+          ],
+          "c2": [
+            146,
+            171,
+            133
+          ],
+          "de_original": 29.07,
+          "de_confused": 4.37,
+          "de_after_dal": 16.09,
+          "de_after_hue": 4.37,
+          "dal_gain": 11.72,
+          "hue_gain": -0.0
+        },
+        {
+          "c1": [
+            88,
+            140,
+            188
+          ],
+          "c2": [
+            74,
+            144,
+            166
+          ],
+          "de_original": 17.18,
+          "de_confused": 4.04,
+          "de_after_dal": 9.75,
+          "de_after_hue": 4.24,
+          "dal_gain": 5.71,
+          "hue_gain": 0.2
+        },
+        {
+          "c1": [
+            82,
+            114,
+            126
+          ],
+          "c2": [
+            79,
+            114,
+            99
+          ],
+          "de_original": 16.79,
+          "de_confused": 3.38,
+          "de_after_dal": 8.48,
+          "de_after_hue": 5.08,
+          "dal_gain": 5.1,
+          "hue_gain": 1.7
+        },
+        {
+          "c1": [
+            192,
+            182,
+            89
+          ],
+          "c2": [
+            177,
+            175,
+            49
+          ],
+          "de_original": 15.3,
+          "de_confused": 4.79,
+          "de_after_dal": 7.97,
+          "de_after_hue": 4.79,
+          "dal_gain": 3.18,
+          "hue_gain": 0.0
+        },
+        {
+          "c1": [
+            64,
+            144,
+            178
+          ],
+          "c2": [
+            37,
+            148,
+            211
+          ],
+          "de_original": 16.85,
+          "de_confused": 4.73,
+          "de_after_dal": 7.54,
+          "de_after_hue": 8.61,
+          "dal_gain": 2.81,
+          "hue_gain": 3.88
+        },
+        {
+          "c1": [
+            68,
+            141,
+            210
+          ],
+          "c2": [
+            85,
+            137,
+            180
+          ],
+          "de_original": 15.04,
+          "de_confused": 4.95,
+          "de_after_dal": 6.75,
+          "de_after_hue": 7.68,
+          "dal_gain": 1.8,
+          "hue_gain": 2.73
+        },
+        {
+          "c1": [
+            82,
+            145,
+            53
+          ],
+          "c2": [
+            76,
+            141,
+            86
+          ],
+          "de_original": 19.88,
+          "de_confused": 3.6,
+          "de_after_dal": 2.48,
+          "de_after_hue": 3.6,
+          "dal_gain": -1.12,
+          "hue_gain": -0.0
+        },
+        {
+          "c1": [
+            47,
+            156,
+            184
+          ],
+          "c2": [
+            33,
+            150,
+            212
+          ],
+          "de_original": 20.83,
+          "de_confused": 3.04,
+          "de_after_dal": 9.4,
+          "de_after_hue": 5.41,
+          "dal_gain": 6.36,
+          "hue_gain": 2.37
+        },
+        {
+          "c1": [
+            52,
+            170,
+            53
+          ],
+          "c2": [
+            69,
+            172,
+            118
+          ],
+          "de_original": 33.89,
+          "de_confused": 4.34,
+          "de_after_dal": 7.61,
+          "de_after_hue": 4.34,
+          "dal_gain": 3.27,
+          "hue_gain": 0.0
+        },
+        {
+          "c1": [
+            51,
+            211,
+            113
+          ],
+          "c2": [
+            80,
+            226,
+            43
+          ],
+          "de_original": 36.9,
+          "de_confused": 4.65,
+          "de_after_dal": 3.61,
+          "de_after_hue": 4.65,
+          "dal_gain": -1.04,
+          "hue_gain": 0.0
+        },
+        {
+          "c1": [
+            51,
+            89,
+            92
+          ],
+          "c2": [
+            34,
+            81,
+            116
+          ],
+          "de_original": 21.1,
+          "de_confused": 4.69,
+          "de_after_dal": 7.44,
+          "de_after_hue": 6.69,
+          "dal_gain": 2.75,
+          "hue_gain": 2.0
+        }
+      ]
+    }
+  ]
+}
