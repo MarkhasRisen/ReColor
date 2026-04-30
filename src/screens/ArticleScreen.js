@@ -1,51 +1,66 @@
-import { Ionicons } from '@expo/vector-icons';
-import { MotiView } from 'moti';
-import React from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { MotiView } from "moti";
+import React from "react";
 import {
   Image,
-  Linking,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-} from 'react-native';
-import { ARTICLES } from '../data/articles';
-import { COLORS, RADIUS, SHADOW, SPACING } from '../theme/colors';
+  View
+} from "react-native";
+import { ARTICLES } from "../data/articles";
+import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
 function SectionRenderer({ section }) {
   switch (section.type) {
-    case 'heading':
+    case "heading":
       return <Text style={styles.sectionHeading}>{section.text}</Text>;
 
-    case 'paragraph':
+    case "paragraph":
       return <Text style={styles.paragraph}>{section.text}</Text>;
 
-    case 'dos_donts':
+    case "dos_donts":
       return (
         <View style={styles.dosDontsRow}>
-          <View style={[styles.dosDontsCard, { borderTopColor: COLORS.success }]}>
+          <View
+            style={[styles.dosDontsCard, { borderTopColor: COLORS.success }]}
+          >
             <View style={styles.dosDontsHeader}>
-              <Ionicons name="checkmark-circle" size={16} color={COLORS.success} />
-              <Text style={[styles.dosDontsTitle, { color: COLORS.success }]}>Do</Text>
+              <Ionicons
+                name="checkmark-circle"
+                size={16}
+                color={COLORS.success}
+              />
+              <Text style={[styles.dosDontsTitle, { color: COLORS.success }]}>
+                Do
+              </Text>
             </View>
             {section.dos.map((d, i) => (
-              <Text key={i} style={styles.doItem}>• {d}</Text>
+              <Text key={i} style={styles.doItem}>
+                • {d}
+              </Text>
             ))}
           </View>
-          <View style={[styles.dosDontsCard, { borderTopColor: COLORS.danger }]}>
+          <View
+            style={[styles.dosDontsCard, { borderTopColor: COLORS.danger }]}
+          >
             <View style={styles.dosDontsHeader}>
               <Ionicons name="close-circle" size={16} color={COLORS.danger} />
-              <Text style={[styles.dosDontsTitle, { color: COLORS.danger }]}>Don't</Text>
+              <Text style={[styles.dosDontsTitle, { color: COLORS.danger }]}>
+                Don't
+              </Text>
             </View>
             {section.donts.map((d, i) => (
-              <Text key={i} style={styles.dontItem}>• {d}</Text>
+              <Text key={i} style={styles.dontItem}>
+                • {d}
+              </Text>
             ))}
           </View>
         </View>
       );
 
-    case 'contrast':
+    case "contrast":
       return (
         <View style={styles.contrastList}>
           {section.items.map((item, i) => (
@@ -53,14 +68,16 @@ function SectionRenderer({ section }) {
               <View
                 style={[
                   styles.contrastBadge,
-                  { backgroundColor: item.pass ? COLORS.success : COLORS.danger },
+                  {
+                    backgroundColor: item.pass ? COLORS.success : COLORS.danger,
+                  },
                 ]}
               >
                 <Text style={styles.contrastRatio}>{item.ratio}</Text>
               </View>
               <Text style={styles.contrastLabel}>{item.label}</Text>
               <Ionicons
-                name={item.pass ? 'checkmark-circle' : 'close-circle'}
+                name={item.pass ? "checkmark-circle" : "close-circle"}
                 size={18}
                 color={item.pass ? COLORS.success : COLORS.danger}
               />
@@ -69,14 +86,17 @@ function SectionRenderer({ section }) {
         </View>
       );
 
-    case 'palettes':
+    case "palettes":
       return (
         <View style={styles.palettesList}>
           {section.items.map((pal, i) => (
             <View key={i} style={styles.paletteRow}>
               <View style={styles.swatchRow}>
                 {pal.colors.map((c, ci) => (
-                  <View key={ci} style={[styles.swatch, { backgroundColor: c }]} />
+                  <View
+                    key={ci}
+                    style={[styles.swatch, { backgroundColor: c }]}
+                  />
                 ))}
               </View>
               <View style={{ flex: 1 }}>
@@ -88,18 +108,18 @@ function SectionRenderer({ section }) {
         </View>
       );
 
-    case 'tools':
+    case "tools":
       return (
         <View style={styles.toolsRow}>
           {section.items.map((tool, i) => (
-            <TouchableOpacity key={i} style={styles.toolChip}>
+            <View key={i} style={styles.toolChip}>
               <Text style={styles.toolText}>{tool}</Text>
-            </TouchableOpacity>
+            </View>
           ))}
         </View>
       );
 
-    case 'severity_spectrum':
+    case "severity_spectrum":
       return (
         <View style={styles.spectrumWrap}>
           <View style={styles.spectrumBar} />
@@ -111,7 +131,7 @@ function SectionRenderer({ section }) {
         </View>
       );
 
-    case 'cvd_types':
+    case "cvd_types":
       return (
         <View style={styles.cvdTypesList}>
           {section.items.map((cvd, i) => (
@@ -119,7 +139,10 @@ function SectionRenderer({ section }) {
               <View style={styles.cvdTypeHeader}>
                 <View style={styles.cvdSwatches}>
                   {cvd.colors.map((c, ci) => (
-                    <View key={ci} style={[styles.cvdSwatch, { backgroundColor: c }]} />
+                    <View
+                      key={ci}
+                      style={[styles.cvdSwatch, { backgroundColor: c }]}
+                    />
                   ))}
                 </View>
                 <View style={{ flex: 1 }}>
@@ -133,7 +156,7 @@ function SectionRenderer({ section }) {
         </View>
       );
 
-    case 'stats':
+    case "stats":
       return (
         <View style={styles.statsRow}>
           {section.items.map((s, i) => (
@@ -145,12 +168,14 @@ function SectionRenderer({ section }) {
         </View>
       );
 
-    case 'cone_diagram':
+    case "cone_diagram":
       return (
         <View style={styles.coneRow}>
           {section.cones.map((cone, i) => (
             <View key={i} style={styles.coneItem}>
-              <View style={[styles.coneCircle, { backgroundColor: cone.color }]} />
+              <View
+                style={[styles.coneCircle, { backgroundColor: cone.color }]}
+              />
               <Text style={styles.coneLabel}>{cone.label}</Text>
               <Text style={styles.coneSub}>{cone.sub}</Text>
             </View>
@@ -158,7 +183,7 @@ function SectionRenderer({ section }) {
         </View>
       );
 
-    case 'causes':
+    case "causes":
       return (
         <View style={styles.causesRow}>
           {section.items.map((cause, i) => (
@@ -169,12 +194,17 @@ function SectionRenderer({ section }) {
         </View>
       );
 
-    case 'bento_grid':
+    case "bento_grid":
       return (
         <View style={styles.bentoGrid}>
           {section.items.map((item, i) => (
             <View key={i} style={styles.bentoCell}>
-              <Ionicons name={item.icon} size={22} color={COLORS.primary} style={{ marginBottom: 6 }} />
+              <Ionicons
+                name={item.icon}
+                size={22}
+                color={COLORS.primary}
+                style={{ marginBottom: 6 }}
+              />
               <Text style={styles.bentoCellTitle}>{item.title}</Text>
               <Text style={styles.bentoCellDesc}>{item.desc}</Text>
             </View>
@@ -182,19 +212,23 @@ function SectionRenderer({ section }) {
         </View>
       );
 
-    case 'quick_wins':
+    case "quick_wins":
       return (
         <View style={styles.quickWinsList}>
           {section.items.map((item, i) => (
             <View key={i} style={styles.quickWinRow}>
-              <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+              <Ionicons
+                name="checkmark-circle"
+                size={18}
+                color={COLORS.success}
+              />
               <Text style={styles.quickWinText}>{item}</Text>
             </View>
           ))}
         </View>
       );
 
-    case 'list':
+    case "list":
       return (
         <View style={styles.articleList}>
           {section.items.map((item, i) => (
@@ -219,9 +253,13 @@ function ArticleCard({ article, onPress }) {
     <MotiView
       from={{ opacity: 0, translateY: 12 }}
       animate={{ opacity: 1, translateY: 0 }}
-      transition={{ type: 'spring', damping: 18 }}
+      transition={{ type: "spring", damping: 18 }}
     >
-      <TouchableOpacity style={styles.articleCard} onPress={onPress} activeOpacity={0.88}>
+      <TouchableOpacity
+        style={styles.articleCard}
+        onPress={onPress}
+        activeOpacity={0.88}
+      >
         <Image source={article.coverImage} style={styles.articleCover} />
         <View style={styles.articleCardBody}>
           <View style={styles.metaRow}>
@@ -229,7 +267,9 @@ function ArticleCard({ article, onPress }) {
             <Text style={styles.readTime}>{article.readTime}</Text>
           </View>
           <Text style={styles.articleTitle}>{article.title}</Text>
-          <Text style={styles.articleSummary} numberOfLines={2}>{article.summary}</Text>
+          <Text style={styles.articleSummary} numberOfLines={2}>
+            {article.summary}
+          </Text>
         </View>
       </TouchableOpacity>
     </MotiView>
@@ -272,14 +312,13 @@ function ArticleDetail({ article, onBack }) {
 }
 
 export default function ArticleScreen({ navigation, route }) {
-  const [selected, setSelected] = React.useState(route?.params?.article ?? null);
+  const [selected, setSelected] = React.useState(
+    route?.params?.article ?? null,
+  );
 
   if (selected) {
     return (
-      <ArticleDetail
-        article={selected}
-        onBack={() => setSelected(null)}
-      />
+      <ArticleDetail article={selected} onBack={() => setSelected(null)} />
     );
   }
 
@@ -291,7 +330,10 @@ export default function ArticleScreen({ navigation, route }) {
           <Ionicons name="arrow-back" size={22} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Learn & Understand</Text>
-        <Image source={require('../../assets/icon.png')} style={styles.headerLogo} />
+        <Image
+          source={require("../../assets/icon.png")}
+          style={styles.headerLogo}
+        />
       </View>
 
       <ScrollView
@@ -320,9 +362,9 @@ export default function ArticleScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: SPACING.md,
     paddingTop: 52,
     paddingBottom: SPACING.md,
@@ -330,23 +372,32 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: COLORS.text },
-  headerLogo: { width: 36, height: 36, resizeMode: 'contain' },
+  headerTitle: { fontSize: 17, fontWeight: "700", color: COLORS.text },
+  headerLogo: { width: 36, height: 36, resizeMode: "contain" },
 
-  listContent: { padding: SPACING.md, gap: SPACING.md, paddingBottom: SPACING.xxl },
+  listContent: {
+    padding: SPACING.md,
+    gap: SPACING.md,
+    paddingBottom: SPACING.xxl,
+  },
 
   articleCard: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
-    overflow: 'hidden',
+    overflow: "hidden",
     ...SHADOW.md,
   },
-  articleCover: { width: '100%', height: 160, resizeMode: 'cover' },
+  articleCover: { width: "100%", height: 160, resizeMode: "cover" },
   articleCardBody: { padding: SPACING.md },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginBottom: 6 },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+    marginBottom: 6,
+  },
   categoryTag: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
     color: COLORS.primary,
     backgroundColor: COLORS.surfaceAlt,
     paddingHorizontal: 8,
@@ -354,20 +405,39 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   readTime: { fontSize: 12, color: COLORS.textLight },
-  articleTitle: { fontSize: 18, fontWeight: '800', color: COLORS.text, marginBottom: 4 },
+  articleTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: COLORS.text,
+    marginBottom: 4,
+  },
   articleSummary: { fontSize: 13, color: COLORS.textLight, lineHeight: 19 },
 
   // Detail view
   detailRoot: { flex: 1, backgroundColor: COLORS.background },
-  detailCover: { width: '100%', height: 220, resizeMode: 'cover' },
+  detailCover: { width: "100%", height: 220, resizeMode: "cover" },
   detailContent: { padding: SPACING.md },
-  detailTitle: { fontSize: 24, fontWeight: '800', color: COLORS.text, marginBottom: 6 },
-  detailSummary: { fontSize: 14, color: COLORS.textLight, lineHeight: 21, marginBottom: SPACING.md },
-  divider: { height: 1, backgroundColor: COLORS.border, marginBottom: SPACING.md },
+  detailTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: COLORS.text,
+    marginBottom: 6,
+  },
+  detailSummary: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    lineHeight: 21,
+    marginBottom: SPACING.md,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginBottom: SPACING.md,
+  },
 
   sectionHeading: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: "800",
     color: COLORS.text,
     marginTop: SPACING.md,
     marginBottom: SPACING.sm,
@@ -379,7 +449,11 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
 
-  dosDontsRow: { flexDirection: 'row', gap: SPACING.sm, marginBottom: SPACING.md },
+  dosDontsRow: {
+    flexDirection: "row",
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
   dosDontsCard: {
     flex: 1,
     backgroundColor: COLORS.card,
@@ -388,15 +462,20 @@ const styles = StyleSheet.create({
     borderTopWidth: 3,
     ...SHADOW.sm,
   },
-  dosDontsHeader: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
-  dosDontsTitle: { fontSize: 13, fontWeight: '700' },
+  dosDontsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 6,
+  },
+  dosDontsTitle: { fontSize: 13, fontWeight: "700" },
   doItem: { fontSize: 12, color: COLORS.text, lineHeight: 18 },
   dontItem: { fontSize: 12, color: COLORS.text, lineHeight: 18 },
 
   contrastList: { gap: SPACING.sm, marginBottom: SPACING.md },
   contrastRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: SPACING.sm,
     backgroundColor: COLORS.card,
     padding: SPACING.sm,
@@ -408,25 +487,30 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
   },
-  contrastRatio: { fontSize: 12, fontWeight: '700', color: '#FFF' },
+  contrastRatio: { fontSize: 12, fontWeight: "700", color: "#FFF" },
   contrastLabel: { flex: 1, fontSize: 13, color: COLORS.text },
 
   palettesList: { gap: SPACING.sm, marginBottom: SPACING.md },
   paletteRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: SPACING.md,
     backgroundColor: COLORS.card,
     padding: SPACING.sm,
     borderRadius: RADIUS.md,
     ...SHADOW.sm,
   },
-  swatchRow: { flexDirection: 'row', gap: 4 },
+  swatchRow: { flexDirection: "row", gap: 4 },
   swatch: { width: 28, height: 28, borderRadius: 14 },
-  paletteName: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  paletteName: { fontSize: 14, fontWeight: "700", color: COLORS.text },
   paletteSafe: { fontSize: 12, color: COLORS.textLight },
 
-  toolsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, marginBottom: SPACING.md },
+  toolsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
   toolChip: {
     backgroundColor: COLORS.surfaceAlt,
     paddingHorizontal: SPACING.md,
@@ -435,10 +519,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.primary,
   },
-  toolText: { fontSize: 13, color: COLORS.primary, fontWeight: '600' },
+  toolText: { fontSize: 13, color: COLORS.primary, fontWeight: "600" },
 
   articleList: { gap: SPACING.sm, marginBottom: SPACING.md },
-  listItem: { flexDirection: 'row', gap: SPACING.sm, alignItems: 'flex-start' },
+  listItem: { flexDirection: "row", gap: SPACING.sm, alignItems: "flex-start" },
   listDot: {
     width: 8,
     height: 8,
@@ -446,106 +530,163 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     marginTop: 6,
   },
-  listItemTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  listItemTitle: { fontSize: 14, fontWeight: "700", color: COLORS.text },
   listItemDesc: { fontSize: 13, color: COLORS.textLight, lineHeight: 19 },
 
   disclaimer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: SPACING.sm,
-    backgroundColor: '#FFF8E1',
+    backgroundColor: "#FFF8E1",
     padding: SPACING.md,
     borderRadius: RADIUS.md,
     marginTop: SPACING.lg,
     marginBottom: SPACING.xxl,
   },
-  disclaimerText: { fontSize: 11, fontWeight: '700', color: COLORS.warning, flex: 1 },
+  disclaimerText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: COLORS.warning,
+    flex: 1,
+  },
 
   backFab: {
-    position: 'absolute',
+    position: "absolute",
     top: 48,
     left: SPACING.md,
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   footerDisclaimer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: SPACING.sm,
-    backgroundColor: '#FFF8E1',
+    backgroundColor: "#FFF8E1",
     padding: SPACING.md,
     borderRadius: RADIUS.md,
     marginTop: SPACING.md,
   },
-  footerDisclaimerText: { fontSize: 11, fontWeight: '700', color: COLORS.warning },
+  footerDisclaimerText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: COLORS.warning,
+  },
 
   // Severity spectrum
   spectrumWrap: { marginBottom: SPACING.md },
   spectrumBar: {
-    height: 12, borderRadius: 6,
-    background: 'linear-gradient(to right, #27AE60, #F39C12, #E74C3C)',
-    backgroundColor: '#F39C12',
+    height: 12,
+    borderRadius: 6,
+    background: "linear-gradient(to right, #27AE60, #F39C12, #E74C3C)",
+    backgroundColor: "#F39C12",
     marginBottom: 6,
     // Simulated gradient via shadow
-    shadowColor: '#E74C3C', shadowOffset: { width: 4, height: 0 }, shadowOpacity: 0.4,
+    shadowColor: "#E74C3C",
+    shadowOffset: { width: 4, height: 0 },
+    shadowOpacity: 0.4,
   },
-  spectrumLabels: { flexDirection: 'row', justifyContent: 'space-between' },
+  spectrumLabels: { flexDirection: "row", justifyContent: "space-between" },
   spectrumLabel: { fontSize: 12, color: COLORS.textLight },
 
   // CVD types
   cvdTypesList: { gap: SPACING.sm, marginBottom: SPACING.md },
   cvdTypeCard: {
-    backgroundColor: COLORS.card, borderRadius: RADIUS.md, padding: SPACING.sm, ...SHADOW.sm,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm,
+    ...SHADOW.sm,
   },
-  cvdTypeHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginBottom: 6 },
-  cvdSwatches: { flexDirection: 'row', gap: 4 },
+  cvdTypeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+    marginBottom: 6,
+  },
+  cvdSwatches: { flexDirection: "row", gap: 4 },
   cvdSwatch: { width: 22, height: 22, borderRadius: 11 },
-  cvdTypeName: { fontSize: 14, fontWeight: '700', color: COLORS.text },
-  cvdTypeSub: { fontSize: 11, color: COLORS.primary, fontWeight: '600' },
+  cvdTypeName: { fontSize: 14, fontWeight: "700", color: COLORS.text },
+  cvdTypeSub: { fontSize: 11, color: COLORS.primary, fontWeight: "600" },
   cvdTypeDesc: { fontSize: 13, color: COLORS.textLight, lineHeight: 18 },
 
   // Stats
   statsRow: {
-    flexDirection: 'row', justifyContent: 'space-around',
-    backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md,
-    padding: SPACING.md, marginBottom: SPACING.md,
+    flexDirection: "row",
+    justifyContent: "space-around",
+    backgroundColor: COLORS.surfaceAlt,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
   },
-  statItem: { alignItems: 'center' },
-  statValue: { fontSize: 20, fontWeight: '800', color: COLORS.primary },
-  statLabel: { fontSize: 11, color: COLORS.textLight, marginTop: 2, textAlign: 'center' },
+  statItem: { alignItems: "center" },
+  statValue: { fontSize: 20, fontWeight: "800", color: COLORS.primary },
+  statLabel: {
+    fontSize: 11,
+    color: COLORS.textLight,
+    marginTop: 2,
+    textAlign: "center",
+  },
 
   // Cone diagram
-  coneRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: SPACING.md },
-  coneItem: { alignItems: 'center', gap: 4 },
+  coneRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: SPACING.md,
+  },
+  coneItem: { alignItems: "center", gap: 4 },
   coneCircle: { width: 48, height: 48, borderRadius: 24 },
-  coneLabel: { fontSize: 13, fontWeight: '700', color: COLORS.text },
+  coneLabel: { fontSize: 13, fontWeight: "700", color: COLORS.text },
   coneSub: { fontSize: 11, color: COLORS.textLight },
 
   // Causes
-  causesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, marginBottom: SPACING.md },
-  causeChip: {
-    backgroundColor: COLORS.surfaceAlt, borderRadius: 20,
-    paddingHorizontal: SPACING.md, paddingVertical: 6,
-    borderWidth: 1, borderColor: COLORS.border,
+  causesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
   },
-  causeText: { fontSize: 13, color: COLORS.text, fontWeight: '500' },
+  causeChip: {
+    backgroundColor: COLORS.surfaceAlt,
+    borderRadius: 20,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  causeText: { fontSize: 13, color: COLORS.text, fontWeight: "500" },
 
   // Bento grid
-  bentoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, marginBottom: SPACING.md },
-  bentoCell: {
-    width: '47%', backgroundColor: COLORS.card, borderRadius: RADIUS.md,
-    padding: SPACING.sm, ...SHADOW.sm,
+  bentoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
   },
-  bentoCellTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text, marginBottom: 4 },
+  bentoCell: {
+    width: "47%",
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm,
+    ...SHADOW.sm,
+  },
+  bentoCellTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: COLORS.text,
+    marginBottom: 4,
+  },
   bentoCellDesc: { fontSize: 12, color: COLORS.textLight, lineHeight: 17 },
 
   // Quick wins
   quickWinsList: { gap: SPACING.sm, marginBottom: SPACING.md },
-  quickWinRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm },
+  quickWinRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: SPACING.sm,
+  },
   quickWinText: { flex: 1, fontSize: 13, color: COLORS.text, lineHeight: 19 },
 });

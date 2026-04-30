@@ -1,19 +1,19 @@
 import { Ionicons } from "@expo/vector-icons";
 import {
-    Image,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 export default function CareerDetail({ route, navigation }) {
   const { item } = route.params;
+  const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#333" />
@@ -146,7 +146,7 @@ export default function CareerDetail({ route, navigation }) {
           SCREENING PURPOSE ONLY. NOT A CLINICAL DIAGNOSIS.
         </Text>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 

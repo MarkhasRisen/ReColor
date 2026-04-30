@@ -102,7 +102,7 @@ export default function HomeScreen({ navigation }) {
             </Text>
             <Image
               source={require("../../assets/icon.png")}
-              style={{ width: 180, height: 180, resizeMode: "contain" }}
+              style={{ width: 80, height: 80, resizeMode: "contain" }} //reduced to 80 from 180
             />
           </View>
         </View>

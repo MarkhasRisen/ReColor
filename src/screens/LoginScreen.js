@@ -96,6 +96,18 @@ export default function LoginScreen({ navigation }) {
       Alert.alert("Missing Fields", "Please enter your email and password.");
       return;
     }
+
+    // New strict password validation enforced on Login
+    const passRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,14}$/;
+    if (!passRegex.test(password)) {
+      Alert.alert(
+        "Invalid Password",
+        "Password must be 6-14 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.",
+      );
+      return;
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setLoading(true);
     try {
@@ -158,10 +170,14 @@ export default function LoginScreen({ navigation }) {
           </Text>
 
           <View style={styles.inputRow}>
-            <Ionicons name="mail-outline" size={18} color={COLORS.textLight} />
+            <Ionicons
+              name="person-outline"
+              size={18}
+              color={COLORS.textLight}
+            />
             <TextInput
               style={styles.input}
-              placeholder="you@example.com"
+              placeholder="Username"
               placeholderTextColor={COLORS.textLight}
               value={email}
               onChangeText={setEmail}

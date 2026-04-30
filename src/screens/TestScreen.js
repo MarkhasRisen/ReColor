@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Brightness from "expo-brightness";
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
@@ -39,6 +40,17 @@ export default function TestScreen({ route, navigation }) {
   const [stage, setStage] = useState(1);
   const timerRef = useRef(null);
   const prevBrightnessRef = useRef(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(`@recolor_test_progress_${testType}`).then((data) => {
+      if (data) {
+        const parsed = JSON.parse(data);
+        setIndex(parsed.index);
+        setAnswers(parsed.answers);
+        setStage(parsed.stage);
+      }
+    });
+  }, [testType]);
 
   useEffect(() => {
     Brightness.requestPermissionsAsync().then(({ granted }) => {
@@ -139,6 +151,8 @@ export default function TestScreen({ route, navigation }) {
           }
 
           setTimeout(() => {
+            // Clear progress upon completion
+            AsyncStorage.removeItem(`@recolor_test_progress_${testType}`);
             navigation.replace("IshiharaResult", {
               score: stage1Result.correctCount,
               maxScore: stage1Result.totalStage1,
@@ -154,7 +168,15 @@ export default function TestScreen({ route, navigation }) {
         setAnswers(newAnswers);
         setUserInput("");
         setIndex(index + 1);
-
+        // Save progress mid-test
+        AsyncStorage.setItem(
+          `@recolor_test_progress_${testType}`,
+          JSON.stringify({
+            index: index + 1,
+            answers: newAnswers,
+            stage: stage, // Make sure to use the current stage variable here
+          }),
+        );
         const nextNum = index + 2;
         if (index < queue.length - 1) {
           Speech.speak(`Plate ${nextNum}`, { rate: 1.1, pitch: 1.0 });
@@ -176,6 +198,8 @@ export default function TestScreen({ route, navigation }) {
         }
 
         setTimeout(() => {
+          // Clear progress upon completion
+          AsyncStorage.removeItem(`@recolor_test_progress_${testType}`);
           navigation.replace("IshiharaResult", {
             score: result.score,
             maxScore: result.maxScore,
@@ -480,6 +504,8 @@ const styles = StyleSheet.create({
   },
   plateCard: {
     width: width * 0.82,
+    maxWidth: 350,
+    maxHeight: Dimensions.get("window").height * 0.45,
     aspectRatio: 1,
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.xl,
