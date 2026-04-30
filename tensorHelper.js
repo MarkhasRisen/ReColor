@@ -14,9 +14,6 @@ import { Buffer } from "buffer";
 import JPEG from "jpeg-js";
 if (typeof global.Buffer === "undefined") global.Buffer = Buffer;
 
-// ─────────────────────────────────────────────────────────────
-// Color class definitions (must match algo/cnn.ipynb)
-// ─────────────────────────────────────────────────────────────
 export const COLOR_CLASSES = [
   "Neutral", // 0
   "Red", // 1

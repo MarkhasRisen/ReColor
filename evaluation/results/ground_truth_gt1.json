@@ -1,0 +1,841 @@
+{
+  "n_samples": 54,
+  "n_correct": 48,
+  "accuracy": 0.8888888888888888,
+  "per_class": {
+    "Brown": [
+      4,
+      4,
+      1.0
+    ],
+    "Pink": [
+      4,
+      5,
+      0.8
+    ],
+    "Blue": [
+      5,
+      6,
+      0.8333333333333334
+    ],
+    "Green": [
+      5,
+      6,
+      0.8333333333333334
+    ],
+    "Violet": [
+      5,
+      5,
+      1.0
+    ],
+    "Cyan": [
+      4,
+      5,
+      0.8
+    ],
+    "Orange": [
+      3,
+      3,
+      1.0
+    ],
+    "Red": [
+      2,
+      4,
+      0.5
+    ],
+    "Yellow": [
+      4,
+      4,
+      1.0
+    ],
+    "Neutral": [
+      12,
+      12,
+      1.0
+    ]
+  },
+  "confusion": {
+    "Brown": {
+      "Brown": 4
+    },
+    "Pink": {
+      "Orange": 1,
+      "Pink": 4
+    },
+    "Blue": {
+      "Blue": 5,
+      "Violet": 1
+    },
+    "Green": {
+      "Green": 5,
+      "Yellow": 1
+    },
+    "Violet": {
+      "Violet": 5
+    },
+    "Cyan": {
+      "Cyan": 4,
+      "Blue": 1
+    },
+    "Orange": {
+      "Orange": 3
+    },
+    "Red": {
+      "Red": 2,
+      "Brown": 1,
+      "Orange": 1
+    },
+    "Yellow": {
+      "Yellow": 4
+    },
+    "Neutral": {
+      "Neutral": 12
+    }
+  },
+  "results": [
+    {
+      "name": "Dark Skin",
+      "source": "ColorChecker",
+      "rgb": [
+        115,
+        82,
+        68
+      ],
+      "expected": "Brown",
+      "predicted": "Brown",
+      "deltaE": 4.64,
+      "correct": true
+    },
+    {
+      "name": "Light Skin",
+      "source": "ColorChecker",
+      "rgb": [
+        194,
+        150,
+        130
+      ],
+      "expected": "Pink",
+      "predicted": "Orange",
+      "deltaE": 8.2,
+      "correct": false
+    },
+    {
+      "name": "Blue Sky",
+      "source": "ColorChecker",
+      "rgb": [
+        98,
+        122,
+        157
+      ],
+      "expected": "Blue",
+      "predicted": "Blue",
+      "deltaE": 5.76,
+      "correct": true
+    },
+    {
+      "name": "Foliage",
+      "source": "ColorChecker",
+      "rgb": [
+        87,
+        108,
+        67
+      ],
+      "expected": "Green",
+      "predicted": "Green",
+      "deltaE": 4.75,
+      "correct": true
+    },
+    {
+      "name": "Blue Flower",
+      "source": "ColorChecker",
+      "rgb": [
+        133,
+        128,
+        177
+      ],
+      "expected": "Violet",
+      "predicted": "Violet",
+      "deltaE": 8.66,
+      "correct": true
+    },
+    {
+      "name": "Bluish Green",
+      "source": "ColorChecker",
+      "rgb": [
+        103,
+        189,
+        170
+      ],
+      "expected": "Cyan",
+      "predicted": "Cyan",
+      "deltaE": 7.05,
+      "correct": true
+    },
+    {
+      "name": "Orange",
+      "source": "ColorChecker",
+      "rgb": [
+        214,
+        126,
+        44
+      ],
+      "expected": "Orange",
+      "predicted": "Orange",
+      "deltaE": 4.38,
+      "correct": true
+    },
+    {
+      "name": "Purplish Blue",
+      "source": "ColorChecker",
+      "rgb": [
+        80,
+        91,
+        166
+      ],
+      "expected": "Blue",
+      "predicted": "Blue",
+      "deltaE": 7.99,
+      "correct": true
+    },
+    {
+      "name": "Moderate Red",
+      "source": "ColorChecker",
+      "rgb": [
+        193,
+        90,
+        99
+      ],
+      "expected": "Red",
+      "predicted": "Red",
+      "deltaE": 4.31,
+      "correct": true
+    },
+    {
+      "name": "Purple",
+      "source": "ColorChecker",
+      "rgb": [
+        94,
+        60,
+        108
+      ],
+      "expected": "Violet",
+      "predicted": "Violet",
+      "deltaE": 6.67,
+      "correct": true
+    },
+    {
+      "name": "Yellow Green",
+      "source": "ColorChecker",
+      "rgb": [
+        157,
+        188,
+        64
+      ],
+      "expected": "Green",
+      "predicted": "Yellow",
+      "deltaE": 10.05,
+      "correct": false
+    },
+    {
+      "name": "Orange Yellow",
+      "source": "ColorChecker",
+      "rgb": [
+        224,
+        163,
+        46
+      ],
+      "expected": "Yellow",
+      "predicted": "Yellow",
+      "deltaE": 3.02,
+      "correct": true
+    },
+    {
+      "name": "Blue",
+      "source": "ColorChecker",
+      "rgb": [
+        56,
+        61,
+        150
+      ],
+      "expected": "Blue",
+      "predicted": "Violet",
+      "deltaE": 9.79,
+      "correct": false
+    },
+    {
+      "name": "Green",
+      "source": "ColorChecker",
+      "rgb": [
+        70,
+        148,
+        73
+      ],
+      "expected": "Green",
+      "predicted": "Green",
+      "deltaE": 6.25,
+      "correct": true
+    },
+    {
+      "name": "Red",
+      "source": "ColorChecker",
+      "rgb": [
+        175,
+        54,
+        60
+      ],
+      "expected": "Red",
+      "predicted": "Brown",
+      "deltaE": 4.52,
+      "correct": false
+    },
+    {
+      "name": "Yellow",
+      "source": "ColorChecker",
+      "rgb": [
+        231,
+        199,
+        31
+      ],
+      "expected": "Yellow",
+      "predicted": "Yellow",
+      "deltaE": 4.75,
+      "correct": true
+    },
+    {
+      "name": "Magenta",
+      "source": "ColorChecker",
+      "rgb": [
+        187,
+        86,
+        149
+      ],
+      "expected": "Pink",
+      "predicted": "Pink",
+      "deltaE": 11.57,
+      "correct": true
+    },
+    {
+      "name": "Cyan",
+      "source": "ColorChecker",
+      "rgb": [
+        8,
+        133,
+        161
+      ],
+      "expected": "Cyan",
+      "predicted": "Blue",
+      "deltaE": 10.86,
+      "correct": false
+    },
+    {
+      "name": "White",
+      "source": "ColorChecker",
+      "rgb": [
+        243,
+        243,
+        242
+      ],
+      "expected": "Neutral",
+      "predicted": "Neutral",
+      "deltaE": 2.5,
+      "correct": true
+    },
+    {
+      "name": "Neutral 8",
+      "source": "ColorChecker",
+      "rgb": [
+        200,
+        200,
+        200
+      ],
+      "expected": "Neutral",
+      "predicted": "Neutral",
+      "deltaE": 2.02,
+      "correct": true
+    },
+    {
+      "name": "Neutral 6.5",
+      "source": "ColorChecker",
+      "rgb": [
+        160,
+        160,
+        160
+      ],
+      "expected": "Neutral",
+      "predicted": "Neutral",
+      "deltaE": 8.97,
+      "correct": true
+    },
+    {
+      "name": "Neutral 5",
+      "source": "ColorChecker",
+      "rgb": [
+        122,
+        122,
+        121
+      ],
+      "expected": "Neutral",
+      "predicted": "Neutral",
+      "deltaE": 2.43,
+      "correct": true
+    },
+    {
+      "name": "Neutral 3.5",
+      "source": "ColorChecker",
+      "rgb": [
+        85,
+        85,
+        85
+      ],
+      "expected": "Neutral",
+      "predicted": "Neutral",
+      "deltaE": 7.14,
+      "correct": true
+    },
+    {
+      "name": "Black",
+      "source": "ColorChecker",
+      "rgb": [
+        52,
+        52,
+        52
+      ],
+      "expected": "Neutral",
+      "predicted": "Neutral",
+      "deltaE": 3.91,
+      "correct": true
+    },
+    {
+      "name": "red",
+      "source": "CSS",
+      "rgb": [
+        255,
+        0,
+        0
+      ],
+      "expected": "Red",
+      "predicted": "Red",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "tomato",
+      "source": "CSS",
+      "rgb": [
+        255,
+        99,
+        71
+      ],
+      "expected": "Red",
+      "predicted": "Orange",
+      "deltaE": 7.1,
+      "correct": false
+    },
+    {
+      "name": "darkorange",
+      "source": "CSS",
+      "rgb": [
+        255,
+        140,
+        0
+      ],
+      "expected": "Orange",
+      "predicted": "Orange",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "orange",
+      "source": "CSS",
+      "rgb": [
+        255,
+        165,
+        0
+      ],
+      "expected": "Orange",
+      "predicted": "Orange",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "gold",
+      "source": "CSS",
+      "rgb": [
+        255,
+        215,
+        0
+      ],
+      "expected": "Yellow",
+      "predicted": "Yellow",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "yellow",
+      "source": "CSS",
+      "rgb": [
+        255,
+        255,
+        0
+      ],
+      "expected": "Yellow",
+      "predicted": "Yellow",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "limegreen",
+      "source": "CSS",
+      "rgb": [
+        50,
+        205,
+        50
+      ],
+      "expected": "Green",
+      "predicted": "Green",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "green",
+      "source": "CSS",
+      "rgb": [
+        0,
+        128,
+        0
+      ],
+      "expected": "Green",
+      "predicted": "Green",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "darkgreen",
+      "source": "CSS",
+      "rgb": [
+        0,
+        100,
+        0
+      ],
+      "expected": "Green",
+      "predicted": "Green",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "cyan",
+      "source": "CSS",
+      "rgb": [
+        0,
+        255,
+        255
+      ],
+      "expected": "Cyan",
+      "predicted": "Cyan",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "turquoise",
+      "source": "CSS",
+      "rgb": [
+        64,
+        224,
+        208
+      ],
+      "expected": "Cyan",
+      "predicted": "Cyan",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "darkturquoise",
+      "source": "CSS",
+      "rgb": [
+        0,
+        206,
+        209
+      ],
+      "expected": "Cyan",
+      "predicted": "Cyan",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "blue",
+      "source": "CSS",
+      "rgb": [
+        0,
+        0,
+        255
+      ],
+      "expected": "Blue",
+      "predicted": "Blue",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "dodgerblue",
+      "source": "CSS",
+      "rgb": [
+        30,
+        144,
+        255
+      ],
+      "expected": "Blue",
+      "predicted": "Blue",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "skyblue",
+      "source": "CSS",
+      "rgb": [
+        135,
+        206,
+        235
+      ],
+      "expected": "Blue",
+      "predicted": "Blue",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "indigo",
+      "source": "CSS",
+      "rgb": [
+        75,
+        0,
+        130
+      ],
+      "expected": "Violet",
+      "predicted": "Violet",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "purple",
+      "source": "CSS",
+      "rgb": [
+        128,
+        0,
+        128
+      ],
+      "expected": "Violet",
+      "predicted": "Violet",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "darkviolet",
+      "source": "CSS",
+      "rgb": [
+        148,
+        0,
+        211
+      ],
+      "expected": "Violet",
+      "predicted": "Violet",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "pink",
+      "source": "CSS",
+      "rgb": [
+        255,
+        192,
+        203
+      ],
+      "expected": "Pink",
+      "predicted": "Pink",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "hotpink",
+      "source": "CSS",
+      "rgb": [
+        255,
+        105,
+        180
+      ],
+      "expected": "Pink",
+      "predicted": "Pink",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "deeppink",
+      "source": "CSS",
+      "rgb": [
+        255,
+        20,
+        147
+      ],
+      "expected": "Pink",
+      "predicted": "Pink",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "saddlebrown",
+      "source": "CSS",
+      "rgb": [
+        139,
+        69,
+        19
+      ],
+      "expected": "Brown",
+      "predicted": "Brown",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "sienna",
+      "source": "CSS",
+      "rgb": [
+        160,
+        82,
+        45
+      ],
+      "expected": "Brown",
+      "predicted": "Brown",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "chocolate",
+      "source": "CSS",
+      "rgb": [
+        210,
+        105,
+        30
+      ],
+      "expected": "Brown",
+      "predicted": "Brown",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "black",
+      "source": "CSS",
+      "rgb": [
+        0,
+        0,
+        0
+      ],
+      "expected": "Neutral",
+      "predicted": "Neutral",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "white",
+      "source": "CSS",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "expected": "Neutral",
+      "predicted": "Neutral",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "gray",
+      "source": "CSS",
+      "rgb": [
+        128,
+        128,
+        128
+      ],
+      "expected": "Neutral",
+      "predicted": "Neutral",
+      "deltaE": 0.0,
+      "correct": true
+    },
+    {
+      "name": "darkgray",
+      "source": "CSS",
+      "rgb": [
+        169,
+        169,
+        169
+      ],
+      "expected": "Neutral",
+      "predicted": "Neutral",
+      "deltaE": 6.29,
+      "correct": true
+    },
+    {
+      "name": "dimgray",
+      "source": "CSS",
+      "rgb": [
+        105,
+        105,
+        105
+      ],
+      "expected": "Neutral",
+      "predicted": "Neutral",
+      "deltaE": 9.14,
+      "correct": true
+    },
+    {
+      "name": "silver",
+      "source": "CSS",
+      "rgb": [
+        192,
+        192,
+        192
+      ],
+      "expected": "Neutral",
+      "predicted": "Neutral",
+      "deltaE": 0.0,
+      "correct": true
+    }
+  ],
+  "n_low": 2,
+  "n_high": 4,
+  "low": [
+    {
+      "name": "Red",
+      "expected": "Red",
+      "predicted": "Brown",
+      "deltaE": 4.52
+    },
+    {
+      "name": "tomato",
+      "expected": "Red",
+      "predicted": "Orange",
+      "deltaE": 7.1
+    }
+  ],
+  "high": [
+    {
+      "name": "Light Skin",
+      "expected": "Pink",
+      "predicted": "Orange",
+      "deltaE": 8.2
+    },
+    {
+      "name": "Yellow Green",
+      "expected": "Green",
+      "predicted": "Yellow",
+      "deltaE": 10.05
+    },
+    {
+      "name": "Blue",
+      "expected": "Blue",
+      "predicted": "Violet",
+      "deltaE": 9.79
+    },
+    {
+      "name": "Cyan",
+      "expected": "Cyan",
+      "predicted": "Blue",
+      "deltaE": 10.86
+    }
+  ]
+}

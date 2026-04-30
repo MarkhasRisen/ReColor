@@ -1,0 +1,26 @@
+{
+  "Protan": {
+    "n_pairs": 60,
+    "dal_mean_gain": 13.617202521666972,
+    "hue_mean_gain": 3.289303216181658,
+    "dal_pct_positive": 0.9833333333333333,
+    "hue_pct_positive": 0.6166666666666667,
+    "winner": "DAL"
+  },
+  "Deutan": {
+    "n_pairs": 60,
+    "dal_mean_gain": 4.027478280008699,
+    "hue_mean_gain": 1.875622847739203,
+    "dal_pct_positive": 0.8666666666666667,
+    "hue_pct_positive": 0.55,
+    "winner": "DAL"
+  },
+  "Tritan": {
+    "n_pairs": 36,
+    "dal_mean_gain": 3.084471786225256,
+    "hue_mean_gain": 0.4646481077683724,
+    "dal_pct_positive": 0.8333333333333334,
+    "hue_pct_positive": 0.5,
+    "winner": "DAL"
+  }
+}
