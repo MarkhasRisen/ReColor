@@ -1,0 +1,121 @@
+@startuml DataFlowDiagram
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam sequenceArrowColor #333333
+skinparam sequenceLifeLineBorderColor #4A90D9
+skinparam sequenceParticipantBorderColor #4A90D9
+skinparam sequenceParticipantBackgroundColor #E3F2FD
+skinparam sequenceBoxBorderColor #BDBDBD
+skinparam noteBackgroundColor #FFF9C4
+skinparam noteBorderColor #E8A838
+
+title **Figure 5.3 - Ishihara Test Data Flow Diagram**\n(The "Handshake" from Input to Persistence)
+
+actor "User" as user #BBDEFB
+participant "TestScreen.js\n(UI Layer)" as test #E3F2FD
+participant "colorLogic.js\n(Scoring Engine)" as logic #E3F2FD
+participant "ishiharaData.js\n(Plate Registry)" as data #E3F2FD
+participant "firebaseConfig.js\nsaveExamResult()" as fb #FFF3E0
+database "Firestore\nusers/{uid}/history" as private #E8F5E9
+database "Firestore\nresearch_data_\nanonymized" as research #E8F5E9
+
+== Stage 1: Screening Phase ==
+
+user -> test : Enters answer via numpad
+activate test
+
+test -> logic : evaluateStage1(answers, testType)
+activate logic
+
+logic -> data : Lookup plate[index].answer
+activate data
+data --> logic : Expected answer
+deactivate data
+
+logic --> test : { shouldProceedToStage2,\n  correctCount, totalStage1 }
+deactivate logic
+
+alt Score >= Normal Threshold
+    note over test : Skip Stage 2\n(Normal / Indeterminate)
+else Score < Normal Threshold
+    note over test : Proceed to Stage 2\n(Diagnostic Plates)
+
+    == Stage 2: Diagnostic Phase ==
+
+    loop For each diagnostic plate
+        user -> test : Enters answer\n(numeric / tracing)
+        test -> logic : Record answer
+    end
+end
+
+== Diagnosis and Dual-Write Persistence ==
+
+test -> logic : computeDiagnosis(allAnswers, testType)
+activate logic
+
+logic --> test : { diagnosis, severity,\n  score, maxScore, percentage }
+deactivate logic
+
+note over test
+  Result Object Example:
+  diagnosis: "Deuteranomaly Detected"
+  severity: "Moderate"
+  score: 8 / maxScore: 21
+  percentage: 38.1%
+end note
+
+test -> fb : saveExamResult(\n  userId, score,\n  diagnosis, severity,\n  total)
+activate fb
+
+note over fb #FFE0B2
+  **Dual Write Pattern**
+  Two addDoc() calls run
+  in parallel via Promise.all()
+  for privacy compliance.
+end note
+
+fb -> private : **Write 1: Private History**\naddDoc(users/{uid}/history,\n  {score, total, diagnosis,\n  severity, date})
+activate private
+
+fb -> research : **Write 2: Anonymized**\naddDoc(research_data_anonymized,\n  {diagnosis, severity, score,\n  total, device, timestamp})
+activate research
+
+private --> fb : Document written
+deactivate private
+
+research --> fb : Document written
+deactivate research
+
+fb --> test : Save confirmed (true)
+deactivate fb
+
+test -> user : Navigate to\n**IshiharaResult**\nwith diagnosis data
+deactivate test
+
+note over private
+  **Private Document:**
+  {
+    score: 8,
+    total: 21,
+    diagnosis: "Deuteranomaly Detected",
+    severity: "Moderate",
+    date: serverTimestamp()
+  }
+end note
+
+note over research
+  **Anonymized Document:**
+  {
+    diagnosis: "Deuteranomaly Detected",
+    severity: "Moderate",
+    score: 8,
+    total: 21,
+    device: "Mobile_Client",
+    timestamp: serverTimestamp()
+  }
+  No userId = researcher-safe
+end note
+
+@enduml
