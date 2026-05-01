@@ -1,0 +1,79 @@
+@startuml SystemArchitectureDiagram
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam packageBorderColor #4A90D9
+skinparam rectangleBorderColor #4A90D9
+skinparam componentBorderColor #4A90D9
+skinparam arrowColor #333333
+skinparam noteBorderColor #E8A838
+
+title **Figure 5.1 - ReColor System Architecture Diagram**\n(Client-to-Cloud Pattern)
+
+rectangle "**Mobile Client**" as client #E3F2FD {
+    rectangle "ReColor App\n(React Native / Expo)" as app #BBDEFB {
+        component "TestScreen.js" as test #90CAF9
+        component "AdminLoginScreen.js" as admin #90CAF9
+        component "HistoryScreen.js" as history #90CAF9
+        component "CameraEnhanceScreen.js" as camera #90CAF9
+        component "SurveyScreen.js" as survey #90CAF9
+    }
+    rectangle "Logic Layer" as logic #BBDEFB {
+        component "colorLogic.js\n(Scoring and Diagnosis)" as clogic #90CAF9
+        component "tensorHelper.js\n(CVD Algorithms)" as tensor #90CAF9
+        component "ishiharaData.js\n(Plate Definitions)" as ishdata #90CAF9
+    }
+}
+
+rectangle "**Firebase SDK Bridge**" as bridge #FFF3E0 {
+    component "firebaseConfig.js" as fbconfig #FFE0B2
+    component "saveExamResult()\n(Dual Write)" as save #FFE0B2
+    component "Firebase Auth SDK" as authsdk #FFE0B2
+}
+
+cloud "**Google Cloud Platform**" as gcp #E8F5E9 {
+    rectangle "Firebase Authentication" as auth #C8E6C9 {
+        component "Google Sign-In\nProvider" as google #A5D6A7
+        component "Email/Password\nProvider" as email #A5D6A7
+    }
+    database "Cloud Firestore" as firestore #C8E6C9 {
+        component "users/{uid}/history\n(Private Subcollection)" as historyCol #A5D6A7
+        component "research_data_anonymized\n(Top-Level Collection)" as researchCol #A5D6A7
+        component "surveys\n(Top-Level Collection)" as surveysCol #A5D6A7
+    }
+}
+
+' --- Relationships ---
+test -down-> clogic : evaluates\nanswers
+clogic -right-> ishdata : references\nplate data
+test -down-> save : calls on\ntest completion
+admin -down-> authsdk : admin\nlogin
+history -down-> historyCol : reads via\nonSnapshot
+survey -down-> surveysCol : addDoc
+
+save -down-> historyCol : **Write 1: Private**\n(addDoc)
+save -down-> researchCol : **Write 2: Anonymized**\n(addDoc)
+authsdk -down-> auth : **OAuth 2.0**\nhandshake
+fbconfig -down-> gcp : initializes\nFirebase App
+
+note right of bridge
+  The Firebase SDK acts as the
+  **communication bridge** between
+  the React Native client and
+  Google Cloud services.
+  Uses **Dual Write** pattern
+  for privacy compliance.
+end note
+
+note bottom of firestore
+  NoSQL document store with
+  **offline-first** local cache.
+  Data is decoupled via a
+  **Dual Write** strategy:
+  private history + anonymized
+  research data.
+end note
+
+@enduml

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Slider from "@react-native-community/slider";
+import { collection, getDocs, query } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -10,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { auth, signOut } from "../../firebaseConfig";
+import { auth, db, signOut } from "../../firebaseConfig";
 import BackgroundBubbles from "../components/BackgroundBubbles";
 import Card from "../components/Card";
 import Header from "../components/Header";
@@ -36,6 +37,24 @@ export default function SettingsScreen({ navigation }) {
   const [audio, setAudio] = useState(true);
   const [showLogs, setShowLogs] = useState(false);
   const [logText, setLogText] = useState("");
+  const [testCount, setTestCount] = useState(0);
+
+  useEffect(() => {
+    const fetchHistoryCount = async () => {
+      if (auth.currentUser) {
+        const q = query(
+          collection(db, "users", auth.currentUser.uid, "history"),
+        );
+        try {
+          const snap = await getDocs(q);
+          setTestCount(snap.size);
+        } catch (e) {
+          AppLog.log("Settings", "Failed to fetch test count");
+        }
+      }
+    };
+    fetchHistoryCount();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -165,8 +184,9 @@ export default function SettingsScreen({ navigation }) {
                 <Text style={{ fontWeight: "600", fontSize: 15 }}>
                   View Test History
                 </Text>
+                {/* Replaced hardcoded text with dynamic state */}
                 <Text style={{ color: "#999", fontSize: 12 }}>
-                  3 tests completed
+                  {testCount} tests completed
                 </Text>
               </View>
             </View>

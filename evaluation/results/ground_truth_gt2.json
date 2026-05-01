@@ -1,0 +1,117 @@
+{
+  "n_total": 11,
+  "n_pass": 10,
+  "accuracy": 0.9090909090909091,
+  "rows": [
+    {
+      "type": "confusion",
+      "cvd": "Protan",
+      "pair": "Red 255,0,0 vs Green 0,128,0",
+      "deltaE_before": 72.18,
+      "deltaE_after": 7.77,
+      "ratio": 0.108,
+      "expected": "collapse",
+      "passed": true
+    },
+    {
+      "type": "confusion",
+      "cvd": "Protan",
+      "pair": "Red 200,40,40 vs Green 50,150,50",
+      "deltaE_before": 68.44,
+      "deltaE_after": 22.78,
+      "ratio": 0.333,
+      "expected": "collapse",
+      "passed": true
+    },
+    {
+      "type": "confusion",
+      "cvd": "Protan",
+      "pair": "Pure Red vs Pure Green",
+      "deltaE_before": 86.61,
+      "deltaE_after": 42.29,
+      "ratio": 0.488,
+      "expected": "collapse",
+      "passed": true
+    },
+    {
+      "type": "control",
+      "cvd": "Protan",
+      "pair": "Red vs Blue",
+      "deltaE_before": 52.88,
+      "deltaE_after": 64.16,
+      "ratio": 1.213,
+      "expected": "preserved",
+      "passed": true
+    },
+    {
+      "type": "confusion",
+      "cvd": "Deutan",
+      "pair": "Red 255,0,0 vs Green 0,128,0",
+      "deltaE_before": 72.18,
+      "deltaE_after": 15.38,
+      "ratio": 0.213,
+      "expected": "collapse",
+      "passed": true
+    },
+    {
+      "type": "confusion",
+      "cvd": "Deutan",
+      "pair": "Red 200,40,40 vs Green 50,150,50",
+      "deltaE_before": 68.44,
+      "deltaE_after": 5.3,
+      "ratio": 0.077,
+      "expected": "collapse",
+      "passed": true
+    },
+    {
+      "type": "confusion",
+      "cvd": "Deutan",
+      "pair": "Pure Red vs Pure Green",
+      "deltaE_before": 86.61,
+      "deltaE_after": 19.61,
+      "ratio": 0.226,
+      "expected": "collapse",
+      "passed": true
+    },
+    {
+      "type": "control",
+      "cvd": "Deutan",
+      "pair": "Red vs Blue",
+      "deltaE_before": 52.88,
+      "deltaE_after": 74.64,
+      "ratio": 1.412,
+      "expected": "preserved",
+      "passed": true
+    },
+    {
+      "type": "confusion",
+      "cvd": "Tritan",
+      "pair": "Pure Blue vs Pure Yellow",
+      "deltaE_before": 103.43,
+      "deltaE_after": 51.14,
+      "ratio": 0.494,
+      "expected": "collapse",
+      "passed": true
+    },
+    {
+      "type": "confusion",
+      "cvd": "Tritan",
+      "pair": "Sky Blue vs Khaki",
+      "deltaE_before": 40.7,
+      "deltaE_after": 36.49,
+      "ratio": 0.897,
+      "expected": "collapse",
+      "passed": false
+    },
+    {
+      "type": "control",
+      "cvd": "Tritan",
+      "pair": "Red vs Green",
+      "deltaE_before": 86.61,
+      "deltaE_after": 76.2,
+      "ratio": 0.88,
+      "expected": "preserved",
+      "passed": true
+    }
+  ]
+}
