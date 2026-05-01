@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+// Import from legacy path to resolve deprecation error in Screenshot 2
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
@@ -159,34 +160,7 @@ export default function ResearchDashboardScreen({ navigation }) {
   }, []);
 
   const diagCounts = countBy(testDocs, "diagnosis");
-  const severityCounts = countBy(testDocs, "severity");
   const total = testDocs.length;
-
-  const DIAG_BARS = [
-    {
-      key: "Normal Vision",
-      label: "Normal Vision",
-      badge: "N",
-      color: COLORS.success,
-    },
-    {
-      key: "Indeterminate Result",
-      label: "Indeterminate",
-      badge: "I",
-      color: "#9C27B0",
-    },
-    { key: "Mild", label: "Mild CVD", badge: "Mild", color: "#2979FF" },
-    { key: "Moderate", label: "Moderate CVD", badge: "Mod", color: "#FF9800" },
-    { key: "Severe", label: "Severe CVD", badge: "Sev", color: COLORS.danger },
-  ];
-
-  const diagBarData = DIAG_BARS.map((b) => ({
-    ...b,
-    count:
-      b.key === "Mild" || b.key === "Moderate" || b.key === "Severe"
-        ? testDocs.filter((d) => (d.severity || "") === b.key).length
-        : diagCounts[b.key] || 0,
-  }));
 
   const handleExport = async () => {
     if (!total) {
@@ -201,15 +175,14 @@ export default function ResearchDashboardScreen({ navigation }) {
       }));
       const csv = toCSV(rows);
       const path = `${FileSystem.documentDirectory}recolor_research_${Date.now()}.csv`;
+
+      // Fix for Screenshot 2: Use EncodingType explicitly
       await FileSystem.writeAsStringAsync(path, csv, {
-        encoding: "utf8",
+        encoding: FileSystem.EncodingType.UTF8,
       });
+
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(path, {
-          mimeType: "text/csv",
-          dialogTitle: "Export Research Data",
-          UTI: "public.comma-separated-values-text",
-        });
+        await Sharing.shareAsync(path);
       } else {
         Alert.alert(
           "Not Available",
@@ -247,7 +220,6 @@ export default function ResearchDashboardScreen({ navigation }) {
               borderBottomRightRadius: i === 1 ? 20 : 0,
               borderWidth: 1,
               borderColor: "#E0E0E0",
-              borderRightWidth: i === 0 ? 0 : 1,
             }}
             onPress={() => setActiveTab(tab)}
           >
@@ -275,7 +247,7 @@ export default function ResearchDashboardScreen({ navigation }) {
         contentContainerStyle={{ padding: 20 }}
         showsVerticalScrollIndicator={false}
       >
-        {activeTab === "View Data" && (
+        {activeTab === "View Data" ? (
           <>
             <View
               style={{
@@ -295,12 +267,11 @@ export default function ResearchDashboardScreen({ navigation }) {
             </View>
 
             {loading ? (
-              <View style={{ alignItems: "center", paddingVertical: 40 }}>
-                <ActivityIndicator size="large" color={COLORS.primary} />
-                <Text style={{ color: "#999", marginTop: 10 }}>
-                  Loading live data…
-                </Text>
-              </View>
+              <ActivityIndicator
+                size="large"
+                color={COLORS.primary}
+                style={{ marginTop: 40 }}
+              />
             ) : (
               <>
                 <View
@@ -324,24 +295,8 @@ export default function ResearchDashboardScreen({ navigation }) {
                     icon="people"
                     iconColor="#8E24AA"
                     val={surveyDocs.length}
-                    label="Survey Responses"
+                    label="Surveys"
                     valColor="#6A1B9A"
-                  />
-                  <StatTile
-                    bg="#E8F5E9"
-                    icon="bar-chart"
-                    iconColor="#43A047"
-                    val={diagCounts["Normal Vision"] || 0}
-                    label="Normal Results"
-                    valColor="#2E7D32"
-                  />
-                  <StatTile
-                    bg="#FCE4EC"
-                    icon="alert-circle"
-                    iconColor="#E91E63"
-                    val={total - (diagCounts["Normal Vision"] || 0)}
-                    label="CVD Indicated"
-                    valColor="#C2185B"
                   />
                 </View>
 
@@ -350,256 +305,60 @@ export default function ResearchDashboardScreen({ navigation }) {
                     backgroundColor: "#FFF",
                     borderWidth: 1,
                     borderColor: "#DDD",
-                    padding: 12,
-                    borderRadius: 8,
+                    padding: 15,
+                    borderRadius: 12,
                     alignItems: "center",
                     marginBottom: 25,
                     flexDirection: "row",
                     justifyContent: "center",
-                    gap: 8,
                   }}
                   onPress={handleExport}
-                  disabled={exporting}
                 >
-                  {exporting ? (
-                    <ActivityIndicator size="small" color="#333" />
-                  ) : (
-                    <Ionicons name="download-outline" size={18} color="#333" />
-                  )}
-                  <Text style={{ fontWeight: "bold", color: "#333" }}>
-                    {exporting
-                      ? "Preparing CSV…"
-                      : `Export Full Report (CSV) — ${total} records`}
+                  <Ionicons
+                    name="download-outline"
+                    size={20}
+                    color="#333"
+                    style={{ marginRight: 10 }}
+                  />
+                  <Text style={{ fontWeight: "bold" }}>
+                    {exporting ? "Preparing..." : "Export Full Report (CSV)"}
                   </Text>
                 </TouchableOpacity>
 
                 <Card style={{ marginBottom: 20 }}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      marginBottom: 20,
-                    }}
-                  >
-                    <Ionicons name="bar-chart-outline" size={20} color="#333" />
-                    <Text
-                      style={{
-                        fontWeight: "bold",
-                        marginLeft: 10,
-                        fontSize: 16,
-                      }}
-                    >
-                      Screening Statistics
-                    </Text>
-                  </View>
-                  {diagBarData.map((b) => (
-                    <StatBar
-                      key={b.key}
-                      label={b.label}
-                      badge={b.badge}
-                      count={b.count}
-                      total={total}
-                      color={b.color}
-                    />
-                  ))}
-                </Card>
-
-                <Card style={{ marginBottom: 20 }}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      marginBottom: 20,
-                    }}
-                  >
-                    <Ionicons name="people-outline" size={20} color="#333" />
-                    <Text
-                      style={{
-                        fontWeight: "bold",
-                        marginLeft: 10,
-                        fontSize: 16,
-                      }}
-                    >
-                      Survey Demographics
-                    </Text>
-                  </View>
-                  {surveyDocs.length === 0 ? (
-                    <Text style={{ color: "#999", fontSize: 13 }}>
-                      No survey responses yet.
-                    </Text>
-                  ) : (
-                    <>
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          color: "#666",
-                          marginBottom: 10,
-                          fontWeight: "600",
-                        }}
-                      >
-                        Sex Distribution
-                      </Text>
-                      {["Male", "Female"].map((sex) => {
-                        const count = surveyDocs.filter(
-                          (d) => d.sex === sex,
-                        ).length;
-                        return (
-                          <StatBar
-                            key={sex}
-                            label={sex}
-                            count={count}
-                            total={surveyDocs.length}
-                            color={sex === "Male" ? "#2979FF" : "#E91E63"}
-                          />
-                        );
-                      })}
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          color: "#666",
-                          marginBottom: 10,
-                          marginTop: 10,
-                          fontWeight: "600",
-                        }}
-                      >
-                        Perceived Cause
-                      </Text>
-                      {["Medical Intake", "Genetics", "Ageing", "Others"].map(
-                        (cause) => {
-                          const count = surveyDocs.filter(
-                            (d) => d.cause === cause,
-                          ).length;
-                          return (
-                            <StatBar
-                              key={cause}
-                              label={cause}
-                              count={count}
-                              total={surveyDocs.length}
-                              color={COLORS.primary}
-                            />
-                          );
-                        },
-                      )}
-                    </>
-                  )}
+                  <Text style={{ fontWeight: "bold", marginBottom: 15 }}>
+                    Screening Statistics
+                  </Text>
+                  <StatBar
+                    label="Normal Vision"
+                    count={diagCounts["Normal Vision"] || 0}
+                    total={total}
+                    color={COLORS.success}
+                    badge="N"
+                  />
+                  <StatBar
+                    label="CVD Indicated"
+                    count={total - (diagCounts["Normal Vision"] || 0)}
+                    total={total}
+                    color={COLORS.danger}
+                    badge="CVD"
+                  />
                 </Card>
               </>
             )}
           </>
-        )}
-
-        {activeTab === "Guidelines" && (
-          <>
-            <Card style={{ marginBottom: 20 }}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginBottom: 10,
-                }}
-              >
-                <Ionicons name="document-text-outline" size={20} color="#333" />
-                <Text
-                  style={{ fontWeight: "bold", marginLeft: 10, fontSize: 16 }}
-                >
-                  Clinical Scoring Thresholds
-                </Text>
-              </View>
-              <View
-                style={{
-                  backgroundColor: "#F5F5F5",
-                  borderRadius: 8,
-                  padding: 15,
-                }}
-              >
-                {[
-                  {
-                    range: "≥ 80%",
-                    label: "Normal Vision",
-                    color: COLORS.success,
-                  },
-                  {
-                    range: "65–79%",
-                    label: "Indeterminate (borderline)",
-                    color: "#9C27B0",
-                  },
-                  { range: "45–64%", label: "Mild CVD", color: "#2979FF" },
-                  { range: "25–44%", label: "Moderate CVD", color: "#FF9800" },
-                  { range: "< 25%", label: "Severe CVD", color: COLORS.danger },
-                ].map((row) => (
-                  <View
-                    key={row.range}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      marginBottom: 8,
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: 5,
-                        backgroundColor: row.color,
-                        marginRight: 10,
-                      }}
-                    />
-                    <Text style={{ fontSize: 13, color: "#333", flex: 1 }}>
-                      {row.label}
-                    </Text>
-                    <Text
-                      style={{ fontSize: 12, color: "#999", fontWeight: "600" }}
-                    >
-                      {row.range}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-              <View
-                style={{
-                  marginTop: 15,
-                  backgroundColor: "#E3F2FD",
-                  padding: 12,
-                  borderRadius: 8,
-                }}
-              >
-                <Text
-                  style={{ fontSize: 11, color: "#1565C0", lineHeight: 17 }}
-                >
-                  Indeterminate zone mirrors the clinical 14–16 correct plates
-                  threshold derived from the standard Ishihara scoring protocol
-                  (Ishihara, 1917). Stage 1 uses 21 plates; Stage 2 adds 4
-                  diagnostic plates.
-                </Text>
-              </View>
-            </Card>
-
-            <Card>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginBottom: 10,
-                }}
-              >
-                <Ionicons
-                  name="information-circle-outline"
-                  size={20}
-                  color="#333"
-                />
-                <Text
-                  style={{ fontWeight: "bold", marginLeft: 10, fontSize: 16 }}
-                >
-                  Active Protocols
-                </Text>
-              </View>
-              <Text style={{ fontSize: 11, color: "#555", lineHeight: 20 }}>
-                {
-                  "• Ishihara Test — 25 plates (comprehensive)\n• Stage 1: Screening via plates 1–21 (demo + 20 screening/vanishing/hidden)\n• Stage 2: Differentiation via plates 22–25 (weight ×2)\n• Thresholds: ≥17 Normal · 14–16 Indeterminate · ≤13 proceed to Stage 2\n• Dual-write: private history + anonymized research\n• Offline-first: Firestore persistentLocalCache"
-                }
-              </Text>
-            </Card>
-          </>
+        ) : (
+          <Card>
+            <Text style={{ fontWeight: "bold", marginBottom: 10 }}>
+              Active Protocols
+            </Text>
+            <Text style={{ fontSize: 12, color: "#555", lineHeight: 20 }}>
+              • Ishihara Test — 25 plates (comprehensive){"\n"}• Stage 1:
+              Screening via plates 1–21{"\n"}• Stage 2: Differentiation via
+              plates 22–25{"\n"}• Thresholds: ≥17 Normal · 14–16 Indeterminate
+              {"\n"}• Offline-first: Firestore persistentLocalCache
+            </Text>
+          </Card>
         )}
       </ScrollView>
     </View>

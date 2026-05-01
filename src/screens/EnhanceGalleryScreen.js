@@ -1,9 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Slider from "@react-native-community/slider";
 import * as FileSystem from "expo-file-system";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -18,6 +20,7 @@ import {
 import { auth } from "../../firebaseConfig";
 import {
     applyDaltonization,
+    applyHueRotation,
     decodeJpegBase64,
     encodeToDataUri,
 } from "../../tensorHelper";
@@ -30,7 +33,15 @@ export default function EnhanceGalleryScreen({ navigation }) {
   const [originalUri, setOriginalUri] = useState(null);
   const [displayUri, setDisplayUri] = useState(null);
   const [mode, setMode] = useState("Off");
+  const [algo, setAlgo] = useState("daltonization");
+  const [intensity, setIntensity] = useState(100);
   const [processing, setProcessing] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem("@recolor_intensity").then(
+      (val) => val && setIntensity(Number(val)),
+    );
+  }, []);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -44,34 +55,11 @@ export default function EnhanceGalleryScreen({ navigation }) {
     }
   };
 
-  const handleSave = async () => {
-    if (!displayUri) return;
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== "granted") return Alert.alert("Permission needed");
-
-      const b64 = displayUri.split(",")[1];
-      const savePath = `${FileSystem.documentDirectory}enhance_${Date.now()}.jpg`;
-      await FileSystem.writeAsStringAsync(savePath, b64, {
-        encoding: "base64",
-      });
-
-      const asset = await MediaLibrary.createAssetAsync(savePath);
-      const albumName = `ReColor_${auth.currentUser?.email.split("@")[0] || "Guest"}`;
-      const album = await MediaLibrary.getAlbumAsync(albumName);
-
-      if (!album) await MediaLibrary.createAlbumAsync(albumName, asset, false);
-      else await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
-
-      Alert.alert("Saved", `Enhanced photo added to ${albumName}`);
-    } catch (e) {
-      Alert.alert("Error", "Save failed");
+  const processFilter = async (cvdMode, currentAlgo, currentInt) => {
+    if (cvdMode === "Off" || !originalUri) {
+      setDisplayUri(originalUri);
+      return;
     }
-  };
-
-  const applyFilter = async (cvdMode) => {
-    setMode(cvdMode);
-    if (cvdMode === "Off" || !originalUri) return setDisplayUri(originalUri);
     setProcessing(true);
     try {
       const resized = await ImageManipulator.manipulateAsync(
@@ -80,16 +68,69 @@ export default function EnhanceGalleryScreen({ navigation }) {
         { base64: true },
       );
       const decoded = decodeJpegBase64(resized.base64);
-      const enhanced = applyDaltonization(
-        { data: decoded.data, width: decoded.width, height: decoded.height },
-        null,
-        cvdMode,
-      );
-      setDisplayUri(encodeToDataUri(enhanced, decoded.width, decoded.height));
+      const src = {
+        data: decoded.data,
+        width: decoded.width,
+        height: decoded.height,
+      };
+
+      const enhanced =
+        currentAlgo === "hue_rotation"
+          ? applyHueRotation(src, cvdMode)
+          : applyDaltonization(src, null, cvdMode);
+
+      const blend = currentInt / 100;
+      const blended = new Uint8Array(decoded.data.length);
+      for (let i = 0; i < decoded.data.length; i += 4) {
+        blended[i] = Math.round(
+          decoded.data[i] * (1 - blend) + enhanced[i] * blend,
+        );
+        blended[i + 1] = Math.round(
+          decoded.data[i + 1] * (1 - blend) + enhanced[i + 1] * blend,
+        );
+        blended[i + 2] = Math.round(
+          decoded.data[i + 2] * (1 - blend) + enhanced[i + 2] * blend,
+        );
+        blended[i + 3] = decoded.data[i + 3];
+      }
+      setDisplayUri(encodeToDataUri(blended, decoded.width, decoded.height));
     } catch (e) {
       console.warn(e);
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!displayUri) return;
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== "granted") return Alert.alert("Permission needed");
+
+      // SAVE FIX: Support both Data URIs and local file paths
+      let b64;
+      if (displayUri.startsWith("data:")) {
+        b64 = displayUri.split(",")[1];
+      } else {
+        b64 = await FileSystem.readAsStringAsync(displayUri, {
+          encoding: "base64",
+        });
+      }
+
+      const savePath = `${FileSystem.documentDirectory}save_${Date.now()}.jpg`;
+      await FileSystem.writeAsStringAsync(savePath, b64, {
+        encoding: "base64",
+      });
+      const asset = await MediaLibrary.createAssetAsync(savePath);
+      const albumName = `ReColor_${auth.currentUser?.email.split("@")[0] || "Guest"}`;
+      const album = await MediaLibrary.getAlbumAsync(albumName);
+
+      if (!album) await MediaLibrary.createAlbumAsync(albumName, asset, false);
+      else await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+
+      Alert.alert("Saved", "Added to ReColor album.");
+    } catch (e) {
+      Alert.alert("Error", "Save failed");
     }
   };
 
@@ -101,7 +142,7 @@ export default function EnhanceGalleryScreen({ navigation }) {
             <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
           <Text style={{ color: "#FFF", fontWeight: "bold" }}>
-            Enhance Analysis
+            Enhance Gallery
           </Text>
           <TouchableOpacity onPress={pickImage}>
             <Ionicons name="add-circle" size={28} color="#FFF" />
@@ -129,42 +170,88 @@ export default function EnhanceGalleryScreen({ navigation }) {
             />
           )}
         </View>
+
         {originalUri && (
-          <View style={{ paddingBottom: 30 }}>
+          <View style={{ paddingBottom: 20 }}>
+            {/* Algorithm & CVD Selectors */}
             <View
               style={{
                 flexDirection: "row",
                 justifyContent: "center",
                 gap: 10,
-                marginBottom: 14,
+                marginBottom: 15,
+              }}
+            >
+              {["daltonization", "hue_rotation"].map((a) => (
+                <TouchableOpacity
+                  key={a}
+                  onPress={() => {
+                    setAlgo(a);
+                    processFilter(mode, a, intensity);
+                  }}
+                  style={{
+                    backgroundColor: algo === a ? COLORS.secondary : "#222",
+                    padding: 8,
+                    borderRadius: 10,
+                  }}
+                >
+                  <Text
+                    style={{ color: "#FFF", fontSize: 10, fontWeight: "bold" }}
+                  >
+                    {a === "daltonization" ? "DALTO" : "HUE"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                gap: 8,
+                marginBottom: 15,
               }}
             >
               {["Off", "Protan", "Deutan", "Tritan"].map((m) => (
                 <TouchableOpacity
                   key={m}
-                  onPress={() => applyFilter(m)}
+                  onPress={() => {
+                    setMode(m);
+                    processFilter(m, algo, intensity);
+                  }}
                   style={{
                     backgroundColor: mode === m ? COLORS.primary : "#333",
                     padding: 10,
                     borderRadius: 20,
                   }}
                 >
-                  <Text style={{ color: "#FFF" }}>{m}</Text>
+                  <Text style={{ color: "#FFF", fontSize: 11 }}>{m}</Text>
                 </TouchableOpacity>
               ))}
             </View>
+            <Slider
+              style={{ width: "80%", alignSelf: "center", height: 40 }}
+              minimumValue={0}
+              maximumValue={100}
+              value={intensity}
+              onSlidingComplete={(v) => {
+                setIntensity(v);
+                processFilter(mode, algo, v);
+              }}
+              minimumTrackTintColor={COLORS.primary}
+              thumbTintColor="#FFF"
+            />
             <TouchableOpacity
               onPress={handleSave}
               style={{
                 alignSelf: "center",
                 backgroundColor: COLORS.primary,
-                paddingHorizontal: 28,
-                paddingVertical: 12,
+                padding: 12,
                 borderRadius: 24,
+                marginTop: 10,
               }}
             >
               <Text style={{ color: "#FFF", fontWeight: "700" }}>
-                Save to Account Album
+                Save Enhanced Image
               </Text>
             </TouchableOpacity>
           </View>
