@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Slider from "@react-native-community/slider";
 import { useIsFocused } from "@react-navigation/native";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as MediaLibrary from "expo-media-library";
@@ -153,42 +153,61 @@ function CameraEnhanceScreenInner({ navigation }) {
   };
 
   const handleSave = async () => {
+    // Trigger success haptics for a professional feel
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
       () => {},
     );
+
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== "granted")
+      if (status !== "granted") {
         return Alert.alert(
           "Permission needed",
           "Allow gallery access in settings.",
         );
+      }
 
+      // Determine which URI to use based on the 'showOriginal' toggle
       const targetUri = showOriginal ? frozenUriRef.current : resultUri;
       if (!targetUri) return;
 
       let b64;
+      // Standardize source: Check if it's a filtered Data URI or a local capture path
       if (targetUri.startsWith("data:")) {
         b64 = targetUri.split(",")[1];
       } else {
-        // Fix for saving captured photos[cite: 3]
+        // For local captured photos, read the file into a base64 string
+        // Using literal 'base64' string to avoid the 'undefined' error
         b64 = await FileSystem.readAsStringAsync(targetUri, {
           encoding: "base64",
         });
       }
 
-      const tmpPath = `${FileSystem.documentDirectory}recolor_save_${Date.now()}.jpg`;
-      await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: "base64" });
+      // Create a unique temporary path in the document directory
+      const tmpPath = `${FileSystem.documentDirectory}recolor_final_save_${Date.now()}.jpg`;
+
+      // Write the standardized base64 data to our fresh temporary file
+      await FileSystem.writeAsStringAsync(tmpPath, b64, {
+        encoding: "base64",
+      });
+
       const asset = await MediaLibrary.createAssetAsync(tmpPath);
       const userName = auth.currentUser?.email?.split("@")[0] || "Guest";
       const albumName = `ReColor_${userName}`;
       const album = await MediaLibrary.getAlbumAsync(albumName);
 
-      if (!album) await MediaLibrary.createAlbumAsync(albumName, asset, false);
-      else await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+      if (!album) {
+        await MediaLibrary.createAlbumAsync(albumName, asset, false);
+      } else {
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+      }
+
+      // CRITICAL: Clean up the temporary file to save storage space
+      await FileSystem.deleteAsync(tmpPath, { idempotent: true });
 
       Alert.alert("Saved", "Photo added to your ReColor album.");
     } catch (e) {
+      console.error("[CameraEnhance] Save error:", e);
       Alert.alert("Error", "Could not save photo.");
     }
   };

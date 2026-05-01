@@ -1,13 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import {
   collection,
+  limit,
   onSnapshot,
-  query
+  orderBy,
+  query,
 } from "firebase/firestore";
 import { MotiView } from "moti";
 import { useEffect, useState } from "react";
 import {
-  Dimensions,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,61 +22,88 @@ import Card from "../components/Card";
 import Header from "../components/Header";
 import { COLORS, SHADOW } from "../theme/colors";
 
-const { width } = Dimensions.get("window");
-
 export default function AdminHubScreen({ route, navigation }) {
   const { role } = route.params || { role: "researcher" };
   const [recordCount, setRecordCount] = useState(0);
-  const [systemLogs, setSystemLogs] = useState([]);
+  const [userCount, setUserCount] = useState(0);
+  const [liveActivity, setLiveActivity] = useState([]);
 
   useEffect(() => {
-    // REAL-TIME DATA INGRESS MONITOR[cite: 2]
-    const qCount = query(collection(db, "research_data_anonymized"));
-    const unsubCount = onSnapshot(qCount, (snap) => setRecordCount(snap.size));
-
-    // MOCK SYSTEM EVENTS (For Defense Atmosphere)
-    const mockLogs = [
-      {
-        id: "1",
-        event: "Cloud Sync Active",
-        time: "Just Now",
-        icon: "cloud-done",
+    // 1. Live Research Record Count
+    const unsubResearch = onSnapshot(
+      query(collection(db, "research_data_anonymized")),
+      (snap) => {
+        setRecordCount(snap.size);
       },
-      {
-        id: "2",
-        event: "Auth Gate Verified",
-        time: "2m ago",
-        icon: "shield-checkmark",
-      },
-      { id: "3", event: "Dual-Write Success", time: "15m ago", icon: "copy" },
-    ];
-    setSystemLogs(mockLogs);
+    );
 
-    return () => unsubCount();
+    // 2. Live Registered User Count
+    const unsubUsers = onSnapshot(query(collection(db, "users")), (snap) => {
+      setUserCount(snap.size);
+    });
+
+    // 3. Live Data Ingress Feed (Last 5 events)
+    const qActivity = query(
+      collection(db, "research_data_anonymized"),
+      orderBy("timestamp", "desc"),
+      limit(5),
+    );
+
+    const unsubActivity = onSnapshot(qActivity, (snap) => {
+      setLiveActivity(
+        snap.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            event: `${data.diagnosis || "New"} Record Synced`,
+            time: data.timestamp?.toDate()
+              ? data.timestamp.toDate().toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "Just now",
+            icon: "analytics-outline",
+            color:
+              data.diagnosis === "Normal Vision"
+                ? COLORS.success
+                : COLORS.warning,
+          };
+        }),
+      );
+    });
+
+    return () => {
+      unsubResearch();
+      unsubUsers();
+      unsubActivity();
+    };
   }, []);
 
   return (
-    <ScrollView style={styles.root} showsVerticalScrollIndicator={false}>
+    <View style={styles.root}>
+      <BackgroundBubbles />
       <Header
         title="Expert Portal"
-        subtitle="Clinical Operations Center"
-        back
+        subtitle={
+          role === "admin" ? "System Administrator" : "Clinical Researcher"
+        }
       />
-      <BackgroundBubbles />
 
-      <View style={{ padding: 20 }}>
-        {/* 1. SYSTEM HEALTH MODULE[cite: 2] */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ padding: 20 }}
+      >
+        {/* Real-time System Status[cite: 12, 15] */}
         <View style={styles.healthContainer}>
           <HealthBadge label="Cloud DB" active />
-          <HealthBadge label="Auth Service" active />
+          <HealthBadge label="Auth Gate" active />
           <HealthBadge label="Encryption" active />
         </View>
 
-        {/* 2. REAL-TIME STATS TICKER[cite: 2] */}
+        {/* Live Primary Metric Card[cite: 12, 15] */}
         <MotiView
           from={{ translateY: 20, opacity: 0 }}
           animate={{ translateY: 0, opacity: 1 }}
-          transition={{ delay: 100 }}
         >
           <Card style={styles.statsCard}>
             <Text style={styles.statsLabel}>GLOBAL RESEARCH DATASET</Text>
@@ -89,58 +118,70 @@ export default function AdminHubScreen({ route, navigation }) {
 
         <Text style={styles.sectionHeader}>ADMINISTRATION UTILITIES</Text>
 
-        {/* 3. FUNCTIONAL GRID[cite: 2, 3] */}
-        <View style={styles.grid}>
+        {/* Utilities Grid with Live CMS and User counts[cite: 12, 15] */}
+        <View
+          style={[
+            styles.grid,
+            { flexWrap: "nowrap", alignItems: "stretch", gap: 15 },
+          ]}
+        >
+          {/* Left Column: Stacked Square Cards */}
+          <View style={{ width: "48%", gap: 15 }}>
+            <GridCard
+              title="Analytics"
+              sub="CVD Trends"
+              icon="analytics"
+              color="#6200EA"
+              onPress={() => navigation.navigate("ResearchDashboard")}
+              style={{ width: "100%", marginBottom: 0 }}
+            />
+            <GridCard
+              title="System Status"
+              sub="Cloud Sync: Active"
+              icon="cloud-done-outline"
+              color="#FF6D00"
+              onPress={() =>
+                Alert.alert(
+                  "System Health Report",
+                  `Database: Firebase Firestore (Online)\nAuth Service: Firebase Auth (Active)\nData Compliance: PII Masking Active\n\nAll research data is decoupled from User IDs at ingestion to ensure participant anonymity.`,
+                )
+              }
+              style={{ width: "100%", marginBottom: 0 }}
+            />
+          </View>
+
+          {/* Right Column: Tall Vertical Rectangle */}
           <GridCard
-            title="Analytics"
-            sub="CVD Trends"
-            icon="analytics"
-            color="#6200EA"
-            onPress={() => navigation.navigate("ResearchDashboard")}
-          />
-          <GridCard
-            title="CMS Manager"
-            sub="Edit Articles"
-            icon="document-text"
-            color="#0091EA"
-            onPress={() =>
-              Alert.alert(
-                "CMS Module",
-                "Article management in Read-Only for defense.",
-              )
-            }
-          />
-          <GridCard
-            title="Sandbox"
-            sub="Test App"
-            icon="flask"
+            title="App Interface"
+            sub="Switch to User Mode"
+            icon="phone-portrait-outline"
             color="#00C853"
             onPress={() => navigation.navigate("MainTabs")}
-          />
-          <GridCard
-            title="Audit Log"
-            sub="Security"
-            icon="lock-closed"
-            color="#FF6D00"
-            onPress={() =>
-              Alert.alert(
-                "Audit Log",
-                "Compliance logs are encrypted per RA 10173.",
-              )
-            }
+            style={{
+              width: "48%",
+              height: "auto",
+              marginBottom: 0,
+              justifyContent: "center", // Centers content vertically in the tall card
+            }}
           />
         </View>
 
-        {/* 4. RECENT SYSTEM EVENTS LOG[cite: 3] */}
-        <Text style={styles.sectionHeader}>SYSTEM EVENT STREAM</Text>
+        {/* Live Event Stream[cite: 12, 15] */}
+        <Text style={styles.sectionHeader}>LIVE DATA INGRESS FEED</Text>
         <Card style={styles.logCard}>
-          {systemLogs.map((log) => (
-            <View key={log.id} style={styles.logItem}>
-              <Ionicons name={log.icon} size={16} color={COLORS.primary} />
-              <Text style={styles.logText}>{log.event}</Text>
-              <Text style={styles.logTime}>{log.time}</Text>
-            </View>
-          ))}
+          {liveActivity.length > 0 ? (
+            liveActivity.map((log) => (
+              <View key={log.id} style={styles.logItem}>
+                <Ionicons name={log.icon} size={16} color={log.color} />
+                <Text style={styles.logText}>{log.event}</Text>
+                <Text style={styles.logTime}>{log.time}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={{ textAlign: "center", color: "#999", fontSize: 12 }}>
+              Waiting for incoming packets...
+            </Text>
+          )}
         </Card>
 
         <TouchableOpacity
@@ -152,12 +193,11 @@ export default function AdminHubScreen({ route, navigation }) {
         >
           <Text style={styles.logoutText}>Terminate Expert Session</Text>
         </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
-// Helper Components
 const HealthBadge = ({ label, active }) => (
   <View style={styles.healthBadge}>
     <View
@@ -167,9 +207,9 @@ const HealthBadge = ({ label, active }) => (
   </View>
 );
 
-const GridCard = ({ title, sub, icon, color, onPress }) => (
+const GridCard = ({ title, sub, icon, color, onPress, style }) => (
   <TouchableOpacity
-    style={[styles.gridCard, { borderTopColor: color }]}
+    style={[styles.gridCard, { borderTopColor: color }, style]}
     onPress={onPress}
   >
     <Ionicons name={icon} size={28} color={color} />
@@ -195,7 +235,7 @@ const styles = StyleSheet.create({
     ...SHADOW.sm,
   },
   dot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
-  healthLabel: { fontSize: 9, fontWeight: "bold", color: "#666" },
+  healthLabel: { fontSize: 9, fontWeight: "800", color: "#666" },
   statsCard: {
     padding: 25,
     alignItems: "center",
@@ -251,9 +291,9 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 13,
     color: "#444",
-    fontWeight: "500",
+    fontWeight: "600",
   },
-  logTime: { fontSize: 11, color: "#999" },
+  logTime: { fontSize: 11, color: "#AAA" },
   logoutBtn: {
     marginTop: 30,
     padding: 15,

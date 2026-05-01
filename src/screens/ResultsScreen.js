@@ -47,6 +47,7 @@ export default function ResultsScreen({ route, navigation }) {
     diagnosis = "Unknown",
     severity = "N/A",
     percentage = 0,
+    type,
     shuffledOrder,
   } = route?.params || {};
 
@@ -140,7 +141,6 @@ export default function ResultsScreen({ route, navigation }) {
         <Text style={styles.heroScore}>
           {score} of {displayScore} plates correct
         </Text>
-
       </MotiView>
 
       <View style={styles.content}>
@@ -229,7 +229,7 @@ export default function ResultsScreen({ route, navigation }) {
           style={styles.secondaryBtn}
           onPress={() =>
             navigation.replace("IshiharaOnboarding", {
-              testType: "comprehensive",
+              testType: type || "comprehensive",
             })
           }
         >

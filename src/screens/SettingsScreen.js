@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Slider from "@react-native-community/slider";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -12,37 +12,34 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { auth, db } from "../../firebaseConfig";
+import { auth, db, signOut } from "../../firebaseConfig";
 import BackgroundBubbles from "../components/BackgroundBubbles";
 import Header from "../components/Header";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
 export default function SettingsScreen({ navigation }) {
-  const [intensity, setIntensity] = useState(1.0);
+  const [intensity, setIntensity] = useState(100);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [expertRole, setExpertRole] = useState(null);
+  const [testCount, setTestCount] = useState(0);
+  const user = auth.currentUser;
 
   useEffect(() => {
     loadSettings();
     checkExpertStatus();
+    fetchTestCount();
   }, []);
 
   const loadSettings = async () => {
-    try {
-      const savedIntensity = await AsyncStorage.getItem(
-        "enhancement_intensity",
-      );
-      const savedAudio = await AsyncStorage.getItem("audio_feedback_enabled");
-      if (savedIntensity !== null) setIntensity(parseFloat(savedIntensity));
-      if (savedAudio !== null) setAudioEnabled(savedAudio === "true");
-    } catch (e) {
-      /* Silent fail */
-    }
+    const savedIntensity = await AsyncStorage.getItem("@recolor_intensity");
+    const savedAudio = await AsyncStorage.getItem("audio_feedback_enabled");
+    if (savedIntensity) setIntensity(Number(savedIntensity));
+    if (savedAudio) setAudioEnabled(savedAudio === "true");
   };
 
   const checkExpertStatus = async () => {
-    if (auth.currentUser) {
-      const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+    if (user) {
+      const userDoc = await getDoc(doc(db, "users", user.uid));
       if (
         userDoc.exists() &&
         (userDoc.data().role === "admin" ||
@@ -53,58 +50,84 @@ export default function SettingsScreen({ navigation }) {
     }
   };
 
-  const handleResetOnboarding = async () => {
-    Alert.alert("Reset Flow", "Return to Splash screen? (Expert Only)", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Reset",
-        style: "destructive",
-        onPress: async () => {
-          await AsyncStorage.removeItem("has_completed_onboarding");
-          navigation.replace("Splash");
-        },
-      },
-    ]);
+  const fetchTestCount = async () => {
+    if (user) {
+      try {
+        const snap = await getDocs(
+          collection(db, "users", user.uid, "history"),
+        );
+        setTestCount(snap.size); // .size returns the number of documents
+      } catch (error) {
+        console.error("Could not fetch test count:", error);
+      }
+    }
   };
 
+  const handleResetOnboarding = async () => {
+    Alert.alert(
+      "Reset Experience",
+      "This will log you out and restart the app from the welcome tour. Continue?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // 1. Clear the onboarding completion flag[cite: 16, 21]
+              await AsyncStorage.removeItem("@recolor_onboarded");
+
+              // 2. Log out the current session to ensure a clean slate[cite: 12, 21]
+              await signOut(auth);
+
+              // 3. Send them to Splash to re-trigger the fresh flow[cite: 12, 21]
+              navigation.replace("Splash");
+            } catch (e) {
+              Alert.alert("Error", "Could not reset the application state.");
+            }
+          },
+        },
+      ],
+    );
+  };
   return (
     <View style={styles.root}>
-      <Header title="Settings" subtitle="App Configuration" back />
+      <Header title="Settings" back />
       <BackgroundBubbles />
       <ScrollView contentContainerStyle={styles.scroll}>
-        {/* USER PREFERENCES */}
+        {/* PROFILE CARD */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>PROFILE</Text>
+          <View style={styles.card}>
+            <Text style={styles.subtext}>Name</Text>
+            <Text style={styles.label}>
+              {user?.email?.split("@")[0] || "User"}
+            </Text>
+            <View style={{ height: 10 }} />
+            <Text style={styles.subtext}>Email</Text>
+            <Text style={styles.label}>{user?.email}</Text>
+          </View>
+        </View>
+
+        {/* PREFERENCES CARD */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>PREFERENCES</Text>
           <View style={styles.card}>
-            <View style={styles.row}>
-              <Ionicons
-                name="contrast-outline"
-                size={20}
-                color={COLORS.primary}
-              />
-              <Text style={styles.label}>
-                Intensity: {Math.round(intensity * 100)}%
-              </Text>
-            </View>
+            <Text style={styles.label}>
+              Color Enhancement Intensity: {Math.round(intensity)}%
+            </Text>
             <Slider
               style={styles.slider}
               minimumValue={0}
-              maximumValue={1}
+              maximumValue={100}
               value={intensity}
               onSlidingComplete={(v) => {
                 setIntensity(v);
-                AsyncStorage.setItem("enhancement_intensity", v.toString());
+                AsyncStorage.setItem("@recolor_intensity", v.toString());
               }}
               minimumTrackTintColor={COLORS.primary}
-              thumbTintColor={COLORS.primary}
             />
-
             <View style={[styles.row, { marginTop: 20 }]}>
-              <Ionicons
-                name="volume-high-outline"
-                size={20}
-                color={COLORS.primary}
-              />
               <Text style={[styles.label, { flex: 1 }]}>Audio Feedback</Text>
               <Switch
                 value={audioEnabled}
@@ -115,16 +138,37 @@ export default function SettingsScreen({ navigation }) {
                 trackColor={{ true: COLORS.primary }}
               />
             </View>
-            <Text style={styles.subtext}>
-              Announce identified colors automatically.
-            </Text>
           </View>
         </View>
 
-        {/* EXPERT UTILITIES */}
+        {/* DATA CARD */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>DATA</Text>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() =>
+              navigation.navigate("MainTabs", { screen: "History" })
+            }
+          >
+            <View style={styles.row}>
+              <Ionicons name="time-outline" size={24} color="#333" />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.label}>View Test History</Text>
+                {/* Dynamic count display matching your screenshot reference */}
+                <Text style={styles.subtextCount}>
+                  {testCount} {testCount === 1 ? "test" : "tests"} completed
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#CCC" />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* EXPERT UTILITIES - Restricted to Admin/Researcher[cite: 16, 21] */}
         {expertRole && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>EXPERT UTILITIES</Text>
+
             <TouchableOpacity
               style={styles.expertBtn}
               onPress={() =>
@@ -140,6 +184,7 @@ export default function SettingsScreen({ navigation }) {
               <Text style={styles.expertBtnText}>Launch Expert Portal</Text>
             </TouchableOpacity>
 
+            {/* Reset Button: Now correctly restricted and functionally complete */}
             <TouchableOpacity
               style={[styles.expertBtn, styles.resetBtn]}
               onPress={handleResetOnboarding}
@@ -156,6 +201,17 @@ export default function SettingsScreen({ navigation }) {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* ACCOUNT CARD */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>ACCOUNT</Text>
+          <TouchableOpacity
+            style={[styles.expertBtn, { backgroundColor: COLORS.danger }]}
+            onPress={() => auth.signOut()}
+          >
+            <Text style={styles.expertBtnText}>Log Out</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -182,6 +238,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 16, fontWeight: "600", color: COLORS.text },
   slider: { width: "100%", height: 40 },
   subtext: { fontSize: 11, color: "#888", marginTop: 8 },
+  subtextCount: { fontSize: 12, color: "#999", marginTop: 2 },
   expertBtn: {
     backgroundColor: COLORS.primary,
     padding: 16,

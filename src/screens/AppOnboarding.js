@@ -1,76 +1,76 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons } from '@expo/vector-icons';
-import { MotiView } from 'moti';
-import React, { useRef, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MotiView } from "moti";
+import { useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { COLORS, RADIUS, SHADOW, SPACING } from '../theme/colors';
+} from "react-native";
+import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 const SLIDES = [
   {
-    id: '1',
-    icon: 'eye-outline',
+    id: "1",
+    icon: "eye-outline",
     iconColor: COLORS.primary,
-    badge: 'WELCOME',
+    badge: "WELCOME",
     title: "Let's personalise\nyour view of the world.",
     subtitle:
-      'ReColor uses AI and clinical screening to help you understand and enhance your colour perception.',
-    cta: 'Get Started',
+      "ReColor uses AI and clinical screening to help you understand and enhance your colour perception.",
+    cta: "Get Started",
   },
   {
-    id: '2',
-    icon: 'color-palette-outline',
-    iconColor: '#FF6B6B',
-    badge: 'COLOUR VISION',
-    title: 'What is your\ncolour vision type?',
+    id: "2",
+    icon: "color-palette-outline",
+    iconColor: "#FF6B6B",
+    badge: "COLOUR VISION",
+    title: "What is your\ncolour vision type?",
     subtitle:
-      'Millions of people experience colour differently. Our Ishihara test identifies Deuteranopia, Protanopia, and Tritanopia.',
-    cta: 'Next',
+      "Millions of people experience colour differently. Our Ishihara test identifies Deuteranopia, Protanopia, and Tritanopia.",
+    cta: "Next",
     options: [
-      'Red Sensitivity (Protanopia/Protanomaly)',
-      'Green Sensitivity (Deuteranopia/Deuteranomaly)',
-      'Blue Sensitivity (Tritanopia/Tritanomaly)',
-      'Not sure yet',
+      "Red Sensitivity (Protanopia/Protanomaly)",
+      "Green Sensitivity (Deuteranopia/Deuteranomaly)",
+      "Blue Sensitivity (Tritanopia/Tritanomaly)",
+      "Not sure yet",
     ],
   },
   {
-    id: '3',
-    icon: 'phone-portrait-outline',
+    id: "3",
+    icon: "phone-portrait-outline",
     iconColor: COLORS.accent,
-    badge: 'LIVE PREVIEW',
-    title: 'See the difference,\nright now.',
+    badge: "LIVE PREVIEW",
+    title: "See the difference,\nright now.",
     subtitle:
-      'Point your camera anywhere. ReColor identifies colours in real-time and applies adaptive enhancement filters.',
-    cta: 'Next',
+      "Point your camera anywhere. ReColor identifies colours in real-time and applies adaptive enhancement filters.",
+    cta: "Next",
   },
   {
-    id: '4',
-    icon: 'camera-outline',
+    id: "4",
+    icon: "camera-outline",
     iconColor: COLORS.warning,
-    badge: 'PERMISSIONS',
+    badge: "PERMISSIONS",
     title: "We'll need your camera\nto act as your eyes.",
     subtitle:
-      'Camera access enables real-time colour identification and CVD simulation. Photo library access lets you enhance saved images.',
-    cta: 'Continue',
-    perms: ['Camera Access', 'Photo Storage'],
+      "Camera access enables real-time colour identification and CVD simulation. Photo library access lets you enhance saved images.",
+    cta: "Continue",
+    perms: ["Camera Access", "Photo Storage"],
   },
   {
-    id: '5',
-    icon: 'options-outline',
+    id: "5",
+    icon: "options-outline",
     iconColor: COLORS.success,
-    badge: 'READY',
-    title: 'Choose your\nexperience.',
-    subtitle: 'Start with the clinical screening test or jump straight into colour enhancement mode.',
-    cta: 'Begin →',
+    badge: "READY",
+    title: "Choose your\nexperience.",
+    subtitle:
+      "Start with the clinical screening test or jump straight into colour enhancement mode.",
+    cta: "Begin →",
     finalCta: true,
   },
 ];
@@ -83,7 +83,7 @@ function SlideItem({ item, onNext, isLast, onFinish }) {
       <MotiView
         from={{ opacity: 0, translateY: 30 }}
         animate={{ opacity: 1, translateY: 0 }}
-        transition={{ type: 'spring', damping: 18, delay: 100 }}
+        transition={{ type: "timing", duration: 600, delay: 150 }}
         style={styles.iconWrap}
       >
         <Ionicons name={item.icon} size={48} color={item.iconColor} />
@@ -92,7 +92,7 @@ function SlideItem({ item, onNext, isLast, onFinish }) {
       <MotiView
         from={{ opacity: 0, translateY: 20 }}
         animate={{ opacity: 1, translateY: 0 }}
-        transition={{ type: 'spring', damping: 18, delay: 200 }}
+        transition={{ type: "timing", duration: 700, delay: 200 }}
       >
         <Text style={styles.badge}>{item.badge}</Text>
         <Text style={styles.title}>{item.title}</Text>
@@ -109,10 +109,18 @@ function SlideItem({ item, onNext, isLast, onFinish }) {
           {item.options.map((opt) => (
             <TouchableOpacity
               key={opt}
-              style={[styles.optionChip, selected === opt && styles.optionChipActive]}
+              style={[
+                styles.optionChip,
+                selected === opt && styles.optionChipActive,
+              ]}
               onPress={() => setSelected(opt)}
             >
-              <Text style={[styles.optionText, selected === opt && styles.optionTextActive]}>
+              <Text
+                style={[
+                  styles.optionText,
+                  selected === opt && styles.optionTextActive,
+                ]}
+              >
                 {opt}
               </Text>
             </TouchableOpacity>
@@ -129,7 +137,11 @@ function SlideItem({ item, onNext, isLast, onFinish }) {
         >
           {item.perms.map((perm) => (
             <View key={perm} style={styles.permRow}>
-              <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
+              <Ionicons
+                name="checkmark-circle"
+                size={20}
+                color={COLORS.success}
+              />
               <Text style={styles.permText}>{perm}</Text>
             </View>
           ))}
@@ -139,7 +151,7 @@ function SlideItem({ item, onNext, isLast, onFinish }) {
       <MotiView
         from={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: 'spring', damping: 14, delay: 400 }}
+        transition={{ type: "timing", duration: 500 }}
         style={styles.ctaWrap}
       >
         <TouchableOpacity
@@ -160,14 +172,17 @@ export default function AppOnboarding({ navigation }) {
 
   const goNext = () => {
     if (currentIndex < SLIDES.length - 1) {
-      flatRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
+      flatRef.current?.scrollToIndex({
+        index: currentIndex + 1,
+        animated: true,
+      });
       setCurrentIndex(currentIndex + 1);
     }
   };
 
   const finish = async () => {
-    await AsyncStorage.setItem('@recolor_onboarded', '1').catch(() => {});
-    navigation.replace('Login');
+    await AsyncStorage.setItem("@recolor_onboarded", "1").catch(() => {});
+    navigation.replace("Login");
   };
 
   return (
@@ -195,8 +210,11 @@ export default function AppOnboarding({ navigation }) {
         {SLIDES.map((_, i) => (
           <MotiView
             key={i}
-            animate={{ width: i === currentIndex ? 24 : 8, opacity: i === currentIndex ? 1 : 0.35 }}
-            transition={{ type: 'spring', damping: 18 }}
+            animate={{
+              width: i === currentIndex ? 24 : 8,
+              opacity: i === currentIndex ? 1 : 0.35,
+            }}
+            transition={{ type: "timing", duration: 300 }}
             style={[styles.dot, { backgroundColor: COLORS.primary }]}
           />
         ))}
@@ -219,45 +237,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingTop: 80,
     paddingBottom: 120,
-    alignItems: 'center',
+    alignItems: "center",
   },
   iconWrap: {
     width: 96,
     height: 96,
     borderRadius: RADIUS.xl,
     backgroundColor: COLORS.card,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: SPACING.lg,
     ...SHADOW.md,
   },
   badge: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 1.5,
     color: COLORS.primary,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: SPACING.sm,
   },
   title: {
     fontSize: 28,
-    fontWeight: '800',
+    fontWeight: "800",
     color: COLORS.text,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 36,
     marginBottom: SPACING.md,
   },
   subtitle: {
     fontSize: 15,
     color: COLORS.textLight,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 22,
     paddingHorizontal: SPACING.sm,
   },
   optionsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
     gap: SPACING.sm,
     marginTop: SPACING.lg,
   },
@@ -276,21 +294,21 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: 14,
     color: COLORS.textLight,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   optionTextActive: {
     color: COLORS.primary,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   permsWrap: {
     marginTop: SPACING.lg,
-    alignSelf: 'stretch',
+    alignSelf: "stretch",
     paddingHorizontal: SPACING.lg,
     gap: SPACING.sm,
   },
   permRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: SPACING.sm,
     backgroundColor: COLORS.card,
     padding: SPACING.md,
@@ -300,10 +318,10 @@ const styles = StyleSheet.create({
   permText: {
     fontSize: 14,
     color: COLORS.text,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   ctaWrap: {
-    position: 'absolute',
+    position: "absolute",
     bottom: SPACING.xxl,
     left: SPACING.md,
     right: SPACING.md,
@@ -312,29 +330,29 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderRadius: RADIUS.lg,
     paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: "center",
     ...SHADOW.md,
   },
   ctaText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 0.3,
   },
   dotsRow: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 110,
-    alignSelf: 'center',
-    flexDirection: 'row',
+    alignSelf: "center",
+    flexDirection: "row",
     gap: 6,
-    alignItems: 'center',
+    alignItems: "center",
   },
   dot: {
     height: 8,
     borderRadius: 4,
   },
   skipBtn: {
-    position: 'absolute',
+    position: "absolute",
     top: 52,
     right: SPACING.md,
     padding: SPACING.sm,
@@ -342,6 +360,6 @@ const styles = StyleSheet.create({
   skipText: {
     color: COLORS.textLight,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });

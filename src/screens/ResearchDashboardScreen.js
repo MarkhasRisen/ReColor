@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-// Import from legacy path to resolve deprecation error in Screenshot 2
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { useEffect, useState } from "react";
@@ -178,7 +177,7 @@ export default function ResearchDashboardScreen({ navigation }) {
 
       // Fix for Screenshot 2: Use EncodingType explicitly
       await FileSystem.writeAsStringAsync(path, csv, {
-        encoding: FileSystem.EncodingType.UTF8,
+        encoding: "utf8",
       });
 
       if (await Sharing.isAvailableAsync()) {

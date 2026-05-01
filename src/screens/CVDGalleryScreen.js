@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
@@ -80,7 +80,7 @@ export default function CVDGalleryScreen({ navigation }) {
         await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
       }
 
-      Alert.alert("Saved", `Image added to your ${albumName} album.`);
+      Alert.alert("Saved", `Image added to your Recolor album.`);
     } catch (e) {
       Alert.alert("Error", "Could not save image.");
     }
@@ -224,6 +224,10 @@ export default function CVDGalleryScreen({ navigation }) {
                 paddingVertical: 12,
                 borderRadius: 24,
                 opacity: processing ? 0.5 : 1,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: 10,
               }}
             >
               <Ionicons

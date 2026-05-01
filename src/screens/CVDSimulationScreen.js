@@ -7,7 +7,7 @@ import {
   useCanvasRef,
   useImage,
 } from "@shopify/react-native-skia";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as MediaLibrary from "expo-media-library";
@@ -113,12 +113,18 @@ function CVDSimulationScreenInner({ navigation, route }) {
         Alert.alert("Permission needed", "Allow gallery access in settings.");
         return;
       }
+
       const snapshot = canvasRef.current?.makeImageSnapshot();
       if (!snapshot) return;
 
+      // Skia snapshots encode to base64 directly[cite: 1]
       const b64 = snapshot.encodeToBase64();
       const tmpPath = `${FileSystem.documentDirectory}recolor_sim_${Date.now()}.png`;
-      await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: "base64" });
+
+      // Use literal 'base64' to remain consistent with your global fix[cite: 1]
+      await FileSystem.writeAsStringAsync(tmpPath, b64, {
+        encoding: "base64",
+      });
 
       const asset = await MediaLibrary.createAssetAsync(tmpPath);
       const userName = auth.currentUser?.email?.split("@")[0] || "Guest";
@@ -131,11 +137,14 @@ function CVDSimulationScreenInner({ navigation, route }) {
         await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
       }
 
+      // Cleanup[cite: 1]
+      await FileSystem.deleteAsync(tmpPath, { idempotent: true });
+
       Alert.alert("Saved", `Simulation saved to ${albumName}.`);
     } catch (e) {
       Alert.alert("Error", "Could not save photo.");
     }
-  }, []);
+  }, [cvdType]); // Ensure dependencies are correct for useCallback
 
   const handleReset = useCallback(() => {
     setFrozen(false);

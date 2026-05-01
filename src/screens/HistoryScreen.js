@@ -73,9 +73,26 @@ export default function HistoryScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Header title="Your History" back />
       <BackgroundBubbles />
-
+      <Header title="Your History" back />
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 3,
+          backgroundColor: "#FFF8E1",
+          paddingVertical: 10,
+          paddingHorizontal: 8,
+          borderBottomWidth: 1,
+          borderBottomColor: "#FFE082",
+        }}
+      >
+        <Ionicons name="warning-outline" size={12} color="#F59E0B" />
+        <Text style={{ fontSize: 10, fontWeight: "700", color: "#F59E0B" }}>
+          NOT A MEDICAL DIAGNOSIS — SCREENING PURPOSE ONLY
+        </Text>
+      </View>
       {loading ? (
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
@@ -126,7 +143,7 @@ export default function HistoryScreen({ navigation }) {
             }}
           >
             Take a 5-minute test to start tracking your color perception
-            journey. [cite: 68, 69]
+            journey. Your history will appear here after your first screening.
           </Text>
 
           {/* Call to Action Button  */}

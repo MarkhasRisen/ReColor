@@ -1,28 +1,28 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Slider from "@react-native-community/slider";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Image,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { auth } from "../../firebaseConfig";
 import {
-    applyDaltonization,
-    applyHueRotation,
-    decodeJpegBase64,
-    encodeToDataUri,
+  applyDaltonization,
+  applyHueRotation,
+  decodeJpegBase64,
+  encodeToDataUri,
 } from "../../tensorHelper";
 import { COLORS } from "../theme/colors";
 import { styles } from "../theme/styles";
@@ -107,20 +107,21 @@ export default function EnhanceGalleryScreen({ navigation }) {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== "granted") return Alert.alert("Permission needed");
 
-      // SAVE FIX: Support both Data URIs and local file paths
       let b64;
+      // Standardize source: Check if it's a filtered Data URI or a local gallery path
       if (displayUri.startsWith("data:")) {
         b64 = displayUri.split(",")[1];
       } else {
         b64 = await FileSystem.readAsStringAsync(displayUri, {
-          encoding: "base64",
+          encoding: "base64", // Use literal string to prevent 'undefined' errors
         });
       }
 
-      const savePath = `${FileSystem.documentDirectory}save_${Date.now()}.jpg`;
+      const savePath = `${FileSystem.documentDirectory}enhanced_save_${Date.now()}.jpg`;
       await FileSystem.writeAsStringAsync(savePath, b64, {
         encoding: "base64",
       });
+
       const asset = await MediaLibrary.createAssetAsync(savePath);
       const albumName = `ReColor_${auth.currentUser?.email.split("@")[0] || "Guest"}`;
       const album = await MediaLibrary.getAlbumAsync(albumName);
@@ -128,7 +129,10 @@ export default function EnhanceGalleryScreen({ navigation }) {
       if (!album) await MediaLibrary.createAlbumAsync(albumName, asset, false);
       else await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
 
-      Alert.alert("Saved", "Added to ReColor album.");
+      // Cleanup temp file
+      await FileSystem.deleteAsync(savePath, { idempotent: true });
+
+      Alert.alert("Saved", "Successfully added to your ReColor album.");
     } catch (e) {
       Alert.alert("Error", "Save failed");
     }

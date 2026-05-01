@@ -25,7 +25,7 @@ import {
 } from "../../firebaseConfig";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
-const APP_VERSION = "v1.3.3-beta";
+const APP_VERSION = "v1.0.0-beta";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
@@ -122,7 +122,7 @@ export default function LoginScreen({ navigation }) {
         <MotiView
           from={{ opacity: 0, translateY: -20 }}
           animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: "spring", damping: 18 }}
+          transition={{ type: "timing", duration: 600 }}
           style={styles.logoWrap}
         >
           <Image
@@ -134,7 +134,7 @@ export default function LoginScreen({ navigation }) {
         <MotiView
           from={{ opacity: 0, translateY: 30 }}
           animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: "spring", damping: 18, delay: 150 }}
+          transition={{ type: "timing", duration: 800, delay: 150 }}
           style={styles.card}
         >
           <Text style={styles.welcomeTitle}>Welcome Back</Text>
@@ -142,7 +142,11 @@ export default function LoginScreen({ navigation }) {
             Sign in to enhance your colour perception
           </Text>
           <View style={styles.inputRow}>
-            <Ionicons name="mail-outline" size={18} color={COLORS.textLight} />
+            <Ionicons
+              name="person-outline"
+              size={18}
+              color={COLORS.textLight}
+            />
             <TextInput
               style={styles.input}
               placeholder="Email Address"

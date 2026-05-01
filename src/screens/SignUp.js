@@ -106,7 +106,7 @@ export default function SignUp({ navigation }) {
         <MotiView
           from={{ opacity: 0, translateY: -20 }}
           animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: "spring", damping: 18 }}
+          transition={{ type: "timing", duration: 600 }}
           style={styles.logoWrap}
         >
           <Image
@@ -118,7 +118,7 @@ export default function SignUp({ navigation }) {
         <MotiView
           from={{ opacity: 0, translateY: 30 }}
           animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: "spring", damping: 18, delay: 150 }}
+          transition={{ type: "timing", duration: 800, delay: 150 }}
           style={styles.card}
         >
           <Text style={styles.title}>Create Account</Text>
