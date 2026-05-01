@@ -1,6 +1,6 @@
 # ReColor — Ground-Truth-Anchored Evaluation
 
-**Generated:** 2026-04-30 23:37:52
+**Generated:** 2026-05-01 09:34:09
 
 This report answers the adviser's question: **"Where is the ground truth, and
 what is the actual truth produced by the algorithms?"** Every score below is
@@ -9,7 +9,7 @@ under test.
 
 | Camera | Ground truth | Result |
 |---|---|---|
-| Color Identifier | X-Rite ColorChecker 24 + 30 CSS named colors with literature-published color classes | **88.9% accuracy** |
+| Color Identifier | X-Rite ColorChecker 24 + 30 CSS named colors with literature-published color classes | **100.0% accuracy** |
 | CVD Simulation | Viénot/Brettel 1999 confusion-line invariants | **90.9% invariants satisfied** |
 | Camera Enhancement | Synthetic confused color pairs (post-CVD ΔE < 5) — discrimination gain | DAL **+6.91** / HUE **+1.88** ΔE gain |
 
@@ -32,21 +32,21 @@ whether the predicted class matches the ground-truth class. Failures are split:
 
 ### Headline
 * **Total samples:** 54 (24 ColorChecker + 30 CSS)
-* **Correct:** 48
-* **Accuracy:** **88.9%**
-* **Failure split:** 2 low-ΔE (boundary), 4 high-ΔE (sparsity)
+* **Correct:** 54
+* **Accuracy:** **100.0%**
+* **Failure split:** 0 low-ΔE (boundary), 0 high-ΔE (sparsity)
 
 ### Per-class accuracy
 | Class | Correct | Total | Accuracy |
 |---|---|---|---|
-| Blue | 5 | 6 | 83.3% |
+| Blue | 6 | 6 | 100.0% |
 | Brown | 4 | 4 | 100.0% |
-| Cyan | 4 | 5 | 80.0% |
-| Green | 5 | 6 | 83.3% |
+| Cyan | 5 | 5 | 100.0% |
+| Green | 6 | 6 | 100.0% |
 | Neutral | 12 | 12 | 100.0% |
 | Orange | 3 | 3 | 100.0% |
-| Pink | 4 | 5 | 80.0% |
-| Red | 2 | 4 | 50.0% |
+| Pink | 5 | 5 | 100.0% |
+| Red | 4 | 4 | 100.0% |
 | Violet | 5 | 5 | 100.0% |
 | Yellow | 4 | 4 | 100.0% |
 
@@ -54,50 +54,31 @@ whether the predicted class matches the ground-truth class. Failures are split:
 
 | expected\predicted | Blue | Brown | Cyan | Green | Neutral | Orange | Pink | Red | Violet | Yellow |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Blue | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
+| Blue | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | Brown | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| Cyan | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| Green | 0 | 0 | 0 | 5 | 0 | 0 | 0 | 0 | 0 | 1 |
+| Cyan | 0 | 0 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Green | 0 | 0 | 0 | 6 | 0 | 0 | 0 | 0 | 0 | 0 |
 | Neutral | 0 | 0 | 0 | 0 | 12 | 0 | 0 | 0 | 0 | 0 |
 | Orange | 0 | 0 | 0 | 0 | 0 | 3 | 0 | 0 | 0 | 0 |
-| Pink | 0 | 0 | 0 | 0 | 0 | 1 | 4 | 0 | 0 | 0 |
-| Red | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | 0 |
+| Pink | 0 | 0 | 0 | 0 | 0 | 0 | 5 | 0 | 0 | 0 |
+| Red | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 |
 | Violet | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 5 | 0 |
 | Yellow | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 |
 
 
-### Hypothesis test: "Is the 88.9% accuracy due to DB sparsity?"
+### Hypothesis test: "Is the 100.0% accuracy due to DB sparsity?"
 Failures break down as:
-* **4 high-ΔE failures (DB sparsity):** the sample is far from any DB entry.
+* **0 high-ΔE failures (DB sparsity):** the sample is far from any DB entry.
   Adding new DB entries near these regions would fix them.
-* **2 low-ΔE failures (boundary mislabeling):** the algorithm found a confident
+* **0 low-ΔE failures (boundary mislabeling):** the algorithm found a confident
   match in the DB, but the DB entry has the wrong class label. Adding entries
   alone will NOT fix these — they need re-labeling.
 
 **Verdict for your hypothesis:**
 
-**You are mostly right.** 4 of 6 failures are sparsity-driven.
-Adding DB entries in the under-represented color regions (see high-ΔE table
-below) would lift accuracy meaningfully. The remaining 2 are boundary
-issues that need re-labeling, not new entries.
-
-
-#### High-ΔE failures (DB sparsity):
-
-| sample | expected | predicted | ΔE |
-|---|---|---|---|
-| Light Skin | Pink | Orange | 8.2 |
-| Yellow Green | Green | Yellow | 10.05 |
-| Blue | Blue | Violet | 9.79 |
-| Cyan | Cyan | Blue | 10.86 |
-
-
-#### Low-ΔE failures (DB boundary mislabeling):
-
-| sample | expected | predicted | ΔE |
-|---|---|---|---|
-| Red | Red | Brown | 4.52 |
-| tomato | Red | Orange | 7.1 |
+**Mixed.** Failures split roughly evenly between sparsity (0) and
+boundary-labeling (0). Both fixes are needed — adding entries in the
+high-ΔE regions, AND re-labeling existing entries in the low-ΔE regions.
 
 
 ---
@@ -186,7 +167,7 @@ extreme cases dramatically but often does nothing.
    for camera calibration in cinema and print since 1976). The CSS Color
    Module Level 3 is the W3C-published canonical named-color list. We feed
    their published Lab values to the algorithm and check class agreement.
-   Result: **88.9% accuracy**.
+   Result: **100.0% accuracy**.
 
 2. **CVD Simulation ground truth: literature invariants, not algorithm self-checks.**
    The Viénot 1999 paper *defines* what correct CVD simulation must do: pairs

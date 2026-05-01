@@ -107,68 +107,41 @@ def hue_rotate(rgb01, cvd):
 
 # ───────────────────────────────────────────────────────────────
 # Identifier port (mirrors tensorHelper.js identifyColor)
+#
+# IDENTIFIER_DB is loaded LIVE from tensorHelper.js so the eval
+# always reflects the shipped identifier — no manual re-syncing.
 # ───────────────────────────────────────────────────────────────
 NEUTRAL_CLASS = "Neutral"
+TENSOR_HELPER_JS = ROOT / "tensorHelper.js"
 
-IDENTIFIER_DB = [
-    # Neutrals
-    ("black",      NEUTRAL_CLASS, (0,0,0)),
-    ("dark gray",  NEUTRAL_CLASS, (64,64,64)),
-    ("gray",       NEUTRAL_CLASS, (128,128,128)),
-    ("light gray", NEUTRAL_CLASS, (192,192,192)),
-    ("white",      NEUTRAL_CLASS, (255,255,255)),
-    # Reds
-    ("Red",        "Red",     (255,0,0)),    ("Red",        "Red", (204,0,0)),
-    ("Red",        "Red",     (139,0,0)),    ("Crimson",    "Red", (220,20,60)),
-    ("Firebrick",  "Red",     (178,34,34)),  ("Red",        "Red", (255,51,51)),
-    ("Indian Red", "Red",     (205,92,92)),  ("Dark Muted Red","Red",(139,58,58)),
-    ("Soft Red",   "Red",     (224,96,96)),
-    # Oranges
-    ("Dark Orange","Orange",  (255,140,0)),  ("Orange",     "Orange",(255,165,0)),
-    ("Coral",      "Orange",  (255,127,80)), ("Orange",     "Orange",(232,117,26)),
-    ("Orange",     "Orange",  (204,112,0)),  ("Orange",     "Orange",(196,128,64)),
-    ("Orange",     "Orange",  (224,151,110)),("Orange",     "Orange",(184,116,58)),
-    # Yellows
-    ("Yellow", "Yellow",(255,255,0)), ("Yellow","Yellow",(255,215,0)),
-    ("Yellow", "Yellow",(255,236,139)),("Yellow","Yellow",(218,165,32)),
-    ("Yellow", "Yellow",(240,230,140)),("Yellow","Yellow",(189,183,107)),
-    ("Yellow", "Yellow",(212,204,106)),
-    # Greens
-    ("Green","Green",(0,128,0)),("Green","Green",(0,255,0)),
-    ("Green","Green",(34,139,34)),("Green","Green",(0,100,0)),
-    ("Green","Green",(50,205,50)),("Green","Green",(144,238,144)),
-    ("Green","Green",(107,142,35)),("Green","Green",(85,107,47)),
-    ("Green","Green",(143,188,143)),("Green","Green",(74,122,74)),
-    # Cyans
-    ("Cyan","Cyan",(0,255,255)),("Cyan","Cyan",(0,139,139)),
-    ("Cyan","Cyan",(32,178,170)),("Cyan","Cyan",(0,206,209)),
-    ("Cyan","Cyan",(64,224,208)),("Cyan","Cyan",(95,158,160)),
-    ("Cyan","Cyan",(107,155,155)),
-    # Blues
-    ("Blue","Blue",(0,0,255)),("Blue","Blue",(0,0,128)),
-    ("Blue","Blue",(30,144,255)),("Blue","Blue",(65,105,225)),
-    ("Blue","Blue",(135,206,235)),("Blue","Blue",(70,130,180)),
-    ("Blue","Blue",(106,123,141)),("Blue","Blue",(74,106,138)),
-    ("Blue","Blue",(176,196,222)),
-    # Violets
-    ("Violet","Violet",(139,0,255)),("Violet","Violet",(128,0,128)),
-    ("Violet","Violet",(148,0,211)),("Violet","Violet",(186,85,211)),
-    ("Violet","Violet",(75,0,130)), ("Violet","Violet",(102,51,153)),
-    ("Violet","Violet",(147,112,219)),("Violet","Violet",(123,104,165)),
-    ("Violet","Violet",(93,78,122)),
-    # Pinks
-    ("Pink","Pink",(255,192,203)),("Pink","Pink",(255,105,180)),
-    ("Pink","Pink",(255,20,147)), ("Pink","Pink",(219,112,147)),
-    ("Pink","Pink",(255,182,193)),("Pink","Pink",(255,0,255)),
-    ("Pink","Pink",(196,138,154)),("Pink","Pink",(212,160,160)),
-    ("Pink","Pink",(176,112,128)),
-    # Browns
-    ("Brown","Brown",(139,69,19)),("Brown","Brown",(160,82,45)),
-    ("Brown","Brown",(210,105,30)),("Brown","Brown",(101,67,33)),
-    ("Brown","Brown",(165,42,42)),("Brown","Brown",(222,184,135)),
-    ("Brown","Brown",(139,115,85)),("Brown","Brown",(107,79,58)),
-    ("Brown","Brown",(196,168,130)),("Brown","Brown",(128,96,64)),
-]
+import re
+
+_SECTION_RE = re.compile(r"//\s*──\s*(Neutral|Red|Orange|Yellow|Green|Cyan|Blue|Violet|Pink|Brown)\b", re.IGNORECASE)
+_ENTRY_RE = re.compile(r'name:\s*"([^"]+)".*?rgbToLab\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)')
+
+def _load_identifier_db_from_js():
+    """Parse IDENTIFIER_DB from tensorHelper.js. Each DB entry's class is
+    inferred from the most-recent `// ── <Class> ──` section comment."""
+    text = TENSOR_HELPER_JS.read_text(encoding="utf-8")
+    start = text.index("const IDENTIFIER_DB")
+    end = text.index("];", start) + 2
+    block = text[start:end]
+    db, current_class = [], None
+    for line in block.splitlines():
+        sm = _SECTION_RE.search(line)
+        if sm:
+            current_class = sm.group(1).capitalize()
+            continue
+        em = _ENTRY_RE.search(line)
+        if em and current_class is not None:
+            name, r, g, b = em.group(1), int(em.group(2)), int(em.group(3)), int(em.group(4))
+            db.append((name, current_class, (r, g, b)))
+    if not db:
+        raise RuntimeError("Could not parse IDENTIFIER_DB from tensorHelper.js")
+    return db
+
+IDENTIFIER_DB = _load_identifier_db_from_js()
+print(f"  [identifier] loaded {len(IDENTIFIER_DB)} entries from tensorHelper.js")
 
 def rgb255_to_lab(rgb255):
     return colour.XYZ_to_Lab(colour.sRGB_to_XYZ(np.array(rgb255)/255))
@@ -178,7 +151,7 @@ DB_NAMES = [e[0] for e in IDENTIFIER_DB]
 DB_CLASSES = [e[1] for e in IDENTIFIER_DB]
 
 def identify(rgb255):
-    """Returns (predicted_class, deltaE_to_match)."""
+    """Returns (predicted_class, deltaE_to_match, confidence_0_100)."""
     lab = rgb255_to_lab(rgb255)
     chroma = np.sqrt(lab[1]**2 + lab[2]**2)
     is_chromatic = chroma >= NEUTRAL_CHROMA
@@ -188,7 +161,8 @@ def identify(rgb255):
         if not is_chromatic and klass != NEUTRAL_CLASS: continue
         d = float(colour.delta_E(lab, DB_LAB[i], method="CIE 2000"))
         if d < best_d: best_d = d; best_idx = i
-    return DB_CLASSES[best_idx], float(best_d)
+    confidence = max(0, int(round(100 - best_d * 2)))
+    return DB_CLASSES[best_idx], float(best_d), confidence
 
 # ───────────────────────────────────────────────────────────────
 # GT-1 ground truth: ColorChecker 24 + CSS named colors
@@ -243,30 +217,42 @@ def run_gt1():
               [(rgb, exp, name, "CSS")          for rgb, exp, name in CSS_NAMED]
     correct = 0; results = []; confusion = {}; per_class_total = {}
     boundary_failures = []
+    cc_details = []   # ColorChecker-only details, shape consumed by eval_visualize.py
+    cc_correct = 0
     for rgb, expected, name, source in samples:
-        predicted, dE = identify(rgb)
+        predicted, dE, confidence = identify(rgb)
         ok = (predicted == expected)
         if ok: correct += 1
         results.append({"name":name,"source":source,"rgb":list(rgb),
                         "expected":expected,"predicted":predicted,
-                        "deltaE":round(dE,2),"correct":ok})
+                        "deltaE":round(dE,2),"confidence":confidence,"correct":ok})
         confusion.setdefault(expected, {}).setdefault(predicted, 0)
         confusion[expected][predicted] += 1
         per_class_total[expected] = per_class_total.get(expected, 0) + 1
         if not ok:
             boundary_failures.append({"name":name,"expected":expected,
                                        "predicted":predicted,"deltaE":round(dE,2)})
+        if source == "ColorChecker":
+            if ok: cc_correct += 1
+            cc_details.append({"patch":name,"rgb":list(rgb),
+                               "expected":expected,"predicted":predicted,
+                               "predicted_raw":predicted,
+                               "confidence":confidence,"correct":ok})
 
     per_class = {k:(confusion.get(k,{}).get(k,0), v,
                     confusion.get(k,{}).get(k,0)/v)
                  for k,v in per_class_total.items()}
     low  = [f for f in boundary_failures if f["deltaE"] < 8]
     high = [f for f in boundary_failures if f["deltaE"] >= 8]
+    cc_total = len(cc_details)
     return {"n_samples":len(samples), "n_correct":correct,
             "accuracy":correct/len(samples), "per_class":per_class,
             "confusion":confusion, "results":results,
             "n_low":len(low), "n_high":len(high),
-            "low":low, "high":high}
+            "low":low, "high":high,
+            "cc_total":cc_total, "cc_correct":cc_correct,
+            "cc_accuracy_pct":round(cc_correct/cc_total*100, 1) if cc_total else 0.0,
+            "cc_details":cc_details}
 
 # ───────────────────────────────────────────────────────────────
 # GT-2 — CVD Simulation invariants
@@ -561,6 +547,21 @@ three measurements against them, three numbers.
     (RESULTS_DIR / "ground_truth_gt2.json").write_text(json.dumps(gt2, indent=2, default=str))
     (RESULTS_DIR / "ground_truth_gt3.json").write_text(json.dumps(gt3, indent=2, default=str))
 
+    # Refresh suite1 in the visualizer-shape ground_truth.json (preserve s2/s3
+    # if present so we don't clobber other suites' visual data).
+    vis_path = RESULTS_DIR / "ground_truth.json"
+    vis = {}
+    if vis_path.exists():
+        try: vis = json.loads(vis_path.read_text(encoding="utf-8"))
+        except Exception: vis = {}
+    vis["suite1"] = {
+        "accuracy_pct": gt1["cc_accuracy_pct"],
+        "correct":      gt1["cc_correct"],
+        "total":        gt1["cc_total"],
+        "details":      gt1["cc_details"],
+    }
+    vis_path.write_text(json.dumps(vis, indent=2, default=str), encoding="utf-8")
+
 
 def main():
     print("GT-1: Color Identifier vs ColorChecker + CSS named colors...")
@@ -572,7 +573,7 @@ def main():
     print("GT-3: Enhancement discrimination gain...")
     gt3 = run_gt3()
     for cvd, g in gt3.items():
-        print(f"  {cvd}: DAL +{g['dal_mean_gain']:.2f}  HUE +{g['hue_mean_gain']:.2f}  → {g['winner']}")
+        print(f"  {cvd}: DAL +{g['dal_mean_gain']:.2f}  HUE +{g['hue_mean_gain']:.2f}  -> {g['winner']}")
     print("Writing report...")
     write_report(gt1, gt2, gt3)
     print(f"Report:  {REPORT}")

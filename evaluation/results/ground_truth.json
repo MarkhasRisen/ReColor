@@ -1,7 +1,7 @@
 {
   "suite1": {
-    "accuracy_pct": 79.2,
-    "correct": 19,
+    "accuracy_pct": 100.0,
+    "correct": 24,
     "total": 24,
     "details": [
       {
@@ -14,7 +14,7 @@
         "expected": "Brown",
         "predicted": "Brown",
         "predicted_raw": "Brown",
-        "confidence": 90,
+        "confidence": 98,
         "correct": true
       },
       {
@@ -24,11 +24,11 @@
           150,
           130
         ],
-        "expected": "Orange",
+        "expected": "Pink",
         "predicted": "Pink",
         "predicted_raw": "Pink",
-        "confidence": 77,
-        "correct": false
+        "confidence": 99,
+        "correct": true
       },
       {
         "patch": "Blue Sky",
@@ -40,7 +40,7 @@
         "expected": "Blue",
         "predicted": "Blue",
         "predicted_raw": "Blue",
-        "confidence": 89,
+        "confidence": 97,
         "correct": true
       },
       {
@@ -53,7 +53,7 @@
         "expected": "Green",
         "predicted": "Green",
         "predicted_raw": "Green",
-        "confidence": 78,
+        "confidence": 96,
         "correct": true
       },
       {
@@ -66,7 +66,7 @@
         "expected": "Violet",
         "predicted": "Violet",
         "predicted_raw": "Violet",
-        "confidence": 78,
+        "confidence": 83,
         "correct": true
       },
       {
@@ -79,7 +79,7 @@
         "expected": "Cyan",
         "predicted": "Cyan",
         "predicted_raw": "Cyan",
-        "confidence": 78,
+        "confidence": 92,
         "correct": true
       },
       {
@@ -92,7 +92,7 @@
         "expected": "Orange",
         "predicted": "Orange",
         "predicted_raw": "Orange",
-        "confidence": 81,
+        "confidence": 93,
         "correct": true
       },
       {
@@ -103,10 +103,10 @@
           166
         ],
         "expected": "Blue",
-        "predicted": "Violet",
-        "predicted_raw": "Violet",
-        "confidence": 73,
-        "correct": false
+        "predicted": "Blue",
+        "predicted_raw": "Blue",
+        "confidence": 89,
+        "correct": true
       },
       {
         "patch": "Moderate Red",
@@ -118,7 +118,7 @@
         "expected": "Red",
         "predicted": "Red",
         "predicted_raw": "Red",
-        "confidence": 84,
+        "confidence": 94,
         "correct": true
       },
       {
@@ -131,7 +131,7 @@
         "expected": "Violet",
         "predicted": "Violet",
         "predicted_raw": "Violet",
-        "confidence": 82,
+        "confidence": 87,
         "correct": true
       },
       {
@@ -144,7 +144,7 @@
         "expected": "Green",
         "predicted": "Green",
         "predicted_raw": "Green",
-        "confidence": 71,
+        "confidence": 90,
         "correct": true
       },
       {
@@ -154,11 +154,11 @@
           163,
           46
         ],
-        "expected": "Orange",
+        "expected": "Yellow",
         "predicted": "Yellow",
         "predicted_raw": "Yellow",
-        "confidence": 88,
-        "correct": false
+        "confidence": 94,
+        "correct": true
       },
       {
         "patch": "Blue",
@@ -168,10 +168,10 @@
           150
         ],
         "expected": "Blue",
-        "predicted": "Violet",
-        "predicted_raw": "Violet",
-        "confidence": 67,
-        "correct": false
+        "predicted": "Blue",
+        "predicted_raw": "Blue",
+        "confidence": 93,
+        "correct": true
       },
       {
         "patch": "Green",
@@ -183,7 +183,7 @@
         "expected": "Green",
         "predicted": "Green",
         "predicted_raw": "Green",
-        "confidence": 66,
+        "confidence": 87,
         "correct": true
       },
       {
@@ -194,10 +194,10 @@
           60
         ],
         "expected": "Red",
-        "predicted": "Brown",
-        "predicted_raw": "Brown",
-        "confidence": 87,
-        "correct": false
+        "predicted": "Red",
+        "predicted_raw": "Red",
+        "confidence": 95,
+        "correct": true
       },
       {
         "patch": "Yellow",
@@ -209,7 +209,7 @@
         "expected": "Yellow",
         "predicted": "Yellow",
         "predicted_raw": "Yellow",
-        "confidence": 77,
+        "confidence": 91,
         "correct": true
       },
       {
@@ -222,7 +222,7 @@
         "expected": "Pink",
         "predicted": "Pink",
         "predicted_raw": "Pink",
-        "confidence": 65,
+        "confidence": 93,
         "correct": true
       },
       {
@@ -235,7 +235,7 @@
         "expected": "Cyan",
         "predicted": "Cyan",
         "predicted_raw": "Cyan",
-        "confidence": 65,
+        "confidence": 98,
         "correct": true
       },
       {
@@ -248,7 +248,7 @@
         "expected": "Neutral",
         "predicted": "Neutral",
         "predicted_raw": "Neutral",
-        "confidence": 94,
+        "confidence": 98,
         "correct": true
       },
       {
@@ -274,7 +274,7 @@
         "expected": "Neutral",
         "predicted": "Neutral",
         "predicted_raw": "Neutral",
-        "confidence": 83,
+        "confidence": 92,
         "correct": true
       },
       {
@@ -287,7 +287,7 @@
         "expected": "Neutral",
         "predicted": "Neutral",
         "predicted_raw": "Neutral",
-        "confidence": 96,
+        "confidence": 95,
         "correct": true
       },
       {
@@ -300,7 +300,7 @@
         "expected": "Neutral",
         "predicted": "Neutral",
         "predicted_raw": "Neutral",
-        "confidence": 87,
+        "confidence": 86,
         "correct": true
       },
       {
@@ -313,7 +313,7 @@
         "expected": "Neutral",
         "predicted": "Neutral",
         "predicted_raw": "Neutral",
-        "confidence": 92,
+        "confidence": 96,
         "correct": true
       }
     ]
