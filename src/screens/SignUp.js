@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { doc, setDoc } from "firebase/firestore"; // ADDED THIS
 import { MotiView } from "moti";
 import { useState } from "react";
 import {
@@ -14,10 +15,15 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { auth, createUserWithEmailAndPassword } from "../../firebaseConfig";
+import {
+  auth, // ADDED THIS
+  createUserWithEmailAndPassword,
+  db,
+  sendEmailVerification,
+} from "../../firebaseConfig";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
-const APP_VERSION = "v1.0.4-thesis";
+const APP_VERSION = "v1.0.5-thesis";
 
 export default function SignUp({ navigation }) {
   const [email, setEmail] = useState("");
@@ -28,46 +34,54 @@ export default function SignUp({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
-    if (!email.trim() || !password || !confirmPassword) {
+    const targetEmail = email.trim();
+    if (!targetEmail || !password || !confirmPassword) {
       Alert.alert("Missing Fields", "Please fill in all fields.");
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert(
-        "Password Mismatch",
-        "Passwords do not match. Please try again.",
-      );
+      Alert.alert("Password Mismatch", "Passwords do not match.");
       return;
     }
 
-    // New strict password validation: 1 uppercase, 1 lowercase, 1 number, 1 special char, 6-14 length
     const passRegex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,14}$/;
     if (!passRegex.test(password)) {
       Alert.alert(
         "Weak Password",
-        "Password must be 6-14 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.",
+        "Use 6-14 characters with uppercase, lowercase, number, and special character.",
       );
       return;
     }
 
     setLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email.trim(), password);
-      Alert.alert(
-        "Account Created",
-        "Your account has been created successfully. Please log in.",
+      // 1. Create the Auth User
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        targetEmail,
+        password,
       );
-      // Redirect to Login screen instead of MainTabs
-      navigation.replace("Login");
+
+      // 2. CREATE FIRESTORE DOCUMENT (The "Badge")
+      // This ensures every user has a role record indexed by their UID
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        email: targetEmail,
+        role: "user", // Default role
+        createdAt: new Date().toISOString(),
+      });
+
+      // 3. Send Verification (RA 10173 Compliance)
+      await sendEmailVerification(userCredential.user);
+
+      Alert.alert(
+        "Verification Sent",
+        `A secure link has been sent to ${targetEmail}. Please verify your email before logging in.`,
+        [{ text: "Go to Login", onPress: () => navigation.replace("Login") }],
+      );
     } catch (err) {
       if (err.code === "auth/email-already-in-use") {
-        Alert.alert(
-          "Account Exists",
-          "An account with this email already exists. Please log in instead.",
-        );
-      } else if (err.code === "auth/invalid-email") {
-        Alert.alert("Invalid Email", "Please enter a valid email address.");
+        Alert.alert("Account Exists", "This email is already registered.");
       } else {
         Alert.alert("Sign Up Error", err.message);
       }
@@ -75,6 +89,7 @@ export default function SignUp({ navigation }) {
       setLoading(false);
     }
   };
+
   return (
     <KeyboardAvoidingView
       style={styles.root}
@@ -83,7 +98,6 @@ export default function SignUp({ navigation }) {
       <View style={styles.blob1} />
       <View style={styles.blob2} />
       <View style={styles.blob3} />
-
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -101,7 +115,6 @@ export default function SignUp({ navigation }) {
             resizeMode="contain"
           />
         </MotiView>
-
         <MotiView
           from={{ opacity: 0, translateY: 30 }}
           animate={{ opacity: 1, translateY: 0 }}
@@ -112,28 +125,22 @@ export default function SignUp({ navigation }) {
           <Text style={styles.subtitle}>
             Join ReColor to track your colour perception
           </Text>
-
-          {/* Email */}
           <View style={styles.inputRow}>
             <Ionicons name="mail-outline" size={18} color={COLORS.textLight} />
             <TextInput
               style={styles.input}
               placeholder="you@example.com"
-              placeholderTextColor={COLORS.textLight}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
             />
           </View>
-
-          {/* Password */}
           <View style={styles.inputRow}>
             <Ionicons name="key-outline" size={18} color={COLORS.textLight} />
             <TextInput
               style={styles.input}
-              placeholder="Password (min 6 characters)"
-              placeholderTextColor={COLORS.textLight}
+              placeholder="Password"
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPass}
@@ -146,8 +153,6 @@ export default function SignUp({ navigation }) {
               />
             </TouchableOpacity>
           </View>
-
-          {/* Confirm Password */}
           <View style={styles.inputRow}>
             <Ionicons
               name="shield-checkmark-outline"
@@ -157,7 +162,6 @@ export default function SignUp({ navigation }) {
             <TextInput
               style={styles.input}
               placeholder="Confirm password"
-              placeholderTextColor={COLORS.textLight}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry={!showConfirm}
@@ -170,13 +174,10 @@ export default function SignUp({ navigation }) {
               />
             </TouchableOpacity>
           </View>
-
-          {/* Create Account button */}
           <TouchableOpacity
             style={styles.signUpBtn}
             onPress={handleSignUp}
             disabled={loading}
-            activeOpacity={0.85}
           >
             {loading ? (
               <ActivityIndicator color="#FFF" />
@@ -184,8 +185,6 @@ export default function SignUp({ navigation }) {
               <Text style={styles.signUpBtnText}>Create Account</Text>
             )}
           </TouchableOpacity>
-
-          {/* Back to Login */}
           <TouchableOpacity
             style={styles.loginLink}
             onPress={() => navigation.goBack()}
@@ -198,15 +197,9 @@ export default function SignUp({ navigation }) {
             </Text>
           </TouchableOpacity>
         </MotiView>
-
-        <MotiView
-          from={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 500 }}
-          style={styles.versionBadge}
-        >
+        <View style={styles.versionBadge}>
           <Text style={styles.versionText}>{APP_VERSION}</Text>
-        </MotiView>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -283,11 +276,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     gap: SPACING.sm,
   },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: COLORS.text,
-  },
+  input: { flex: 1, fontSize: 15, color: COLORS.text },
   signUpBtn: {
     backgroundColor: COLORS.primary,
     borderRadius: RADIUS.md,
@@ -299,7 +288,7 @@ const styles = StyleSheet.create({
   signUpBtnText: { color: "#FFF", fontWeight: "700", fontSize: 16 },
   loginLink: {
     alignItems: "center",
-    marginTop: SPACING.lg,
+    marginTop: SPACING.md,
     padding: SPACING.sm,
   },
   loginLinkText: { fontSize: 14, color: COLORS.textLight },

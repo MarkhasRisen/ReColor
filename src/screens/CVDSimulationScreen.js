@@ -11,13 +11,7 @@ import * as FileSystem from "expo-file-system";
 import * as Haptics from "expo-haptics";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as MediaLibrary from "expo-media-library";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -33,7 +27,7 @@ import {
   useCameraDevice,
   useCameraPermission,
 } from "react-native-vision-camera";
-import { auth } from "../../firebaseConfig"; // Added Firebase Auth import
+import { auth } from "../../firebaseConfig";
 import { getCVDRows } from "../../tensorHelper";
 import ModeSelector from "../components/ModeSelector";
 import { COLORS } from "../theme/colors";
@@ -71,12 +65,7 @@ function CVDSimulationScreenInner({ navigation, route }) {
 
   useEffect(() => {
     if (!hasPermission) requestPermission();
-  }, []);
-
-  useEffect(() => {
-    const unsub = navigation.addListener("beforeRemove", () => setFrozen(true));
-    return unsub;
-  }, [navigation]);
+  }, [hasPermission]);
 
   const handleFreeze = useCallback(async () => {
     if (!cameraRef.current) return;
@@ -87,14 +76,7 @@ function CVDSimulationScreenInner({ navigation, route }) {
         qualityPrioritization: "quality",
         enableShutterSound: false,
       });
-      if (!photo?.path) throw new Error("takePhoto returned no path");
       const fileUri = `file://${photo.path}`;
-
-      // Save original to gallery
-      const { status: mlStatus } = await MediaLibrary.requestPermissionsAsync();
-      if (mlStatus === "granted") {
-        MediaLibrary.saveToLibraryAsync(fileUri).catch(() => {});
-      }
 
       const SIM_MAX = 1040;
       const resized = await ImageManipulator.manipulateAsync(
@@ -116,18 +98,9 @@ function CVDSimulationScreenInner({ navigation, route }) {
     } catch (e) {
       if (isMountedRef.current) {
         setProcessing(false);
-        Alert.alert(
-          "Error",
-          `Capture failed: ${e?.message || "unknown error"}`,
-        );
+        Alert.alert("Error", "Capture failed.");
       }
     }
-  }, []);
-
-  const handleReset = useCallback(() => {
-    setFrozen(false);
-    setFrozenUri(null);
-    setProcessing(false);
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -137,31 +110,37 @@ function CVDSimulationScreenInner({ navigation, route }) {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission needed", "Please allow access to save photos.");
+        Alert.alert("Permission needed", "Allow gallery access in settings.");
         return;
       }
       const snapshot = canvasRef.current?.makeImageSnapshot();
-      if (!snapshot) {
-        Alert.alert("Error", "Nothing to save.");
-        return;
-      }
+      if (!snapshot) return;
+
       const b64 = snapshot.encodeToBase64();
       const tmpPath = `${FileSystem.documentDirectory}recolor_sim_${Date.now()}.png`;
-      await FileSystem.writeAsStringAsync(tmpPath, b64, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+      await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: "base64" });
 
-      // Dynamic Album Name based on the current user
+      const asset = await MediaLibrary.createAssetAsync(tmpPath);
       const userName = auth.currentUser?.email?.split("@")[0] || "Guest";
       const albumName = `ReColor_${userName}`;
 
-      const asset = await MediaLibrary.createAssetAsync(tmpPath);
-      await MediaLibrary.createAlbumAsync(albumName, asset, false);
+      const album = await MediaLibrary.getAlbumAsync(albumName);
+      if (!album) {
+        await MediaLibrary.createAlbumAsync(albumName, asset, false);
+      } else {
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+      }
 
-      Alert.alert("Saved", `Photo saved to your ${albumName} album.`);
+      Alert.alert("Saved", `Simulation saved to ${albumName}.`);
     } catch (e) {
       Alert.alert("Error", "Could not save photo.");
     }
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setFrozen(false);
+    setFrozenUri(null);
+    setProcessing(false);
   }, []);
 
   if (!hasPermission) {
@@ -172,9 +151,7 @@ function CVDSimulationScreenInner({ navigation, route }) {
           { justifyContent: "center", alignItems: "center" },
         ]}
       >
-        <Text style={{ marginBottom: 20 }}>
-          Camera access is needed for simulation.
-        </Text>
+        <Text style={{ marginBottom: 20 }}>Camera access is needed.</Text>
         <TouchableOpacity style={styles.btnPrimary} onPress={requestPermission}>
           <Text style={styles.btnText}>Grant Permission</Text>
         </TouchableOpacity>
@@ -237,10 +214,7 @@ function CVDSimulationScreenInner({ navigation, route }) {
       <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
         <View style={styles.camTopBar}>
           <TouchableOpacity
-            onPress={() => {
-              if (frozen) handleReset();
-              else navigation.goBack();
-            }}
+            onPress={() => (frozen ? handleReset() : navigation.goBack())}
             style={{ padding: 5 }}
           >
             <Ionicons
@@ -249,29 +223,14 @@ function CVDSimulationScreenInner({ navigation, route }) {
               color="#FFF"
             />
           </TouchableOpacity>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Text
-              style={{
-                color: "#FFF",
-                fontWeight: "bold",
-                marginRight: 10,
-                textShadowColor: "rgba(0,0,0,0.75)",
-                textShadowOffset: { width: -1, height: 1 },
-                textShadowRadius: 10,
-              }}
-            >
-              {frozen
-                ? cvdType === "Off"
-                  ? "Original"
-                  : `${cvdType} Simulation`
-                : "CVD Simulation"}
-            </Text>
-            {!frozen && (
-              <TouchableOpacity onPress={() => setShowModal(true)}>
-                <Ionicons name="menu" size={28} color="#FFF" />
-              </TouchableOpacity>
-            )}
-          </View>
+          <Text style={{ color: "#FFF", fontWeight: "bold" }}>
+            {frozen ? `${cvdType} Simulation` : "CVD Simulation"}
+          </Text>
+          {!frozen && (
+            <TouchableOpacity onPress={() => setShowModal(true)}>
+              <Ionicons name="menu" size={28} color="#FFF" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {frozen && (
@@ -288,14 +247,12 @@ function CVDSimulationScreenInner({ navigation, route }) {
               <TouchableOpacity
                 key={m}
                 onPress={() => setCvdType(m)}
-                disabled={processing}
                 style={[
                   styles.filterBtn,
                   {
                     backgroundColor:
                       cvdType === m ? COLORS.primary : "rgba(0,0,0,0.5)",
                     marginBottom: 15,
-                    opacity: processing ? 0.4 : 1,
                   },
                 ]}
               >
@@ -330,7 +287,6 @@ function CVDSimulationScreenInner({ navigation, route }) {
                 <TouchableOpacity onPress={handleReset}>
                   <Ionicons name="refresh" size={30} color="#FFF" />
                 </TouchableOpacity>
-                <View style={{ width: 70 }} />
                 <TouchableOpacity onPress={handleSave} disabled={!skImage}>
                   <Ionicons
                     name="download-outline"
@@ -352,18 +308,7 @@ function CVDSimulationScreenInner({ navigation, route }) {
                   style={styles.shutterBtn}
                   onPress={handleFreeze}
                 >
-                  <View
-                    style={{
-                      width: 60,
-                      height: 60,
-                      borderRadius: 30,
-                      backgroundColor: "#FFF",
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Ionicons name="snow" size={24} color="#333" />
-                  </View>
+                  <Ionicons name="snow" size={24} color="#333" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => navigation.navigate("CVDGallery")}
@@ -374,7 +319,6 @@ function CVDSimulationScreenInner({ navigation, route }) {
             )}
           </View>
         </View>
-
         <ModeSelector
           visible={showModal}
           onClose={() => setShowModal(false)}

@@ -202,7 +202,7 @@ export default function ResearchDashboardScreen({ navigation }) {
       const csv = toCSV(rows);
       const path = `${FileSystem.documentDirectory}recolor_research_${Date.now()}.csv`;
       await FileSystem.writeAsStringAsync(path, csv, {
-        encoding: FileSystem.EncodingType.UTF8,
+        encoding: "utf8",
       });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(path, {
