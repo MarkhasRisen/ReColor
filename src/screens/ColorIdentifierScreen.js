@@ -115,11 +115,8 @@ function ColorIdentifierScreenInner({ navigation }) {
       const imgW = resized.width;
       const imgH = resized.height;
 
-      // Maintain your original aspect ratio mapping logic
       const { width: viewW, height: viewH } = viewSizeRef.current;
       const screenAspect = viewW / viewH;
-      // Coordinate mapping logic...
-      const screenAspect = width / screenHeight;
       const photoAspect = imgW / imgH;
       let pixX, pixY;
 
