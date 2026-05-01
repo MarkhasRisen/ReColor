@@ -6,6 +6,7 @@ import {
   getReactNativePersistence,
   initializeAuth,
   onAuthStateChanged,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithCredential,
   signInWithEmailAndPassword,
@@ -87,10 +88,8 @@ export {
   auth,
   createUserWithEmailAndPassword,
   db,
-  onAuthStateChanged,
-  sendPasswordResetEmail,
+  onAuthStateChanged, sendEmailVerification, sendPasswordResetEmail,
   signInWithCredential,
-  signInWithEmailAndPassword,
-  signOut
+  signInWithEmailAndPassword, signOut
 };
 

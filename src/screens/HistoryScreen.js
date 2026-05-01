@@ -6,7 +6,7 @@ import {
   ScrollView,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { auth, db, onAuthStateChanged } from "../../firebaseConfig";
 import BackgroundBubbles from "../components/BackgroundBubbles";
@@ -113,7 +113,7 @@ export default function HistoryScreen({ navigation }) {
               textAlign: "center",
             }}
           >
-            Ready for your first screening? [cite: 67]
+            Ready for your first screening?
           </Text>
 
           <Text

@@ -22,7 +22,7 @@ import {
   useCameraDevice,
   useCameraPermission,
 } from "react-native-vision-camera";
-import { auth } from "../../firebaseConfig"; // Added Firebase Auth import
+import { auth } from "../../firebaseConfig";
 import {
   applyDaltonization,
   applyHueRotation,
@@ -32,7 +32,7 @@ import {
 import ModeSelector from "../components/ModeSelector";
 import { COLORS } from "../theme/colors";
 import { styles } from "../theme/styles";
-import { AppLog, ScreenErrorBoundary } from "../utils/logger";
+import { ScreenErrorBoundary } from "../utils/logger";
 
 function CameraEnhanceScreenInner({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
@@ -89,7 +89,7 @@ function CameraEnhanceScreenInner({ navigation }) {
 
   useEffect(() => {
     if (!hasPermission) requestPermission();
-  }, []);
+  }, [hasPermission]);
 
   const runEnhancement = useCallback((cvd, algo) => {
     if (!decodedRef.current) return null;
@@ -148,23 +148,14 @@ function CameraEnhanceScreenInner({ navigation }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setProcessing(true);
     setProgress("Capturing...");
-    AppLog.log("CameraEnhance", "freeze: capturing photo");
 
     try {
       const photo = await cameraRef.current.takePhoto({
         qualityPrioritization: "quality",
         enableShutterSound: false,
       });
-      if (!photo?.path) throw new Error("takePhoto returned no path");
       const fileUri = `file://${photo.path}`;
 
-      // Save original to gallery
-      const { status: mlStatus } = await MediaLibrary.requestPermissionsAsync();
-      if (mlStatus === "granted") {
-        MediaLibrary.saveToLibraryAsync(fileUri).catch(() => {});
-      }
-
-      setProgress("Resizing...");
       const SIM_MAX = 1040;
       const resized = await ImageManipulator.manipulateAsync(
         fileUri,
@@ -185,16 +176,9 @@ function CameraEnhanceScreenInner({ navigation }) {
       if (!isMountedRef.current) return;
 
       frozenUriRef.current = resized.uri;
-      setProgress("Decoding...");
       const decoded = decodeJpegBase64(resized.base64);
       decodedRef.current = decoded;
-      AppLog.log(
-        "CameraEnhance",
-        `decoded: ${decoded.width}x${decoded.height}`,
-      );
 
-      setProgress("Enhancing...");
-      await new Promise((r) => setTimeout(r, 0));
       const uri = runEnhancement(cvdType, algorithm);
 
       if (isMountedRef.current) {
@@ -204,55 +188,49 @@ function CameraEnhanceScreenInner({ navigation }) {
         setProgress("");
       }
     } catch (e) {
-      AppLog.log("CameraEnhance", `freeze error: ${e?.message || e}`);
       if (isMountedRef.current) {
         setProcessing(false);
         setProgress("");
-        Alert.alert(
-          "Error",
-          `Processing failed: ${e?.message || "unknown error"}`,
-        );
+        Alert.alert("Error", "Processing failed.");
       }
     }
   }, [cvdType, algorithm, runEnhancement]);
 
-  const handleCvdChange = useCallback(
-    (newType) => {
-      if (newType === cvdType) return;
-      setCvdType(newType);
-      if (!frozen || !decodedRef.current) return;
-      setProcessing(true);
-      setProgress("Re-enhancing...");
-      setTimeout(() => {
-        const uri = runEnhancement(newType, algorithm);
-        if (isMountedRef.current) {
-          setResultUri(uri || frozenUriRef.current);
-          setProcessing(false);
-          setProgress("");
-        }
-      }, 50);
-    },
-    [cvdType, frozen, algorithm, runEnhancement],
-  );
+  const handleSave = useCallback(async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+      () => {},
+    );
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission needed",
+          "Please allow gallery access in settings.",
+        );
+        return;
+      }
+      if (!resultUri) return;
 
-  const handleAlgorithmChange = useCallback(
-    (newAlgo) => {
-      if (newAlgo === algorithm) return;
-      setAlgorithm(newAlgo);
-      if (!frozen || !decodedRef.current) return;
-      setProcessing(true);
-      setProgress("Re-enhancing...");
-      setTimeout(() => {
-        const uri = runEnhancement(cvdType, newAlgo);
-        if (isMountedRef.current) {
-          setResultUri(uri || frozenUriRef.current);
-          setProcessing(false);
-          setProgress("");
-        }
-      }, 50);
-    },
-    [algorithm, frozen, cvdType, runEnhancement],
-  );
+      const b64 = resultUri.split(",")[1];
+      const tmpPath = `${FileSystem.documentDirectory}recolor_enhance_${Date.now()}.jpg`;
+      await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: "base64" });
+
+      const asset = await MediaLibrary.createAssetAsync(tmpPath);
+      const userName = auth.currentUser?.email?.split("@")[0] || "Guest";
+      const albumName = `ReColor_${userName}`;
+
+      const album = await MediaLibrary.getAlbumAsync(albumName);
+      if (!album) {
+        await MediaLibrary.createAlbumAsync(albumName, asset, false);
+      } else {
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+      }
+
+      Alert.alert("Saved", `Photo added to your ${albumName} album.`);
+    } catch (e) {
+      Alert.alert("Error", "Could not save photo.");
+    }
+  }, [resultUri]);
 
   const handleReset = useCallback(() => {
     setFrozen(false);
@@ -262,43 +240,7 @@ function CameraEnhanceScreenInner({ navigation }) {
     setShowOriginal(false);
     decodedRef.current = null;
     frozenUriRef.current = null;
-    AppLog.log("CameraEnhance", "reset to live preview");
   }, []);
-
-  const handleSave = useCallback(async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-      () => {},
-    );
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission needed", "Please allow access to save photos.");
-        return;
-      }
-      if (!resultUri) {
-        Alert.alert("Error", "Nothing to save.");
-        return;
-      }
-
-      const b64 = resultUri.split(",")[1];
-      const tmpPath = `${FileSystem.documentDirectory}recolor_enhance_${Date.now()}.jpg`;
-      await FileSystem.writeAsStringAsync(tmpPath, b64, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      // Dynamic Album Name based on the current user
-      const userName = auth.currentUser?.email?.split("@")[0] || "Guest";
-      const albumName = `ReColor_${userName}`;
-
-      const asset = await MediaLibrary.createAssetAsync(tmpPath);
-      await MediaLibrary.createAlbumAsync(albumName, asset, false);
-
-      Alert.alert("Saved", `Enhanced photo saved to your ${albumName} album.`);
-    } catch (e) {
-      AppLog.log("CameraEnhance", `save error: ${e?.message || e}`);
-      Alert.alert("Error", "Could not save photo.");
-    }
-  }, [resultUri]);
 
   if (!hasPermission) {
     return (
@@ -309,7 +251,7 @@ function CameraEnhanceScreenInner({ navigation }) {
         ]}
       >
         <Text style={{ textAlign: "center", marginBottom: 20 }}>
-          We need camera access for color enhancement.
+          Camera access is needed.
         </Text>
         <TouchableOpacity style={styles.btnPrimary} onPress={requestPermission}>
           <Text style={styles.btnText}>Grant Permission</Text>
@@ -381,17 +323,13 @@ function CameraEnhanceScreenInner({ navigation }) {
           onStartShouldSetResponder={() => true}
           onResponderGrant={() => setShowOriginal(true)}
           onResponderRelease={() => setShowOriginal(false)}
-          onResponderTerminate={() => setShowOriginal(false)}
         />
       )}
 
       <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
         <View style={styles.camTopBar}>
           <TouchableOpacity
-            onPress={() => {
-              if (frozen) handleReset();
-              else navigation.goBack();
-            }}
+            onPress={() => (frozen ? handleReset() : navigation.goBack())}
             style={{ padding: 5 }}
           >
             <Ionicons
@@ -402,19 +340,12 @@ function CameraEnhanceScreenInner({ navigation }) {
           </TouchableOpacity>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Text
-              style={{
-                color: "#FFF",
-                fontWeight: "bold",
-                marginRight: 10,
-                textShadowColor: "rgba(0,0,0,0.75)",
-                textShadowOffset: { width: -1, height: 1 },
-                textShadowRadius: 10,
-              }}
+              style={{ color: "#FFF", fontWeight: "bold", marginRight: 10 }}
             >
               {frozen
                 ? cvdType === "Off"
                   ? "Original"
-                  : `${cvdType} · ${algorithm === "hue_rotation" ? "Hue Rotate" : "Daltonize"}`
+                  : `${cvdType} Enhanced`
                 : "Color Enhancement"}
             </Text>
             {!frozen && (
@@ -438,15 +369,13 @@ function CameraEnhanceScreenInner({ navigation }) {
             {["Off", "Protan", "Deutan", "Tritan"].map((m) => (
               <TouchableOpacity
                 key={m}
-                onPress={() => handleCvdChange(m)}
-                disabled={processing}
+                onPress={() => setCvdType(m)}
                 style={[
                   styles.filterBtn,
                   {
                     backgroundColor:
                       cvdType === m ? COLORS.primary : "rgba(0,0,0,0.5)",
                     marginBottom: 15,
-                    opacity: processing ? 0.4 : 1,
                   },
                 ]}
               >
@@ -457,69 +386,6 @@ function CameraEnhanceScreenInner({ navigation }) {
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
-        )}
-
-        {frozen && (
-          <View
-            style={{
-              position: "absolute",
-              top: 100,
-              left: 20,
-              alignItems: "center",
-              zIndex: 2,
-            }}
-          >
-            {[
-              { key: "daltonization", label: "DAL" },
-              { key: "hue_rotation", label: "HUE" },
-            ].map((a) => (
-              <TouchableOpacity
-                key={a.key}
-                onPress={() => handleAlgorithmChange(a.key)}
-                disabled={processing || cvdType === "Off"}
-                style={[
-                  styles.filterBtn,
-                  {
-                    backgroundColor:
-                      algorithm === a.key ? COLORS.primary : "rgba(0,0,0,0.5)",
-                    marginBottom: 15,
-                    opacity: processing || cvdType === "Off" ? 0.4 : 1,
-                    minWidth: 42,
-                  },
-                ]}
-              >
-                <Text
-                  style={{ color: "#FFF", fontWeight: "bold", fontSize: 10 }}
-                >
-                  {a.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        {frozen && !processing && (
-          <View
-            style={{
-              position: "absolute",
-              top: "55%",
-              alignSelf: "center",
-              pointerEvents: "none",
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: "rgba(0,0,0,0.6)",
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 10,
-              }}
-            >
-              <Text style={{ color: "#AAA", fontSize: 11 }}>
-                {showOriginal ? "Showing original" : "Long-press for original"}
-              </Text>
-            </View>
           </View>
         )}
 
@@ -540,26 +406,18 @@ function CameraEnhanceScreenInner({ navigation }) {
                 paddingHorizontal: 30,
               }}
             >
-              <Text
-                style={{
-                  color: "rgba(255,255,255,0.75)",
-                  fontSize: 11,
-                  marginBottom: 2,
-                }}
-              >
+              <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 11 }}>
                 Intensity: {Math.round(intensity)}%
               </Text>
               <Slider
                 style={{ width: "80%", height: 36 }}
                 minimumValue={0}
                 maximumValue={100}
-                step={1}
                 value={intensity}
-                minimumTrackTintColor={COLORS.primary}
-                maximumTrackTintColor="rgba(255,255,255,0.3)"
-                thumbTintColor="#FFF"
                 onValueChange={handleIntensityChange}
                 onSlidingComplete={handleIntensityCommit}
+                minimumTrackTintColor={COLORS.primary}
+                thumbTintColor="#FFF"
               />
             </View>
           )}
@@ -575,15 +433,11 @@ function CameraEnhanceScreenInner({ navigation }) {
                 <TouchableOpacity onPress={handleReset}>
                   <Ionicons name="refresh" size={30} color="#FFF" />
                 </TouchableOpacity>
-                <View style={{ width: 70 }} />
-                <TouchableOpacity
-                  onPress={handleSave}
-                  disabled={!resultUri || processing}
-                >
+                <TouchableOpacity onPress={handleSave} disabled={!resultUri}>
                   <Ionicons
                     name="download-outline"
                     size={30}
-                    color={!resultUri || processing ? "#666" : "#FFF"}
+                    color={!resultUri ? "#666" : "#FFF"}
                   />
                 </TouchableOpacity>
               </>
@@ -600,21 +454,10 @@ function CameraEnhanceScreenInner({ navigation }) {
                   style={styles.shutterBtn}
                   onPress={handleFreeze}
                 >
-                  <View
-                    style={{
-                      width: 60,
-                      height: 60,
-                      borderRadius: 30,
-                      backgroundColor: "#FFF",
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Ionicons name="snow" size={24} color="#333" />
-                  </View>
+                  <Ionicons name="snow" size={24} color="#333" />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => navigation.navigate("CVDGallery")}
+                  onPress={() => navigation.navigate("EnhanceGallery")}
                 >
                   <Ionicons name="images" size={30} color="#FFF" />
                 </TouchableOpacity>
@@ -622,7 +465,6 @@ function CameraEnhanceScreenInner({ navigation }) {
             )}
           </View>
         </View>
-
         <ModeSelector
           visible={showModal}
           onClose={() => setShowModal(false)}

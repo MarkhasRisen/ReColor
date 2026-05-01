@@ -1,352 +1,201 @@
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Slider from "@react-native-community/slider";
-import { collection, getDocs, query } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import {
   Alert,
   ScrollView,
+  StyleSheet,
   Switch,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { auth, db, signOut } from "../../firebaseConfig";
+import { auth, db } from "../../firebaseConfig";
 import BackgroundBubbles from "../components/BackgroundBubbles";
-import Card from "../components/Card";
 import Header from "../components/Header";
-import { COLORS } from "../theme/colors";
-import { styles } from "../theme/styles";
-import { AppLog } from "../utils/logger";
+import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
 export default function SettingsScreen({ navigation }) {
-  const userEmail = auth.currentUser?.email || "Guest";
-  const userName = userEmail.split("@")[0];
-  const [enhancement, setEnhancement] = useState(100);
+  const [intensity, setIntensity] = useState(1.0);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [expertRole, setExpertRole] = useState(null);
 
   useEffect(() => {
-    AsyncStorage.getItem("@recolor_intensity").then((val) => {
-      if (val !== null) setEnhancement(Number(val));
-    });
+    loadSettings();
+    checkExpertStatus();
   }, []);
 
-  const handleIntensityChange = (val) => {
-    setEnhancement(val);
-    AsyncStorage.setItem("@recolor_intensity", String(Math.round(val)));
+  const loadSettings = async () => {
+    try {
+      const savedIntensity = await AsyncStorage.getItem(
+        "enhancement_intensity",
+      );
+      const savedAudio = await AsyncStorage.getItem("audio_feedback_enabled");
+      if (savedIntensity !== null) setIntensity(parseFloat(savedIntensity));
+      if (savedAudio !== null) setAudioEnabled(savedAudio === "true");
+    } catch (e) {
+      /* Silent fail */
+    }
   };
-  const [audio, setAudio] = useState(true);
-  const [showLogs, setShowLogs] = useState(false);
-  const [logText, setLogText] = useState("");
-  const [testCount, setTestCount] = useState(0);
 
-  useEffect(() => {
-    const fetchHistoryCount = async () => {
-      if (auth.currentUser) {
-        const q = query(
-          collection(db, "users", auth.currentUser.uid, "history"),
-        );
-        try {
-          const snap = await getDocs(q);
-          setTestCount(snap.size);
-        } catch (e) {
-          AppLog.log("Settings", "Failed to fetch test count");
-        }
+  const checkExpertStatus = async () => {
+    if (auth.currentUser) {
+      const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+      if (
+        userDoc.exists() &&
+        (userDoc.data().role === "admin" ||
+          userDoc.data().role === "researcher")
+      ) {
+        setExpertRole(userDoc.data().role);
       }
-    };
-    fetchHistoryCount();
-  }, []);
+    }
+  };
+
+  const handleResetOnboarding = async () => {
+    Alert.alert("Reset Flow", "Return to Splash screen? (Expert Only)", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Reset",
+        style: "destructive",
+        onPress: async () => {
+          await AsyncStorage.removeItem("has_completed_onboarding");
+          navigation.replace("Splash");
+        },
+      },
+    ]);
+  };
 
   return (
-    <View style={styles.container}>
-      <Header title="Settings" back />
+    <View style={styles.root}>
+      <Header title="Settings" subtitle="App Configuration" back />
       <BackgroundBubbles />
-
-      <ScrollView
-        contentContainerStyle={{ padding: 20 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <Card style={{ marginBottom: 20 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginBottom: 15,
-            }}
-          >
-            <Ionicons name="person-outline" size={20} color="#555" />
-            <Text style={{ marginLeft: 10, fontWeight: "bold", fontSize: 16 }}>
-              Profile
-            </Text>
-          </View>
-          <View style={{ marginBottom: 10 }}>
-            <Text style={{ color: "#999", fontSize: 12 }}>Name</Text>
-            <Text style={{ fontSize: 16, color: "#333", fontWeight: "500" }}>
-              {userName}
-            </Text>
-          </View>
-          <View>
-            <Text style={{ color: "#999", fontSize: 12 }}>Email</Text>
-            <Text style={{ fontSize: 16, color: "#333", fontWeight: "500" }}>
-              {userEmail}
-            </Text>
-          </View>
-        </Card>
-
-        <Card style={{ marginBottom: 20 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginBottom: 15,
-            }}
-          >
-            <Ionicons name="settings-outline" size={20} color="#555" />
-            <Text style={{ marginLeft: 10, fontWeight: "bold", fontSize: 16 }}>
-              Preferences
-            </Text>
-          </View>
-
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              marginBottom: 5,
-            }}
-          >
-            <Text style={{ fontWeight: "600", color: "#333" }}>
-              Color Enhancement Intensity
-            </Text>
-            <Text style={{ color: "#999" }}>{Math.round(enhancement)}%</Text>
-          </View>
-          <Slider
-            style={{ width: "100%", height: 40 }}
-            minimumValue={0}
-            maximumValue={100}
-            step={1}
-            value={enhancement}
-            onValueChange={handleIntensityChange}
-            minimumTrackTintColor={COLORS.primary}
-            maximumTrackTintColor="#E0E0E0"
-            thumbTintColor={COLORS.primary}
-          />
-          <Text style={{ fontSize: 11, color: "#999", marginBottom: 25 }}>
-            Adjust the strength of color enhancement in camera mode
-          </Text>
-
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <View style={{ flex: 1, paddingRight: 20 }}>
-              <Text style={{ fontWeight: "600", color: "#333" }}>
-                Audio Feedback
-              </Text>
-              <Text style={{ fontSize: 11, color: "#999", marginTop: 2 }}>
-                Enable voice announcements for color identification
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {/* USER PREFERENCES */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>PREFERENCES</Text>
+          <View style={styles.card}>
+            <View style={styles.row}>
+              <Ionicons
+                name="contrast-outline"
+                size={20}
+                color={COLORS.primary}
+              />
+              <Text style={styles.label}>
+                Intensity: {Math.round(intensity * 100)}%
               </Text>
             </View>
-            <Switch
-              value={audio}
-              onValueChange={setAudio}
-              trackColor={{ false: "#767577", true: "#333" }}
-              thumbColor={audio ? "#FFF" : "#f4f3f4"}
-            />
-          </View>
-        </Card>
-
-        <Card style={{ marginBottom: 20 }}>
-          <Text
-            style={{
-              marginBottom: 15,
-              fontWeight: "bold",
-              fontSize: 16,
-              color: "#333",
-            }}
-          >
-            Data
-          </Text>
-          <TouchableOpacity
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-            onPress={() =>
-              navigation.navigate("MainTabs", { screen: "History" })
-            }
-          >
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Ionicons name="time-outline" size={24} color="#333" />
-              <View style={{ marginLeft: 15 }}>
-                <Text style={{ fontWeight: "600", fontSize: 15 }}>
-                  View Test History
-                </Text>
-                {/* Replaced hardcoded text with dynamic state */}
-                <Text style={{ color: "#999", fontSize: 12 }}>
-                  {testCount} tests completed
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#CCC" />
-          </TouchableOpacity>
-        </Card>
-
-        <Card style={{ marginBottom: 20 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 10,
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Ionicons name="bug-outline" size={20} color="#555" />
-              <Text
-                style={{
-                  marginLeft: 10,
-                  fontWeight: "bold",
-                  fontSize: 16,
-                  color: "#333",
-                }}
-              >
-                Debug Logs
-              </Text>
-            </View>
-            <View style={{ flexDirection: "row" }}>
-              <TouchableOpacity
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderRadius: 6,
-                  backgroundColor: COLORS.primary,
-                  marginRight: 8,
-                }}
-                onPress={async () => {
-                  const logs = await AppLog.readAll();
-                  setLogText(logs);
-                  setShowLogs(!showLogs);
-                }}
-              >
-                <Text
-                  style={{ color: "#FFF", fontSize: 12, fontWeight: "600" }}
-                >
-                  {showLogs ? "Hide" : "View"}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderRadius: 6,
-                  backgroundColor: "#D32F2F",
-                }}
-                onPress={() => {
-                  AppLog.clear();
-                  setLogText("");
-                  setShowLogs(false);
-                  Alert.alert("Cleared", "Debug logs cleared.");
-                }}
-              >
-                <Text
-                  style={{ color: "#FFF", fontSize: 12, fontWeight: "600" }}
-                >
-                  Clear
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-          <Text style={{ fontSize: 11, color: "#999", marginBottom: 5 }}>
-            Camera and pipeline logs are saved here for debugging crashes.
-          </Text>
-          {showLogs && (
-            <ScrollView
-              style={{
-                maxHeight: 250,
-                backgroundColor: "#1a1a2e",
-                borderRadius: 8,
-                padding: 10,
-                marginTop: 8,
+            <Slider
+              style={styles.slider}
+              minimumValue={0}
+              maximumValue={1}
+              value={intensity}
+              onSlidingComplete={(v) => {
+                setIntensity(v);
+                AsyncStorage.setItem("enhancement_intensity", v.toString());
               }}
-              nestedScrollEnabled
-            >
-              <Text
-                style={{ color: "#0f0", fontSize: 10, fontFamily: "monospace" }}
-              >
-                {logText || "(no logs yet)"}
-              </Text>
-            </ScrollView>
-          )}
-        </Card>
+              minimumTrackTintColor={COLORS.primary}
+              thumbTintColor={COLORS.primary}
+            />
 
-        <Card>
-          <Text
-            style={{
-              marginBottom: 15,
-              fontWeight: "bold",
-              fontSize: 16,
-              color: "#333",
-            }}
-          >
-            Account
-          </Text>
-          <TouchableOpacity
-            style={[
-              styles.btnPrimary,
-              {
-                backgroundColor: "#D32F2F",
-                paddingVertical: 12,
-                marginBottom: 12,
-              },
-            ]}
-            onPress={() => {
-              signOut(auth).catch(() => {});
-              navigation.replace("Login");
-            }}
-          >
-            <Ionicons
-              name="log-out-outline"
-              size={20}
-              color="#FFF"
-              style={{ marginRight: 8 }}
-            />
-            <Text style={{ color: "#FFF", fontWeight: "bold" }}>Log Out</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.btnPrimary, { backgroundColor: "#607D8B" }]}
-            onPress={() =>
-              Alert.alert(
-                "Reset Onboarding",
-                "This will restart the onboarding flow on next launch. Continue?",
-                [
-                  { text: "Cancel", style: "cancel" },
-                  {
-                    text: "Reset",
-                    style: "destructive",
-                    onPress: () => {
-                      AsyncStorage.removeItem("@recolor_onboarded");
-                      navigation.replace("AppOnboarding");
-                    },
-                  },
-                ],
-              )
-            }
-          >
-            <Ionicons
-              name="refresh-outline"
-              size={20}
-              color="#FFF"
-              style={{ marginRight: 8 }}
-            />
-            <Text style={{ color: "#FFF", fontWeight: "bold" }}>
-              Reset Onboarding (Dev)
+            <View style={[styles.row, { marginTop: 20 }]}>
+              <Ionicons
+                name="volume-high-outline"
+                size={20}
+                color={COLORS.primary}
+              />
+              <Text style={[styles.label, { flex: 1 }]}>Audio Feedback</Text>
+              <Switch
+                value={audioEnabled}
+                onValueChange={(v) => {
+                  setAudioEnabled(v);
+                  AsyncStorage.setItem("audio_feedback_enabled", v.toString());
+                }}
+                trackColor={{ true: COLORS.primary }}
+              />
+            </View>
+            <Text style={styles.subtext}>
+              Announce identified colors automatically.
             </Text>
-          </TouchableOpacity>
-        </Card>
+          </View>
+        </View>
+
+        {/* EXPERT UTILITIES */}
+        {expertRole && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>EXPERT UTILITIES</Text>
+            <TouchableOpacity
+              style={styles.expertBtn}
+              onPress={() =>
+                navigation.navigate("AdminHub", { role: expertRole })
+              }
+            >
+              <Ionicons
+                name="shield-checkmark"
+                size={20}
+                color="#FFF"
+                style={{ marginRight: 10 }}
+              />
+              <Text style={styles.expertBtnText}>Launch Expert Portal</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.expertBtn, styles.resetBtn]}
+              onPress={handleResetOnboarding}
+            >
+              <Ionicons
+                name="refresh"
+                size={20}
+                color={COLORS.primary}
+                style={{ marginRight: 10 }}
+              />
+              <Text style={[styles.expertBtnText, { color: COLORS.primary }]}>
+                Reset Onboarding Flow
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: COLORS.background },
+  scroll: { padding: SPACING.md },
+  section: { marginBottom: 30 },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#AAA",
+    letterSpacing: 1.5,
+    marginBottom: 12,
+  },
+  card: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    ...SHADOW.sm,
+  },
+  row: { flexDirection: "row", alignItems: "center", gap: 10 },
+  label: { fontSize: 16, fontWeight: "600", color: COLORS.text },
+  slider: { width: "100%", height: 40 },
+  subtext: { fontSize: 11, color: "#888", marginTop: 8 },
+  expertBtn: {
+    backgroundColor: COLORS.primary,
+    padding: 16,
+    borderRadius: RADIUS.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+    ...SHADOW.sm,
+  },
+  resetBtn: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  expertBtnText: { color: "#FFF", fontWeight: "bold" },
+});

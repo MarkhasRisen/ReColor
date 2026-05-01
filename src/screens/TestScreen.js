@@ -279,7 +279,7 @@ export default function TestScreen({ route, navigation }) {
           key={index}
           from={{ opacity: 0, scale: 0.88 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", damping: 16, stiffness: 160 }}
+          transition={{ type: "timing", duration: 250 }} // Changed from spring to timing to remove bounce
           style={styles.plateCard}
         >
           {showImage ? (
@@ -500,12 +500,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    gap: 10, // Reduced gap
+    paddingVertical: 10, // Added padding
     gap: SPACING.md,
   },
   plateCard: {
-    width: width * 0.82,
+    width: width * 0.8,
     maxWidth: 350,
-    maxHeight: Dimensions.get("window").height * 0.45,
+    maxHeight: Dimensions.get("window").height * 0.38,
     aspectRatio: 1,
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.xl,

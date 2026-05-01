@@ -19,7 +19,6 @@ const navigationRef = createNavigationContainerRef();
 
 // Screens
 import AdminHubScreen from "./src/screens/AdminHubScreen";
-import AdminLoginScreen from "./src/screens/AdminLoginScreen";
 import AppOnboarding from "./src/screens/AppOnboarding";
 import ArticleScreen from "./src/screens/ArticleScreen";
 import CameraEnhanceScreen from "./src/screens/CameraEnhanceScreen";
@@ -28,6 +27,7 @@ import ColorIdentifierScreen from "./src/screens/ColorIdentifierScreen";
 import CVDGalleryScreen from "./src/screens/CVDGalleryScreen";
 import CVDSimulationScreen from "./src/screens/CVDSimulationScreen";
 import EducationListScreen from "./src/screens/EducationListScreen";
+import EnhanceGalleryScreen from "./src/screens/EnhanceGalleryScreen";
 import IshiharaIntroScreen from "./src/screens/IshiharaIntroScreen";
 import IshiharaOnboarding from "./src/screens/IshiharaOnboarding";
 import LoginScreen from "./src/screens/LoginScreen";
@@ -82,7 +82,7 @@ export default function App() {
             <Stack.Screen name="AppOnboarding" component={AppOnboarding} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="SignUp" component={SignUp} />
-            <Stack.Screen name="AdminLogin" component={AdminLoginScreen} />
+
             <Stack.Screen name="AdminHub" component={AdminHubScreen} />
             <Stack.Screen
               name="ResearchDashboard"
@@ -110,6 +110,10 @@ export default function App() {
             <Stack.Screen
               name="CameraEnhance"
               component={CameraEnhanceScreen}
+            />
+            <Stack.Screen
+              name="EnhanceGallery"
+              component={EnhanceGalleryScreen}
             />
             <Stack.Screen
               name="ColorIdentifier"
