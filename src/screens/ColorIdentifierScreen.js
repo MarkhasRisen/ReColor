@@ -10,7 +10,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import {
   Camera,
@@ -45,9 +45,15 @@ function ColorIdentifierScreenInner({ navigation }) {
   const cameraRef = useRef(null);
   const isProcessingRef = useRef(false);
   const isMountedRef = useRef(true);
+  const viewSizeRef = useRef({ width, height: screenHeight });
   const device = useCameraDevice(cameraPosition);
 
   // Sync with global settings on mount
+  const handleResponderLayout = (e) => {
+    const { width: vw, height: vh } = e.nativeEvent.layout;
+    if (vw > 0 && vh > 0) viewSizeRef.current = { width: vw, height: vh };
+  };
+  // Sync audio preference from Settings
   useEffect(() => {
     const syncAudio = async () => {
       const saved = await AsyncStorage.getItem("audio_feedback_enabled");
@@ -110,6 +116,9 @@ function ColorIdentifierScreenInner({ navigation }) {
       const imgH = resized.height;
 
       // Maintain your original aspect ratio mapping logic
+      const { width: viewW, height: viewH } = viewSizeRef.current;
+      const screenAspect = viewW / viewH;
+      // Coordinate mapping logic...
       const screenAspect = width / screenHeight;
       const photoAspect = imgW / imgH;
       let pixX, pixY;
@@ -117,14 +126,24 @@ function ColorIdentifierScreenInner({ navigation }) {
       if (photoAspect > screenAspect) {
         const visibleW = screenAspect * imgH;
         const offsetX = (imgW - visibleW) / 2;
-        pixX = Math.round(offsetX + (cx / width) * visibleW);
-        pixY = Math.round((cy / screenHeight) * imgH);
+        pixX = Math.round(offsetX + (cx / viewW) * visibleW);
+        pixY = Math.round((cy / viewH) * imgH);
       } else {
         const visibleH = imgW / screenAspect;
         const offsetY = (imgH - visibleH) / 2;
-        pixX = Math.round((cx / width) * imgW);
-        pixY = Math.round(offsetY + (cy / screenHeight) * visibleH);
+        pixX = Math.round((cx / viewW) * imgW);
+        pixY = Math.round(offsetY + (cy / viewH) * visibleH);
       }
+      console.log("[ColorID] map", {
+        imgW,
+        imgH,
+        viewW,
+        viewH,
+        cx,
+        cy,
+        pixX,
+        pixY,
+      });
 
       // Pixel averaging logic
       const half = 5;
@@ -196,6 +215,7 @@ function ColorIdentifierScreenInner({ navigation }) {
       )}
       <View
         style={StyleSheet.absoluteFill}
+        onLayout={handleResponderLayout}
         onStartShouldSetResponder={() => true}
         onResponderMove={(evt) =>
           setCursorPosition({
