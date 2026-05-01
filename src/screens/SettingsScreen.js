@@ -74,13 +74,13 @@ export default function SettingsScreen({ navigation }) {
           style: "destructive",
           onPress: async () => {
             try {
-              // 1. Clear the onboarding completion flag[cite: 16, 21]
+              // 1. Clear the onboarding completion flag
               await AsyncStorage.removeItem("@recolor_onboarded");
 
-              // 2. Log out the current session to ensure a clean slate[cite: 12, 21]
+              // 2. Log out the current session to ensure a clean slate
               await signOut(auth);
 
-              // 3. Send them to Splash to re-trigger the fresh flow[cite: 12, 21]
+              // 3. Send them to Splash to re-trigger the fresh flow
               navigation.replace("Splash");
             } catch (e) {
               Alert.alert("Error", "Could not reset the application state.");
@@ -250,8 +250,8 @@ const styles = StyleSheet.create({
     ...SHADOW.sm,
   },
   resetBtn: {
-    backgroundColor: "transparent",
-    borderWidth: 1,
+    backgroundColor: "#c8ff00",
+    borderWidth: 0,
     borderColor: COLORS.primary,
   },
   expertBtnText: { color: "#FFF", fontWeight: "bold" },

@@ -139,7 +139,7 @@ export default function LoginScreen({ navigation }) {
         >
           <Text style={styles.welcomeTitle}>Welcome Back</Text>
           <Text style={styles.welcomeSub}>
-            Sign in to enhance your colour perception
+            Sign in to enhance your color perception
           </Text>
           <View style={styles.inputRow}>
             <Ionicons

@@ -22,22 +22,22 @@ const SLIDES = [
     badge: "WELCOME",
     title: "Let's personalise\nyour view of the world.",
     subtitle:
-      "ReColor uses AI and clinical screening to help you understand and enhance your colour perception.",
+      "ReColor uses image-processing algorithms and clinical screening to help you understand and enhance your color perception.",
     cta: "Get Started",
   },
   {
     id: "2",
     icon: "color-palette-outline",
     iconColor: "#FF6B6B",
-    badge: "COLOUR VISION",
-    title: "What is your\ncolour vision type?",
+    badge: "COLOR VISION",
+    title: "What is your\ncolor vision type?",
     subtitle:
-      "Millions of people experience colour differently. Our Ishihara test identifies Deuteranopia, Protanopia, and Tritanopia.",
+      "Millions of people experience color differently. Our Ishihara test identifies Deuteranomaly, Protanomaly, and Tritanomaly.",
     cta: "Next",
     options: [
-      "Red Sensitivity (Protanopia/Protanomaly)",
-      "Green Sensitivity (Deuteranopia/Deuteranomaly)",
-      "Blue Sensitivity (Tritanopia/Tritanomaly)",
+      "Red Sensitivity (Protanomaly)",
+      "Green Sensitivity (Deuteranomaly)",
+      "Blue Sensitivity (Tritanomaly)",
       "Not sure yet",
     ],
   },
@@ -48,7 +48,7 @@ const SLIDES = [
     badge: "LIVE PREVIEW",
     title: "See the difference,\nright now.",
     subtitle:
-      "Point your camera anywhere. ReColor identifies colours in real-time and applies adaptive enhancement filters.",
+      "Point your camera anywhere. ReColor identifies colors and applies adaptive enhancement filters in real-time.",
     cta: "Next",
   },
   {
@@ -58,7 +58,7 @@ const SLIDES = [
     badge: "PERMISSIONS",
     title: "We'll need your camera\nto act as your eyes.",
     subtitle:
-      "Camera access enables real-time colour identification and CVD simulation. Photo library access lets you enhance saved images.",
+      "Camera access enables color identification and CVD simulation. Photo library access lets you enhance saved images.",
     cta: "Continue",
     perms: ["Camera Access", "Photo Storage"],
   },
@@ -69,17 +69,26 @@ const SLIDES = [
     badge: "READY",
     title: "Choose your\nexperience.",
     subtitle:
-      "Start with the clinical screening test or jump straight into colour enhancement mode.",
+      "Start with the clinical screening test or jump straight into color enhancement mode.",
     cta: "Begin →",
     finalCta: true,
   },
 ];
+
+// Helper to match colors to specific sensitivities based on manuscript taxonomy
+const getOptionColor = (opt) => {
+  if (opt.includes("Red")) return "#FF5252"; // Protan Red
+  if (opt.includes("Green")) return "#4CAF50"; // Deutan Green
+  if (opt.includes("Blue")) return "#2196F3"; // Tritan Blue
+  return COLORS.primary; // Default Purple
+};
 
 function SlideItem({ item, onNext, isLast, onFinish }) {
   const [selected, setSelected] = useState(null);
 
   return (
     <View style={[styles.slide, { width }]}>
+      {/* Smooth entry for Icon - No bounce */}
       <MotiView
         from={{ opacity: 0, translateY: 30 }}
         animate={{ opacity: 1, translateY: 0 }}
@@ -89,6 +98,7 @@ function SlideItem({ item, onNext, isLast, onFinish }) {
         <Ionicons name={item.icon} size={48} color={item.iconColor} />
       </MotiView>
 
+      {/* Smooth entry for Text */}
       <MotiView
         from={{ opacity: 0, translateY: 20 }}
         animate={{ opacity: 1, translateY: 0 }}
@@ -99,32 +109,41 @@ function SlideItem({ item, onNext, isLast, onFinish }) {
         <Text style={styles.subtitle}>{item.subtitle}</Text>
       </MotiView>
 
+      {/* Dynamic Highlighted Options */}
       {item.options && (
         <MotiView
           from={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 350 }}
+          transition={{ type: "timing", duration: 500, delay: 350 }}
           style={styles.optionsWrap}
         >
-          {item.options.map((opt) => (
-            <TouchableOpacity
-              key={opt}
-              style={[
-                styles.optionChip,
-                selected === opt && styles.optionChipActive,
-              ]}
-              onPress={() => setSelected(opt)}
-            >
-              <Text
+          {item.options.map((opt) => {
+            const isActive = selected === opt;
+            const activeColor = getOptionColor(opt);
+
+            return (
+              <TouchableOpacity
+                key={opt}
                 style={[
-                  styles.optionText,
-                  selected === opt && styles.optionTextActive,
+                  styles.optionChip,
+                  isActive && {
+                    borderColor: activeColor,
+                    backgroundColor: activeColor + "15", // 10% opacity
+                  },
                 ]}
+                onPress={() => setSelected(opt)}
               >
-                {opt}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text
+                  style={[
+                    styles.optionText,
+                    isActive && { color: activeColor, fontWeight: "700" },
+                  ]}
+                >
+                  {opt}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </MotiView>
       )}
 
@@ -132,7 +151,7 @@ function SlideItem({ item, onNext, isLast, onFinish }) {
         <MotiView
           from={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 350 }}
+          transition={{ type: "timing", duration: 500, delay: 350 }}
           style={styles.permsWrap}
         >
           {item.perms.map((perm) => (
@@ -148,10 +167,11 @@ function SlideItem({ item, onNext, isLast, onFinish }) {
         </MotiView>
       )}
 
+      {/* Primary CTA */}
       <MotiView
         from={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: "timing", duration: 500 }}
+        transition={{ type: "timing", duration: 500, delay: 450 }}
         style={styles.ctaWrap}
       >
         <TouchableOpacity
@@ -205,7 +225,7 @@ export default function AppOnboarding({ navigation }) {
         )}
       />
 
-      {/* Dots indicator */}
+      {/* Progress indicators - Smoothed */}
       <View style={styles.dotsRow}>
         {SLIDES.map((_, i) => (
           <MotiView
@@ -228,10 +248,7 @@ export default function AppOnboarding({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
   slide: {
     flex: 1,
     paddingHorizontal: SPACING.md,
@@ -287,18 +304,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     backgroundColor: COLORS.card,
   },
-  optionChipActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.surfaceAlt,
-  },
   optionText: {
     fontSize: 14,
     color: COLORS.textLight,
     fontWeight: "500",
-  },
-  optionTextActive: {
-    color: COLORS.primary,
-    fontWeight: "700",
   },
   permsWrap: {
     marginTop: SPACING.lg,
@@ -315,11 +324,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     ...SHADOW.sm,
   },
-  permText: {
-    fontSize: 14,
-    color: COLORS.text,
-    fontWeight: "500",
-  },
+  permText: { fontSize: 14, color: COLORS.text, fontWeight: "500" },
   ctaWrap: {
     position: "absolute",
     bottom: SPACING.xxl,
@@ -347,19 +352,12 @@ const styles = StyleSheet.create({
     gap: 6,
     alignItems: "center",
   },
-  dot: {
-    height: 8,
-    borderRadius: 4,
-  },
+  dot: { height: 8, borderRadius: 4 },
   skipBtn: {
     position: "absolute",
     top: 52,
     right: SPACING.md,
     padding: SPACING.sm,
   },
-  skipText: {
-    color: COLORS.textLight,
-    fontSize: 14,
-    fontWeight: "500",
-  },
+  skipText: { color: COLORS.textLight, fontSize: 14, fontWeight: "500" },
 });

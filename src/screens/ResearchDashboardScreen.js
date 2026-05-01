@@ -197,12 +197,12 @@ export default function ResearchDashboardScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <BackgroundBubbles />
       <Header
         title="Research Dashboard"
         subtitle="PERI Researcher Portal"
         back
       />
-      <BackgroundBubbles />
 
       <View style={{ flexDirection: "row", padding: 20, paddingBottom: 0 }}>
         {["View Data", "Guidelines"].map((tab, i) => (
