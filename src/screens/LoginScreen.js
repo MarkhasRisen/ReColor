@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { doc, getDoc } from "firebase/firestore"; // ADDED THIS
+import { doc, getDoc } from "firebase/firestore";
 import { MotiView } from "moti";
 import { useState } from "react";
 import {
@@ -18,14 +18,14 @@ import {
 } from "react-native";
 import {
   auth,
-  db, // ADDED THIS
+  db,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
 } from "../../firebaseConfig";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
-const APP_VERSION = "v1.3-thesis";
+const APP_VERSION = "v1.3.3-beta";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
@@ -66,7 +66,6 @@ export default function LoginScreen({ navigation }) {
     setLoading(true);
 
     try {
-      // 1. AUTHENTICATION
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email.trim(),
@@ -74,8 +73,11 @@ export default function LoginScreen({ navigation }) {
       );
       const user = userCredential.user;
 
-      // 2. IDENTITY VERIFICATION CHECK (RA 10173 Compliance)
-      if (!user.emailVerified) {
+      // IDENTITY VERIFICATION BYPASS FOR DEV ACCOUNT
+      const isDevAccount =
+        email.trim().toLowerCase() === "recolor.dev@gmail.com";
+
+      if (!user.emailVerified && !isDevAccount) {
         await signOut(auth);
         Alert.alert(
           "Verification Required",
@@ -86,25 +88,18 @@ export default function LoginScreen({ navigation }) {
         return;
       }
 
-      // 3. AUTHORIZATION: FETCH ROLE FROM FIRESTORE
       const userDoc = await getDoc(doc(db, "users", user.uid));
-
       if (userDoc.exists()) {
         const role = userDoc.data().role;
-
         if (role === "admin" || role === "researcher") {
-          // Route Experts to the Hub
           navigation.replace("AdminHub", { role });
         } else {
-          // Route Normal Users to Assistive Features
           navigation.replace("MainTabs");
         }
       } else {
-        // Fallback: If no role exists, default to User features
         navigation.replace("MainTabs");
       }
     } catch (err) {
-      console.error("Login Error:", err.code);
       Alert.alert("Login Failed", "Incorrect credentials or network error.");
     } finally {
       setLoading(false);

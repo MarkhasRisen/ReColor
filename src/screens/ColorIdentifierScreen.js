@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
 import * as ImageManipulator from "expo-image-manipulator";
-import * as Speech from "expo-speech"; // Added for audio feedback
+import * as Speech from "expo-speech"; // Integrated for Objective 2
 import { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
@@ -20,6 +20,7 @@ import {
 import { decodeJpegBase64, identifyColor } from "../../tensorHelper";
 import ModeSelector from "../components/ModeSelector";
 import { styles } from "../theme/styles";
+import { ScreenErrorBoundary } from "../utils/logger";
 
 const { width, height: screenHeight } = Dimensions.get("window");
 
@@ -27,7 +28,7 @@ function ColorIdentifierScreenInner({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
   const isFocused = useIsFocused();
   const [cameraPosition, setCameraPosition] = useState("back");
-  const [audioEnabled, setAudioEnabled] = useState(false); // Synced with storage
+  const [audio, setAudio] = useState(false); // Default to false
   const [showModal, setShowModal] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [cursorPosition, setCursorPosition] = useState({
@@ -46,32 +47,41 @@ function ColorIdentifierScreenInner({ navigation }) {
   const isMountedRef = useRef(true);
   const device = useCameraDevice(cameraPosition);
 
-  // Sync audio preference from Settings
+  // Sync with global settings on mount
   useEffect(() => {
-    const loadAudioPref = async () => {
-      const savedAudio = await AsyncStorage.getItem("audio_feedback_enabled");
-      setAudioEnabled(savedAudio === "true");
+    const syncAudio = async () => {
+      const saved = await AsyncStorage.getItem("audio_feedback_enabled");
+      setAudio(saved === "true");
     };
-    loadAudioPref();
+    syncAudio();
   }, [isFocused]);
 
   useEffect(() => {
     isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
     const timer = setTimeout(() => {
       if (isMountedRef.current) setCameraReady(true);
     }, 700);
-    return () => clearTimeout(timer);
+    return () => {
+      isMountedRef.current = false;
+      clearTimeout(timer);
+    };
   }, []);
 
-  useEffect(() => {
-    if (!hasPermission) requestPermission();
-  }, []);
+  if (!hasPermission) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <Text style={{ marginBottom: 20 }}>Camera access is needed.</Text>
+        <TouchableOpacity style={styles.btnPrimary} onPress={requestPermission}>
+          <Text style={styles.btnText}>Grant Permission</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const runDetection = async (cx, cy) => {
     if (!cameraRef.current || isProcessingRef.current) return;
@@ -99,7 +109,7 @@ function ColorIdentifierScreenInner({ navigation }) {
       const imgW = resized.width;
       const imgH = resized.height;
 
-      // Coordinate mapping logic...
+      // Maintain your original aspect ratio mapping logic
       const screenAspect = width / screenHeight;
       const photoAspect = imgW / imgH;
       let pixX, pixY;
@@ -116,6 +126,7 @@ function ColorIdentifierScreenInner({ navigation }) {
         pixY = Math.round(offsetY + (cy / screenHeight) * visibleH);
       }
 
+      // Pixel averaging logic
       const half = 5;
       const x0 = Math.max(0, pixX - half),
         y0 = Math.max(0, pixY - half);
@@ -151,8 +162,8 @@ function ColorIdentifierScreenInner({ navigation }) {
           conf: `${result.confidence}%`,
         });
 
-        // TRIGGER AUDIO FEEDBACK
-        if (audioEnabled) {
+        // Trigger Audio Feedback if enabled
+        if (audio) {
           Speech.stop();
           Speech.speak(result.className, { rate: 1.0 });
         }
@@ -166,8 +177,8 @@ function ColorIdentifierScreenInner({ navigation }) {
   };
 
   const toggleAudio = async () => {
-    const newVal = !audioEnabled;
-    setAudioEnabled(newVal);
+    const newVal = !audio;
+    setAudio(newVal);
     await AsyncStorage.setItem("audio_feedback_enabled", newVal.toString());
   };
 
@@ -186,12 +197,18 @@ function ColorIdentifierScreenInner({ navigation }) {
       <View
         style={StyleSheet.absoluteFill}
         onStartShouldSetResponder={() => true}
-        onResponderMove={handleTouchMove}
-        onResponderGrant={handleTouchMove}
+        onResponderMove={(evt) =>
+          setCursorPosition({
+            x: evt.nativeEvent.locationX,
+            y: evt.nativeEvent.locationY,
+          })
+        }
         onResponderRelease={(evt) => {
-          const { locationX, locationY } = evt.nativeEvent;
-          setCursorPosition({ x: locationX, y: locationY });
-          runDetection(locationX, locationY);
+          setCursorPosition({
+            x: evt.nativeEvent.locationX,
+            y: evt.nativeEvent.locationY,
+          });
+          runDetection(evt.nativeEvent.locationX, evt.nativeEvent.locationY);
         }}
       />
 
@@ -213,7 +230,7 @@ function ColorIdentifierScreenInner({ navigation }) {
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <TouchableOpacity onPress={toggleAudio} style={{ marginRight: 15 }}>
               <Ionicons
-                name={audioEnabled ? "volume-high" : "volume-mute"}
+                name={audio ? "volume-high" : "volume-mute"}
                 size={24}
                 color="#FFF"
               />
@@ -224,91 +241,103 @@ function ColorIdentifierScreenInner({ navigation }) {
           </View>
         </View>
 
-        {/* Cursor UI... */}
+        {/* Reticle */}
         <View
           pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: cursorPosition.y - 50,
-            left: cursorPosition.x - 50,
-            width: 100,
-            height: 100,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
+          style={[
+            localStyles.cursor,
+            { top: cursorPosition.y - 50, left: cursorPosition.x - 50 },
+          ]}
         >
-          <View
-            style={{
-              width: 2,
-              height: 50,
-              backgroundColor: "rgba(255,255,255,0.8)",
-              position: "absolute",
-            }}
-          />
-          <View
-            style={{
-              width: 50,
-              height: 2,
-              backgroundColor: "rgba(255,255,255,0.8)",
-              position: "absolute",
-            }}
-          />
-          <View
-            style={{
-              width: 20,
-              height: 20,
-              borderRadius: 10,
-              borderWidth: 2,
-              borderColor: "#FFF",
-            }}
-          />
+          <View style={localStyles.reticleLineV} />
+          <View style={localStyles.reticleLineH} />
+          <View style={localStyles.reticleCircle} />
         </View>
 
-        <View
-          style={{
-            position: "absolute",
-            top: "60%",
-            alignSelf: "center",
-            pointerEvents: "none",
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: "rgba(0,0,0,0.85)",
-              padding: 15,
-              borderRadius: 12,
-              alignItems: "center",
-              minWidth: 150,
-            }}
-          >
+        {/* Result Card */}
+        <View style={localStyles.resultCardContainer}>
+          <View style={localStyles.resultCard}>
             <View
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 15,
-                backgroundColor: identifiedColor.hex,
-                marginBottom: 5,
-                borderWidth: 2,
-                borderColor: "#FFF",
-              }}
+              style={[
+                localStyles.colorPreview,
+                { backgroundColor: identifiedColor.hex },
+              ]}
             />
-            <Text style={{ color: "#FFF", fontWeight: "bold", fontSize: 16 }}>
-              {identifiedColor.name}
-            </Text>
-            <Text style={{ color: "#CCC", fontSize: 12 }}>
+            <Text style={localStyles.colorName}>{identifiedColor.name}</Text>
+            <Text style={localStyles.calculatingText}>
               {isDetecting ? "Calculating..." : ""}
             </Text>
           </View>
         </View>
 
-        {/* Navigation Overlays... */}
+        <ModeSelector
+          visible={showModal}
+          onClose={() => setShowModal(false)}
+          navigation={navigation}
+          currentMode="Identifier"
+        />
       </SafeAreaView>
-      <ModeSelector
-        visible={showModal}
-        onClose={() => setShowModal(false)}
-        navigation={navigation}
-        currentMode="Identifier"
-      />
     </View>
+  );
+}
+
+const localStyles = StyleSheet.create({
+  cursor: {
+    position: "absolute",
+    width: 100,
+    height: 100,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  reticleLineV: {
+    width: 2,
+    height: 50,
+    backgroundColor: "rgba(255,255,255,0.8)",
+    position: "absolute",
+  },
+  reticleLineH: {
+    width: 50,
+    height: 2,
+    backgroundColor: "rgba(255,255,255,0.8)",
+    position: "absolute",
+  },
+  reticleCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#FFF",
+  },
+  resultCardContainer: {
+    position: "absolute",
+    top: "60%",
+    alignSelf: "center",
+    pointerEvents: "none",
+  },
+  resultCard: {
+    backgroundColor: "rgba(0,0,0,0.85)",
+    padding: 15,
+    borderRadius: 12,
+    alignItems: "center",
+    minWidth: 150,
+  },
+  colorPreview: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    marginBottom: 5,
+    borderWidth: 2,
+    borderColor: "#FFF",
+  },
+  colorName: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
+  calculatingText: { color: "#CCC", fontSize: 12 },
+});
+
+// DEFAULT EXPORT (Must match your navigator import)
+export default function ColorIdentifierScreen(props) {
+  return (
+    <ScreenErrorBoundary navigation={props.navigation}>
+      <ColorIdentifierScreenInner {...props} />
+    </ScreenErrorBoundary>
   );
 }

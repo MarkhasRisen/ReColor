@@ -106,184 +106,6 @@ tensorHelper.js
 <files>
 This section contains the contents of the repository's files.
 
-<file path="src/screens/EnhanceGalleryScreen.js">
-import { Ionicons } from "@expo/vector-icons";
-import * as FileSystem from "expo-file-system";
-import * as ImageManipulator from "expo-image-manipulator";
-import * as ImagePicker from "expo-image-picker";
-import * as MediaLibrary from "expo-media-library";
-import { useState } from "react";
-import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Image,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from "react-native";
-import { auth } from "../../firebaseConfig";
-import {
-    applyDaltonization,
-    decodeJpegBase64,
-    encodeToDataUri,
-} from "../../tensorHelper";
-import { COLORS } from "../theme/colors";
-import { styles } from "../theme/styles";
-
-const { width } = Dimensions.get("window");
-
-export default function EnhanceGalleryScreen({ navigation }) {
-  const [originalUri, setOriginalUri] = useState(null);
-  const [displayUri, setDisplayUri] = useState(null);
-  const [mode, setMode] = useState("Off");
-  const [processing, setProcessing] = useState(false);
-
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      quality: 1,
-    });
-    if (!result.canceled) {
-      setOriginalUri(result.assets[0].uri);
-      setDisplayUri(result.assets[0].uri);
-      setMode("Off");
-    }
-  };
-
-  const handleSave = async () => {
-    if (!displayUri) return;
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== "granted") return Alert.alert("Permission needed");
-
-      const b64 = displayUri.split(",")[1];
-      const savePath = `${FileSystem.documentDirectory}enhance_${Date.now()}.jpg`;
-      await FileSystem.writeAsStringAsync(savePath, b64, {
-        encoding: "base64",
-      });
-
-      const asset = await MediaLibrary.createAssetAsync(savePath);
-      const albumName = `ReColor_${auth.currentUser?.email.split("@")[0] || "Guest"}`;
-      const album = await MediaLibrary.getAlbumAsync(albumName);
-
-      if (!album) await MediaLibrary.createAlbumAsync(albumName, asset, false);
-      else await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
-
-      Alert.alert("Saved", `Enhanced photo added to ${albumName}`);
-    } catch (e) {
-      Alert.alert("Error", "Save failed");
-    }
-  };
-
-  const applyFilter = async (cvdMode) => {
-    setMode(cvdMode);
-    if (cvdMode === "Off" || !originalUri) return setDisplayUri(originalUri);
-    setProcessing(true);
-    try {
-      const resized = await ImageManipulator.manipulateAsync(
-        originalUri,
-        [{ resize: { width: 1040 } }],
-        { base64: true },
-      );
-      const decoded = decodeJpegBase64(resized.base64);
-      const enhanced = applyDaltonization(
-        { data: decoded.data, width: decoded.width, height: decoded.height },
-        null,
-        cvdMode,
-      );
-      setDisplayUri(encodeToDataUri(enhanced, decoded.width, decoded.height));
-    } catch (e) {
-      console.warn(e);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
-      <SafeAreaView style={{ flex: 1 }}>
-        <View style={styles.camTopBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
-          </TouchableOpacity>
-          <Text style={{ color: "#FFF", fontWeight: "bold" }}>
-            Enhance Analysis
-          </Text>
-          <TouchableOpacity onPress={pickImage}>
-            <Ionicons name="add-circle" size={28} color="#FFF" />
-          </TouchableOpacity>
-        </View>
-        <View style={{ flex: 1, justifyContent: "center" }}>
-          {displayUri ? (
-            <Image
-              source={{ uri: displayUri }}
-              style={{ width, height: width * 1.3, resizeMode: "contain" }}
-            />
-          ) : (
-            <TouchableOpacity
-              onPress={pickImage}
-              style={{ alignSelf: "center" }}
-            >
-              <Ionicons name="images-outline" size={60} color="#555" />
-            </TouchableOpacity>
-          )}
-          {processing && (
-            <ActivityIndicator
-              size="large"
-              color="#FFF"
-              style={StyleSheet.absoluteFill}
-            />
-          )}
-        </View>
-        {originalUri && (
-          <View style={{ paddingBottom: 30 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "center",
-                gap: 10,
-                marginBottom: 14,
-              }}
-            >
-              {["Off", "Protan", "Deutan", "Tritan"].map((m) => (
-                <TouchableOpacity
-                  key={m}
-                  onPress={() => applyFilter(m)}
-                  style={{
-                    backgroundColor: mode === m ? COLORS.primary : "#333",
-                    padding: 10,
-                    borderRadius: 20,
-                  }}
-                >
-                  <Text style={{ color: "#FFF" }}>{m}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity
-              onPress={handleSave}
-              style={{
-                alignSelf: "center",
-                backgroundColor: COLORS.primary,
-                paddingHorizontal: 28,
-                paddingVertical: 12,
-                borderRadius: 24,
-              }}
-            >
-              <Text style={{ color: "#FFF", fontWeight: "700" }}>
-                Save to Account Album
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </SafeAreaView>
-    </View>
-  );
-}
-</file>
-
 <file path="components/external-link.tsx">
 import { Href, Link } from 'expo-router';
 import { openBrowserAsync, WebBrowserPresentationStyle } from 'expo-web-browser';
@@ -1152,273 +974,6 @@ export const QUICK_ISHIHARA_PLATES = [
 ];
 </file>
 
-<file path="src/screens/AdminHubScreen.js">
-import { Ionicons } from "@expo/vector-icons";
-import {
-  collection,
-  onSnapshot,
-  query
-} from "firebase/firestore";
-import { MotiView } from "moti";
-import { useEffect, useState } from "react";
-import {
-  Dimensions,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { auth, db, signOut } from "../../firebaseConfig";
-import BackgroundBubbles from "../components/BackgroundBubbles";
-import Card from "../components/Card";
-import Header from "../components/Header";
-import { COLORS, SHADOW } from "../theme/colors";
-
-const { width } = Dimensions.get("window");
-
-export default function AdminHubScreen({ route, navigation }) {
-  const { role } = route.params || { role: "researcher" };
-  const [recordCount, setRecordCount] = useState(0);
-  const [systemLogs, setSystemLogs] = useState([]);
-
-  useEffect(() => {
-    // REAL-TIME DATA INGRESS MONITOR[cite: 2]
-    const qCount = query(collection(db, "research_data_anonymized"));
-    const unsubCount = onSnapshot(qCount, (snap) => setRecordCount(snap.size));
-
-    // MOCK SYSTEM EVENTS (For Defense Atmosphere)
-    const mockLogs = [
-      {
-        id: "1",
-        event: "Cloud Sync Active",
-        time: "Just Now",
-        icon: "cloud-done",
-      },
-      {
-        id: "2",
-        event: "Auth Gate Verified",
-        time: "2m ago",
-        icon: "shield-checkmark",
-      },
-      { id: "3", event: "Dual-Write Success", time: "15m ago", icon: "copy" },
-    ];
-    setSystemLogs(mockLogs);
-
-    return () => unsubCount();
-  }, []);
-
-  return (
-    <ScrollView style={styles.root} showsVerticalScrollIndicator={false}>
-      <Header
-        title="Expert Portal"
-        subtitle="Clinical Operations Center"
-        back
-      />
-      <BackgroundBubbles />
-
-      <View style={{ padding: 20 }}>
-        {/* 1. SYSTEM HEALTH MODULE[cite: 2] */}
-        <View style={styles.healthContainer}>
-          <HealthBadge label="Cloud DB" active />
-          <HealthBadge label="Auth Service" active />
-          <HealthBadge label="Encryption" active />
-        </View>
-
-        {/* 2. REAL-TIME STATS TICKER[cite: 2] */}
-        <MotiView
-          from={{ translateY: 20, opacity: 0 }}
-          animate={{ translateY: 0, opacity: 1 }}
-          transition={{ delay: 100 }}
-        >
-          <Card style={styles.statsCard}>
-            <Text style={styles.statsLabel}>GLOBAL RESEARCH DATASET</Text>
-            <Text style={styles.statsValue}>
-              {recordCount.toLocaleString()}
-            </Text>
-            <Text style={styles.statsSub}>
-              Anonymized diagnostic records synced
-            </Text>
-          </Card>
-        </MotiView>
-
-        <Text style={styles.sectionHeader}>ADMINISTRATION UTILITIES</Text>
-
-        {/* 3. FUNCTIONAL GRID[cite: 2, 3] */}
-        <View style={styles.grid}>
-          <GridCard
-            title="Analytics"
-            sub="CVD Trends"
-            icon="analytics"
-            color="#6200EA"
-            onPress={() => navigation.navigate("ResearchDashboard")}
-          />
-          <GridCard
-            title="CMS Manager"
-            sub="Edit Articles"
-            icon="document-text"
-            color="#0091EA"
-            onPress={() =>
-              Alert.alert(
-                "CMS Module",
-                "Article management in Read-Only for defense.",
-              )
-            }
-          />
-          <GridCard
-            title="Sandbox"
-            sub="Test App"
-            icon="flask"
-            color="#00C853"
-            onPress={() => navigation.navigate("MainTabs")}
-          />
-          <GridCard
-            title="Audit Log"
-            sub="Security"
-            icon="lock-closed"
-            color="#FF6D00"
-            onPress={() =>
-              Alert.alert(
-                "Audit Log",
-                "Compliance logs are encrypted per RA 10173.",
-              )
-            }
-          />
-        </View>
-
-        {/* 4. RECENT SYSTEM EVENTS LOG[cite: 3] */}
-        <Text style={styles.sectionHeader}>SYSTEM EVENT STREAM</Text>
-        <Card style={styles.logCard}>
-          {systemLogs.map((log) => (
-            <View key={log.id} style={styles.logItem}>
-              <Ionicons name={log.icon} size={16} color={COLORS.primary} />
-              <Text style={styles.logText}>{log.event}</Text>
-              <Text style={styles.logTime}>{log.time}</Text>
-            </View>
-          ))}
-        </Card>
-
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={() => {
-            signOut(auth);
-            navigation.replace("Login");
-          }}
-        >
-          <Text style={styles.logoutText}>Terminate Expert Session</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
-  );
-}
-
-// Helper Components
-const HealthBadge = ({ label, active }) => (
-  <View style={styles.healthBadge}>
-    <View
-      style={[styles.dot, { backgroundColor: active ? "#00C853" : "#D50000" }]}
-    />
-    <Text style={styles.healthLabel}>{label}</Text>
-  </View>
-);
-
-const GridCard = ({ title, sub, icon, color, onPress }) => (
-  <TouchableOpacity
-    style={[styles.gridCard, { borderTopColor: color }]}
-    onPress={onPress}
-  >
-    <Ionicons name={icon} size={28} color={color} />
-    <Text style={styles.gridTitle}>{title}</Text>
-    <Text style={styles.gridSub}>{sub}</Text>
-  </TouchableOpacity>
-);
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.background },
-  healthContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-  healthBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFF",
-    padding: 8,
-    borderRadius: 20,
-    width: "31%",
-    ...SHADOW.sm,
-  },
-  dot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
-  healthLabel: { fontSize: 9, fontWeight: "bold", color: "#666" },
-  statsCard: {
-    padding: 25,
-    alignItems: "center",
-    backgroundColor: COLORS.primary,
-    marginBottom: 25,
-  },
-  statsLabel: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1,
-  },
-  statsValue: {
-    color: "#FFF",
-    fontSize: 48,
-    fontWeight: "900",
-    marginVertical: 4,
-  },
-  statsSub: { color: "rgba(255,255,255,0.8)", fontSize: 11 },
-  sectionHeader: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#999",
-    marginBottom: 12,
-    letterSpacing: 1,
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginBottom: 25,
-  },
-  gridCard: {
-    backgroundColor: "#FFF",
-    width: "48%",
-    padding: 15,
-    borderRadius: 15,
-    marginBottom: 15,
-    borderTopWidth: 4,
-    ...SHADOW.sm,
-  },
-  gridTitle: {
-    fontSize: 15,
-    fontWeight: "bold",
-    marginTop: 10,
-    color: COLORS.text,
-  },
-  gridSub: { fontSize: 11, color: "#888", marginTop: 2 },
-  logCard: { padding: 15, backgroundColor: "#F8F9FF" },
-  logItem: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
-  logText: {
-    flex: 1,
-    marginLeft: 10,
-    fontSize: 13,
-    color: "#444",
-    fontWeight: "500",
-  },
-  logTime: { fontSize: 11, color: "#999" },
-  logoutBtn: {
-    marginTop: 30,
-    padding: 15,
-    alignItems: "center",
-    marginBottom: 40,
-  },
-  logoutText: { color: "#D32F2F", fontWeight: "bold" },
-});
-</file>
-
 <file path="src/screens/AppOnboarding.js">
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -1769,88 +1324,179 @@ const styles = StyleSheet.create({
 });
 </file>
 
-<file path="src/screens/ProfileScreen.js">
+<file path="src/screens/EnhanceGalleryScreen.js">
 import { Ionicons } from "@expo/vector-icons";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import * as FileSystem from "expo-file-system";
+import * as ImageManipulator from "expo-image-manipulator";
+import * as ImagePicker from "expo-image-picker";
+import * as MediaLibrary from "expo-media-library";
+import { useState } from "react";
+import {
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Image,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
 import { auth } from "../../firebaseConfig";
-import BackgroundBubbles from "../components/BackgroundBubbles";
-import Card from "../components/Card";
+import {
+    applyDaltonization,
+    decodeJpegBase64,
+    encodeToDataUri,
+} from "../../tensorHelper";
 import { COLORS } from "../theme/colors";
+import { styles } from "../theme/styles";
 
-export default function ProfileScreen({ navigation }) {
-  const userEmail = auth.currentUser?.email || "Guest";
-  const userName = userEmail.split("@")[0];
+const { width } = Dimensions.get("window");
+
+export default function EnhanceGalleryScreen({ navigation }) {
+  const [originalUri, setOriginalUri] = useState(null);
+  const [displayUri, setDisplayUri] = useState(null);
+  const [mode, setMode] = useState("Off");
+  const [processing, setProcessing] = useState(false);
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      quality: 1,
+    });
+    if (!result.canceled) {
+      setOriginalUri(result.assets[0].uri);
+      setDisplayUri(result.assets[0].uri);
+      setMode("Off");
+    }
+  };
+
+  const handleSave = async () => {
+    if (!displayUri) return;
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== "granted") return Alert.alert("Permission needed");
+
+      const b64 = displayUri.split(",")[1];
+      const savePath = `${FileSystem.documentDirectory}enhance_${Date.now()}.jpg`;
+      await FileSystem.writeAsStringAsync(savePath, b64, {
+        encoding: "base64",
+      });
+
+      const asset = await MediaLibrary.createAssetAsync(savePath);
+      const albumName = `ReColor_${auth.currentUser?.email.split("@")[0] || "Guest"}`;
+      const album = await MediaLibrary.getAlbumAsync(albumName);
+
+      if (!album) await MediaLibrary.createAlbumAsync(albumName, asset, false);
+      else await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+
+      Alert.alert("Saved", `Enhanced photo added to ${albumName}`);
+    } catch (e) {
+      Alert.alert("Error", "Save failed");
+    }
+  };
+
+  const applyFilter = async (cvdMode) => {
+    setMode(cvdMode);
+    if (cvdMode === "Off" || !originalUri) return setDisplayUri(originalUri);
+    setProcessing(true);
+    try {
+      const resized = await ImageManipulator.manipulateAsync(
+        originalUri,
+        [{ resize: { width: 1040 } }],
+        { base64: true },
+      );
+      const decoded = decodeJpegBase64(resized.base64);
+      const enhanced = applyDaltonization(
+        { data: decoded.data, width: decoded.width, height: decoded.height },
+        null,
+        cvdMode,
+      );
+      setDisplayUri(encodeToDataUri(enhanced, decoded.width, decoded.height));
+    } catch (e) {
+      console.warn(e);
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-      <BackgroundBubbles />
-      <ScrollView
-        contentContainerStyle={{ padding: 20 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View
-          style={{
-            marginTop: 20,
-            marginBottom: 20,
-            flexDirection: "row",
-            alignItems: "center",
-          }}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: "#666", fontSize: 16 }}>
-              Hello, {userName}
-            </Text>
-            <Text style={{ fontSize: 24, fontWeight: "bold", color: "#333" }}>
-              Welcome to ReColor
-            </Text>
-          </View>
-          <Image
-            source={require("../../assets/icon.png")}
-            style={{
-              width: 120,
-              height: 120,
-              resizeMode: "contain",
-              marginRight: 40,
-            }}
-          />
-        </View>
-
-        <Card style={{ alignItems: "center", paddingVertical: 30 }}>
-          <View
-            style={{
-              width: 80,
-              height: 80,
-              borderRadius: 40,
-              backgroundColor: COLORS.primary,
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 15,
-              elevation: 5,
-            }}
-          >
-            <Ionicons name="person" size={40} color="#FFF" />
-          </View>
-          <Text style={{ fontSize: 20, fontWeight: "bold", color: "#333" }}>
-            {userName}
-          </Text>
-          <Text style={{ color: "#888", marginBottom: 25 }}>{userEmail}</Text>
-          <TouchableOpacity
-            style={{
-              backgroundColor: "#E8EAF6",
-              paddingVertical: 12,
-              paddingHorizontal: 40,
-              borderRadius: 8,
-              width: "100%",
-              alignItems: "center",
-            }}
-            onPress={() => navigation.navigate("Settings")}
-          >
-            <Text style={{ color: "#333", fontWeight: "600" }}>
-              Manage Settings
-            </Text>
+    <View style={{ flex: 1, backgroundColor: "#000" }}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <View style={styles.camTopBar}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
-        </Card>
-      </ScrollView>
+          <Text style={{ color: "#FFF", fontWeight: "bold" }}>
+            Enhance Analysis
+          </Text>
+          <TouchableOpacity onPress={pickImage}>
+            <Ionicons name="add-circle" size={28} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          {displayUri ? (
+            <Image
+              source={{ uri: displayUri }}
+              style={{ width, height: width * 1.3, resizeMode: "contain" }}
+            />
+          ) : (
+            <TouchableOpacity
+              onPress={pickImage}
+              style={{ alignSelf: "center" }}
+            >
+              <Ionicons name="images-outline" size={60} color="#555" />
+            </TouchableOpacity>
+          )}
+          {processing && (
+            <ActivityIndicator
+              size="large"
+              color="#FFF"
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+        </View>
+        {originalUri && (
+          <View style={{ paddingBottom: 30 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                gap: 10,
+                marginBottom: 14,
+              }}
+            >
+              {["Off", "Protan", "Deutan", "Tritan"].map((m) => (
+                <TouchableOpacity
+                  key={m}
+                  onPress={() => applyFilter(m)}
+                  style={{
+                    backgroundColor: mode === m ? COLORS.primary : "#333",
+                    padding: 10,
+                    borderRadius: 20,
+                  }}
+                >
+                  <Text style={{ color: "#FFF" }}>{m}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              onPress={handleSave}
+              style={{
+                alignSelf: "center",
+                backgroundColor: COLORS.primary,
+                paddingHorizontal: 28,
+                paddingVertical: 12,
+                borderRadius: 24,
+              }}
+            >
+              <Text style={{ color: "#FFF", fontWeight: "700" }}>
+                Save to Account Album
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </SafeAreaView>
     </View>
   );
 }
@@ -3076,321 +2722,271 @@ export async function saveTestSession({
 }
 </file>
 
-<file path="src/screens/ColorIdentifierScreen.js">
+<file path="src/screens/AdminHubScreen.js">
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useIsFocused } from "@react-navigation/native";
-import * as ImageManipulator from "expo-image-manipulator";
-import * as Speech from "expo-speech"; // Added for audio feedback
-import { useEffect, useRef, useState } from "react";
+import {
+  collection,
+  onSnapshot,
+  query
+} from "firebase/firestore";
+import { MotiView } from "moti";
+import { useEffect, useState } from "react";
 import {
   Dimensions,
-  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
-import {
-  Camera,
-  useCameraDevice,
-  useCameraPermission,
-} from "react-native-vision-camera";
-import { decodeJpegBase64, identifyColor } from "../../tensorHelper";
-import ModeSelector from "../components/ModeSelector";
-import { styles } from "../theme/styles";
+import { auth, db, signOut } from "../../firebaseConfig";
+import BackgroundBubbles from "../components/BackgroundBubbles";
+import Card from "../components/Card";
+import Header from "../components/Header";
+import { COLORS, SHADOW } from "../theme/colors";
 
-const { width, height: screenHeight } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
-function ColorIdentifierScreenInner({ navigation }) {
-  const { hasPermission, requestPermission } = useCameraPermission();
-  const isFocused = useIsFocused();
-  const [cameraPosition, setCameraPosition] = useState("back");
-  const [audioEnabled, setAudioEnabled] = useState(false); // Synced with storage
-  const [showModal, setShowModal] = useState(false);
-  const [cameraReady, setCameraReady] = useState(false);
-  const [cursorPosition, setCursorPosition] = useState({
-    x: width / 2,
-    y: screenHeight / 2,
-  });
-  const [identifiedColor, setIdentifiedColor] = useState({
-    name: "Ready to Scan",
-    hex: "#333",
-    conf: "",
-  });
-  const [isDetecting, setIsDetecting] = useState(false);
-
-  const cameraRef = useRef(null);
-  const isProcessingRef = useRef(false);
-  const isMountedRef = useRef(true);
-  const device = useCameraDevice(cameraPosition);
-
-  // Sync audio preference from Settings
-  useEffect(() => {
-    const loadAudioPref = async () => {
-      const savedAudio = await AsyncStorage.getItem("audio_feedback_enabled");
-      setAudioEnabled(savedAudio === "true");
-    };
-    loadAudioPref();
-  }, [isFocused]);
+export default function AdminHubScreen({ route, navigation }) {
+  const { role } = route.params || { role: "researcher" };
+  const [recordCount, setRecordCount] = useState(0);
+  const [systemLogs, setSystemLogs] = useState([]);
 
   useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
+    // REAL-TIME DATA INGRESS MONITOR[cite: 2]
+    const qCount = query(collection(db, "research_data_anonymized"));
+    const unsubCount = onSnapshot(qCount, (snap) => setRecordCount(snap.size));
+
+    // MOCK SYSTEM EVENTS (For Defense Atmosphere)
+    const mockLogs = [
+      {
+        id: "1",
+        event: "Cloud Sync Active",
+        time: "Just Now",
+        icon: "cloud-done",
+      },
+      {
+        id: "2",
+        event: "Auth Gate Verified",
+        time: "2m ago",
+        icon: "shield-checkmark",
+      },
+      { id: "3", event: "Dual-Write Success", time: "15m ago", icon: "copy" },
+    ];
+    setSystemLogs(mockLogs);
+
+    return () => unsubCount();
   }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (isMountedRef.current) setCameraReady(true);
-    }, 700);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!hasPermission) requestPermission();
-  }, []);
-
-  const runDetection = async (cx, cy) => {
-    if (!cameraRef.current || isProcessingRef.current) return;
-    isProcessingRef.current = true;
-    setIsDetecting(true);
-
-    try {
-      const photo = await cameraRef.current.takePhoto({
-        qualityPrioritization: "speed",
-        enableShutterSound: false,
-      });
-      const fileUri = `file://${photo.path}`;
-
-      const resized = await ImageManipulator.manipulateAsync(
-        fileUri,
-        [{ resize: { width: 640 } }],
-        {
-          base64: true,
-          format: ImageManipulator.SaveFormat.JPEG,
-          compress: 0.95,
-        },
-      );
-
-      const decoded = decodeJpegBase64(resized.base64);
-      const imgW = resized.width;
-      const imgH = resized.height;
-
-      // Coordinate mapping logic...
-      const screenAspect = width / screenHeight;
-      const photoAspect = imgW / imgH;
-      let pixX, pixY;
-
-      if (photoAspect > screenAspect) {
-        const visibleW = screenAspect * imgH;
-        const offsetX = (imgW - visibleW) / 2;
-        pixX = Math.round(offsetX + (cx / width) * visibleW);
-        pixY = Math.round((cy / screenHeight) * imgH);
-      } else {
-        const visibleH = imgW / screenAspect;
-        const offsetY = (imgH - visibleH) / 2;
-        pixX = Math.round((cx / width) * imgW);
-        pixY = Math.round(offsetY + (cy / screenHeight) * visibleH);
-      }
-
-      const half = 5;
-      const x0 = Math.max(0, pixX - half),
-        y0 = Math.max(0, pixY - half);
-      const x1 = Math.min(imgW, pixX + half),
-        y1 = Math.min(imgH, pixY + half);
-      let avgR = 0,
-        avgG = 0,
-        avgB = 0,
-        count = 0;
-
-      for (let py = y0; py < y1; py++) {
-        for (let px = x0; px < x1; px++) {
-          const idx = (py * imgW + px) * 4;
-          avgR += decoded.data[idx];
-          avgG += decoded.data[idx + 1];
-          avgB += decoded.data[idx + 2];
-          count++;
-        }
-      }
-      avgR = Math.round(avgR / count);
-      avgG = Math.round(avgG / count);
-      avgB = Math.round(avgB / count);
-
-      const result = identifyColor(avgR, avgG, avgB);
-      const sampledHex =
-        "#" +
-        [avgR, avgG, avgB].map((c) => c.toString(16).padStart(2, "0")).join("");
-
-      if (isMountedRef.current) {
-        setIdentifiedColor({
-          name: result.className,
-          hex: sampledHex,
-          conf: `${result.confidence}%`,
-        });
-
-        // TRIGGER AUDIO FEEDBACK
-        if (audioEnabled) {
-          Speech.stop();
-          Speech.speak(result.className, { rate: 1.0 });
-        }
-      }
-    } catch (e) {
-      console.log("[ColorID] detection error:", e);
-    } finally {
-      isProcessingRef.current = false;
-      if (isMountedRef.current) setIsDetecting(false);
-    }
-  };
-
-  const toggleAudio = async () => {
-    const newVal = !audioEnabled;
-    setAudioEnabled(newVal);
-    await AsyncStorage.setItem("audio_feedback_enabled", newVal.toString());
-  };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
-      {device && cameraReady && (
-        <Camera
-          ref={cameraRef}
-          style={StyleSheet.absoluteFill}
-          device={device}
-          isActive={isFocused}
-          photo
-          enableShutterSound={false}
-        />
-      )}
-      <View
-        style={StyleSheet.absoluteFill}
-        onStartShouldSetResponder={() => true}
-        onResponderMove={handleTouchMove}
-        onResponderGrant={handleTouchMove}
-        onResponderRelease={(evt) => {
-          const { locationX, locationY } = evt.nativeEvent;
-          setCursorPosition({ x: locationX, y: locationY });
-          runDetection(locationX, locationY);
-        }}
+    <ScrollView style={styles.root} showsVerticalScrollIndicator={false}>
+      <Header
+        title="Expert Portal"
+        subtitle="Clinical Operations Center"
+        back
       />
+      <BackgroundBubbles />
 
-      <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
-        <View style={styles.camTopBar}>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={{ marginRight: 10 }}
-            >
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
-            </TouchableOpacity>
-            <View style={styles.camPill}>
-              <Text style={{ color: "#FFF", fontSize: 12, fontWeight: "bold" }}>
-                Color Identifier
-              </Text>
+      <View style={{ padding: 20 }}>
+        {/* 1. SYSTEM HEALTH MODULE[cite: 2] */}
+        <View style={styles.healthContainer}>
+          <HealthBadge label="Cloud DB" active />
+          <HealthBadge label="Auth Service" active />
+          <HealthBadge label="Encryption" active />
+        </View>
+
+        {/* 2. REAL-TIME STATS TICKER[cite: 2] */}
+        <MotiView
+          from={{ translateY: 20, opacity: 0 }}
+          animate={{ translateY: 0, opacity: 1 }}
+          transition={{ delay: 100 }}
+        >
+          <Card style={styles.statsCard}>
+            <Text style={styles.statsLabel}>GLOBAL RESEARCH DATASET</Text>
+            <Text style={styles.statsValue}>
+              {recordCount.toLocaleString()}
+            </Text>
+            <Text style={styles.statsSub}>
+              Anonymized diagnostic records synced
+            </Text>
+          </Card>
+        </MotiView>
+
+        <Text style={styles.sectionHeader}>ADMINISTRATION UTILITIES</Text>
+
+        {/* 3. FUNCTIONAL GRID[cite: 2, 3] */}
+        <View style={styles.grid}>
+          <GridCard
+            title="Analytics"
+            sub="CVD Trends"
+            icon="analytics"
+            color="#6200EA"
+            onPress={() => navigation.navigate("ResearchDashboard")}
+          />
+          <GridCard
+            title="CMS Manager"
+            sub="Edit Articles"
+            icon="document-text"
+            color="#0091EA"
+            onPress={() =>
+              Alert.alert(
+                "CMS Module",
+                "Article management in Read-Only for defense.",
+              )
+            }
+          />
+          <GridCard
+            title="Sandbox"
+            sub="Test App"
+            icon="flask"
+            color="#00C853"
+            onPress={() => navigation.navigate("MainTabs")}
+          />
+          <GridCard
+            title="Audit Log"
+            sub="Security"
+            icon="lock-closed"
+            color="#FF6D00"
+            onPress={() =>
+              Alert.alert(
+                "Audit Log",
+                "Compliance logs are encrypted per RA 10173.",
+              )
+            }
+          />
+        </View>
+
+        {/* 4. RECENT SYSTEM EVENTS LOG[cite: 3] */}
+        <Text style={styles.sectionHeader}>SYSTEM EVENT STREAM</Text>
+        <Card style={styles.logCard}>
+          {systemLogs.map((log) => (
+            <View key={log.id} style={styles.logItem}>
+              <Ionicons name={log.icon} size={16} color={COLORS.primary} />
+              <Text style={styles.logText}>{log.event}</Text>
+              <Text style={styles.logTime}>{log.time}</Text>
             </View>
-          </View>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <TouchableOpacity onPress={toggleAudio} style={{ marginRight: 15 }}>
-              <Ionicons
-                name={audioEnabled ? "volume-high" : "volume-mute"}
-                size={24}
-                color="#FFF"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowModal(true)}>
-              <Ionicons name="menu" size={28} color="#FFF" />
-            </TouchableOpacity>
-          </View>
-        </View>
+          ))}
+        </Card>
 
-        {/* Cursor UI... */}
-        <View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: cursorPosition.y - 50,
-            left: cursorPosition.x - 50,
-            width: 100,
-            height: 100,
-            justifyContent: "center",
-            alignItems: "center",
+        <TouchableOpacity
+          style={styles.logoutBtn}
+          onPress={() => {
+            signOut(auth);
+            navigation.replace("Login");
           }}
         >
-          <View
-            style={{
-              width: 2,
-              height: 50,
-              backgroundColor: "rgba(255,255,255,0.8)",
-              position: "absolute",
-            }}
-          />
-          <View
-            style={{
-              width: 50,
-              height: 2,
-              backgroundColor: "rgba(255,255,255,0.8)",
-              position: "absolute",
-            }}
-          />
-          <View
-            style={{
-              width: 20,
-              height: 20,
-              borderRadius: 10,
-              borderWidth: 2,
-              borderColor: "#FFF",
-            }}
-          />
-        </View>
-
-        <View
-          style={{
-            position: "absolute",
-            top: "60%",
-            alignSelf: "center",
-            pointerEvents: "none",
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: "rgba(0,0,0,0.85)",
-              padding: 15,
-              borderRadius: 12,
-              alignItems: "center",
-              minWidth: 150,
-            }}
-          >
-            <View
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 15,
-                backgroundColor: identifiedColor.hex,
-                marginBottom: 5,
-                borderWidth: 2,
-                borderColor: "#FFF",
-              }}
-            />
-            <Text style={{ color: "#FFF", fontWeight: "bold", fontSize: 16 }}>
-              {identifiedColor.name}
-            </Text>
-            <Text style={{ color: "#CCC", fontSize: 12 }}>
-              {isDetecting ? "Calculating..." : ""}
-            </Text>
-          </View>
-        </View>
-
-        {/* Navigation Overlays... */}
-      </SafeAreaView>
-      <ModeSelector
-        visible={showModal}
-        onClose={() => setShowModal(false)}
-        navigation={navigation}
-        currentMode="Identifier"
-      />
-    </View>
+          <Text style={styles.logoutText}>Terminate Expert Session</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
+
+// Helper Components
+const HealthBadge = ({ label, active }) => (
+  <View style={styles.healthBadge}>
+    <View
+      style={[styles.dot, { backgroundColor: active ? "#00C853" : "#D50000" }]}
+    />
+    <Text style={styles.healthLabel}>{label}</Text>
+  </View>
+);
+
+const GridCard = ({ title, sub, icon, color, onPress }) => (
+  <TouchableOpacity
+    style={[styles.gridCard, { borderTopColor: color }]}
+    onPress={onPress}
+  >
+    <Ionicons name={icon} size={28} color={color} />
+    <Text style={styles.gridTitle}>{title}</Text>
+    <Text style={styles.gridSub}>{sub}</Text>
+  </TouchableOpacity>
+);
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: COLORS.background },
+  healthContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  healthBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    padding: 8,
+    borderRadius: 20,
+    width: "31%",
+    ...SHADOW.sm,
+  },
+  dot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
+  healthLabel: { fontSize: 9, fontWeight: "bold", color: "#666" },
+  statsCard: {
+    padding: 25,
+    alignItems: "center",
+    backgroundColor: COLORS.primary,
+    marginBottom: 25,
+  },
+  statsLabel: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
+  statsValue: {
+    color: "#FFF",
+    fontSize: 48,
+    fontWeight: "900",
+    marginVertical: 4,
+  },
+  statsSub: { color: "rgba(255,255,255,0.8)", fontSize: 11 },
+  sectionHeader: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#999",
+    marginBottom: 12,
+    letterSpacing: 1,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginBottom: 25,
+  },
+  gridCard: {
+    backgroundColor: "#FFF",
+    width: "48%",
+    padding: 15,
+    borderRadius: 15,
+    marginBottom: 15,
+    borderTopWidth: 4,
+    ...SHADOW.sm,
+  },
+  gridTitle: {
+    fontSize: 15,
+    fontWeight: "bold",
+    marginTop: 10,
+    color: COLORS.text,
+  },
+  gridSub: { fontSize: 11, color: "#888", marginTop: 2 },
+  logCard: { padding: 15, backgroundColor: "#F8F9FF" },
+  logItem: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  logText: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 13,
+    color: "#444",
+    fontWeight: "500",
+  },
+  logTime: { fontSize: 11, color: "#999" },
+  logoutBtn: {
+    marginTop: 30,
+    padding: 15,
+    alignItems: "center",
+    marginBottom: 40,
+  },
+  logoutText: { color: "#D32F2F", fontWeight: "bold" },
+});
 </file>
 
 <file path="src/screens/EducationListScreen.js">
@@ -3749,224 +3345,6 @@ export default function EducationListScreen({ navigation }) {
 }
 </file>
 
-<file path="src/screens/HistoryScreen.js">
-import { Ionicons } from "@expo/vector-icons";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
-import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { auth, db, onAuthStateChanged } from "../../firebaseConfig";
-import BackgroundBubbles from "../components/BackgroundBubbles";
-import Card from "../components/Card";
-import Header from "../components/Header";
-import { COLORS } from "../theme/colors";
-import { styles } from "../theme/styles";
-
-export default function HistoryScreen({ navigation }) {
-  const [historyData, setHistoryData] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let unsubFirestore = null;
-
-    const unsubAuth = onAuthStateChanged(auth, (user) => {
-      if (unsubFirestore) {
-        unsubFirestore();
-        unsubFirestore = null;
-      }
-      if (!user) {
-        setHistoryData([]);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      const q = query(
-        collection(db, "users", user.uid, "history"),
-        orderBy("date", "desc"),
-      );
-      unsubFirestore = onSnapshot(
-        q,
-        (snap) => {
-          setHistoryData(
-            snap.docs.map((doc) => {
-              const d = doc.data();
-              return {
-                id: doc.id,
-                type: d.diagnosis || "Unknown",
-                score: d.score !== undefined ? d.score : "?",
-                total: d.total || 14,
-                severity: d.severity || "N/A",
-                date: d.date?.toDate
-                  ? d.date.toDate().toLocaleDateString()
-                  : "Just now",
-              };
-            }),
-          );
-          setLoading(false);
-        },
-        (err) => {
-          console.error("History fetch error:", err);
-          setLoading(false);
-        },
-      );
-    });
-
-    return () => {
-      unsubAuth();
-      if (unsubFirestore) unsubFirestore();
-    };
-  }, []);
-
-  return (
-    <View style={styles.container}>
-      <Header title="Your History" back />
-      <BackgroundBubbles />
-
-      {loading ? (
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      ) : historyData.length === 0 ? (
-        /* Conversational Empty State as per PDF Suggestions  */
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            padding: 30,
-          }}
-        >
-          {/* Approachable Illustration  */}
-          <View
-            style={{
-              backgroundColor: "#F0F2FF",
-              padding: 25,
-              borderRadius: 100,
-              marginBottom: 20,
-            }}
-          >
-            <Ionicons name="stats-chart" size={60} color={COLORS.primary} />
-          </View>
-
-          {/* Human Labels & Conversational Copy  */}
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "800",
-              color: "#1A1A2E",
-              textAlign: "center",
-            }}
-          >
-            Ready for your first screening?
-          </Text>
-
-          <Text
-            style={{
-              fontSize: 14,
-              color: "#4A4A4A",
-              textAlign: "center",
-              marginTop: 10,
-              lineHeight: 20,
-            }}
-          >
-            Take a 5-minute test to start tracking your color perception
-            journey. [cite: 68, 69]
-          </Text>
-
-          {/* Call to Action Button  */}
-          <TouchableOpacity
-            style={[
-              styles.btnPrimary,
-              { marginTop: 30, width: "100%", paddingVertical: 16 },
-            ]}
-            onPress={() => navigation.navigate("IshiharaIntro")}
-          >
-            <Text style={[styles.btnText, { fontSize: 16 }]}>
-              Take the test{" "}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <ScrollView contentContainerStyle={{ padding: 20 }}>
-          {historyData.map((item, index) => (
-            <Card key={index} style={{ marginBottom: 15, paddingVertical: 18 }}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <View style={{ flex: 1 }}>
-                  {/* Improved Color Contrast for Accessibility  */}
-                  <Text
-                    style={{
-                      fontSize: 17,
-                      fontWeight: "bold",
-                      color: "#1A1A2E",
-                    }}
-                  >
-                    {item.type}
-                  </Text>
-                  <Text
-                    style={{ fontSize: 13, color: "#4A4A4A", marginTop: 2 }}
-                  >
-                    Completed on {item.date}
-                  </Text>
-                </View>
-
-                <View style={{ alignItems: "flex-end", marginLeft: 10 }}>
-                  <Text
-                    style={{
-                      fontSize: 22,
-                      fontWeight: "800",
-                      color: COLORS.primary,
-                    }}
-                  >
-                    {item.score}/{item.total}
-                  </Text>
-                  <View
-                    style={{
-                      backgroundColor:
-                        item.severity === "Severe" ? "#FFEBEE" : "#FFF3E0",
-                      paddingHorizontal: 8,
-                      paddingVertical: 2,
-                      borderRadius: 6,
-                      marginTop: 4,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        fontWeight: "800",
-                        color:
-                          item.severity === "Severe"
-                            ? COLORS.danger
-                            : "#E65100",
-                      }}
-                    >
-                      {item.severity.toUpperCase()}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </Card>
-          ))}
-        </ScrollView>
-      )}
-    </View>
-  );
-}
-</file>
-
 <file path="src/screens/IshiharaIntroScreen.js">
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -4025,311 +3403,91 @@ export default function IshiharaIntroScreen({ navigation }) {
 }
 </file>
 
-<file path="src/screens/SignUp.js">
+<file path="src/screens/ProfileScreen.js">
 import { Ionicons } from "@expo/vector-icons";
-import { doc, setDoc } from "firebase/firestore"; // ADDED THIS
-import { MotiView } from "moti";
-import { useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import {
-  auth, // ADDED THIS
-  createUserWithEmailAndPassword,
-  db,
-  sendEmailVerification,
-} from "../../firebaseConfig";
-import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
+import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { auth } from "../../firebaseConfig";
+import BackgroundBubbles from "../components/BackgroundBubbles";
+import Card from "../components/Card";
+import { COLORS } from "../theme/colors";
 
-const APP_VERSION = "v1.0.5-thesis";
-
-export default function SignUp({ navigation }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPass, setShowPass] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const handleSignUp = async () => {
-    const targetEmail = email.trim();
-    if (!targetEmail || !password || !confirmPassword) {
-      Alert.alert("Missing Fields", "Please fill in all fields.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      Alert.alert("Password Mismatch", "Passwords do not match.");
-      return;
-    }
-
-    const passRegex =
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,14}$/;
-    if (!passRegex.test(password)) {
-      Alert.alert(
-        "Weak Password",
-        "Use 6-14 characters with uppercase, lowercase, number, and special character.",
-      );
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // 1. Create the Auth User
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        targetEmail,
-        password,
-      );
-
-      // 2. CREATE FIRESTORE DOCUMENT (The "Badge")
-      // This ensures every user has a role record indexed by their UID
-      await setDoc(doc(db, "users", userCredential.user.uid), {
-        email: targetEmail,
-        role: "user", // Default role
-        createdAt: new Date().toISOString(),
-      });
-
-      // 3. Send Verification (RA 10173 Compliance)
-      await sendEmailVerification(userCredential.user);
-
-      Alert.alert(
-        "Verification Sent",
-        `A secure link has been sent to ${targetEmail}. Please verify your email before logging in.`,
-        [{ text: "Go to Login", onPress: () => navigation.replace("Login") }],
-      );
-    } catch (err) {
-      if (err.code === "auth/email-already-in-use") {
-        Alert.alert("Account Exists", "This email is already registered.");
-      } else {
-        Alert.alert("Sign Up Error", err.message);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+export default function ProfileScreen({ navigation }) {
+  const userEmail = auth.currentUser?.email || "Guest";
+  const userName = userEmail.split("@")[0];
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <View style={styles.blob1} />
-      <View style={styles.blob2} />
-      <View style={styles.blob3} />
+    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+      <BackgroundBubbles />
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={{ padding: 20 }}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
       >
-        <MotiView
-          from={{ opacity: 0, translateY: -20 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: "spring", damping: 18 }}
-          style={styles.logoWrap}
+        <View
+          style={{
+            marginTop: 20,
+            marginBottom: 20,
+            flexDirection: "row",
+            alignItems: "center",
+          }}
         >
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: "#666", fontSize: 16 }}>
+              Hello, {userName}
+            </Text>
+            <Text style={{ fontSize: 24, fontWeight: "bold", color: "#333" }}>
+              Welcome to ReColor
+            </Text>
+          </View>
           <Image
-            source={require("../../assets/logo_stack.png")}
-            style={styles.logo}
-            resizeMode="contain"
+            source={require("../../assets/icon.png")}
+            style={{
+              width: 120,
+              height: 120,
+              resizeMode: "contain",
+              marginRight: 40,
+            }}
           />
-        </MotiView>
-        <MotiView
-          from={{ opacity: 0, translateY: 30 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: "spring", damping: 18, delay: 150 }}
-          style={styles.card}
-        >
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>
-            Join ReColor to track your colour perception
+        </View>
+
+        <Card style={{ alignItems: "center", paddingVertical: 30 }}>
+          <View
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: 40,
+              backgroundColor: COLORS.primary,
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 15,
+              elevation: 5,
+            }}
+          >
+            <Ionicons name="person" size={40} color="#FFF" />
+          </View>
+          <Text style={{ fontSize: 20, fontWeight: "bold", color: "#333" }}>
+            {userName}
           </Text>
-          <View style={styles.inputRow}>
-            <Ionicons name="mail-outline" size={18} color={COLORS.textLight} />
-            <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-          </View>
-          <View style={styles.inputRow}>
-            <Ionicons name="key-outline" size={18} color={COLORS.textLight} />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPass}
-            />
-            <TouchableOpacity onPress={() => setShowPass(!showPass)}>
-              <Ionicons
-                name={showPass ? "eye-off-outline" : "eye-outline"}
-                size={18}
-                color={COLORS.textLight}
-              />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.inputRow}>
-            <Ionicons
-              name="shield-checkmark-outline"
-              size={18}
-              color={COLORS.textLight}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm password"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirm}
-            />
-            <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
-              <Ionicons
-                name={showConfirm ? "eye-off-outline" : "eye-outline"}
-                size={18}
-                color={COLORS.textLight}
-              />
-            </TouchableOpacity>
-          </View>
+          <Text style={{ color: "#888", marginBottom: 25 }}>{userEmail}</Text>
           <TouchableOpacity
-            style={styles.signUpBtn}
-            onPress={handleSignUp}
-            disabled={loading}
+            style={{
+              backgroundColor: "#E8EAF6",
+              paddingVertical: 12,
+              paddingHorizontal: 40,
+              borderRadius: 8,
+              width: "100%",
+              alignItems: "center",
+            }}
+            onPress={() => navigation.navigate("Settings")}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.signUpBtnText}>Create Account</Text>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.loginLink}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.loginLinkText}>
-              Already have an account?{" "}
-              <Text style={{ color: COLORS.primary, fontWeight: "700" }}>
-                Log In
-              </Text>
+            <Text style={{ color: "#333", fontWeight: "600" }}>
+              Manage Settings
             </Text>
           </TouchableOpacity>
-        </MotiView>
-        <View style={styles.versionBadge}>
-          <Text style={styles.versionText}>{APP_VERSION}</Text>
-        </View>
+        </Card>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.background },
-  blob1: {
-    position: "absolute",
-    top: -60,
-    left: -60,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: "#FFCDD2",
-    opacity: 0.45,
-  },
-  blob2: {
-    position: "absolute",
-    bottom: -80,
-    right: -60,
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: "#BBDEFB",
-    opacity: 0.4,
-  },
-  blob3: {
-    position: "absolute",
-    top: "40%",
-    right: -40,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: "#E1BEE7",
-    opacity: 0.35,
-  },
-  scroll: {
-    flexGrow: 1,
-    justifyContent: "center",
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xl,
-  },
-  logoWrap: { alignItems: "center", marginBottom: SPACING.lg },
-  logo: { width: 180, height: 100 },
-  card: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-    ...SHADOW.lg,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: COLORS.text,
-    textAlign: "center",
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    textAlign: "center",
-    marginBottom: SPACING.lg,
-  },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 12,
-    marginBottom: SPACING.sm,
-    backgroundColor: COLORS.background,
-    gap: SPACING.sm,
-  },
-  input: { flex: 1, fontSize: 15, color: COLORS.text },
-  signUpBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.md,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: SPACING.md,
-    ...SHADOW.sm,
-  },
-  signUpBtnText: { color: "#FFF", fontWeight: "700", fontSize: 16 },
-  loginLink: {
-    alignItems: "center",
-    marginTop: SPACING.md,
-    padding: SPACING.sm,
-  },
-  loginLinkText: { fontSize: 14, color: COLORS.textLight },
-  versionBadge: {
-    alignSelf: "center",
-    marginTop: SPACING.lg,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: COLORS.surfaceAlt,
-  },
-  versionText: { fontSize: 11, color: COLORS.primary, fontWeight: "600" },
-});
 </file>
 
 <file path="src/theme/colors.js">
@@ -5134,6 +4292,1844 @@ const styles = StyleSheet.create({
   },
   quickWinText: { flex: 1, fontSize: 13, color: COLORS.text, lineHeight: 19 },
 });
+</file>
+
+<file path="src/screens/ColorIdentifierScreen.js">
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useIsFocused } from "@react-navigation/native";
+import * as ImageManipulator from "expo-image-manipulator";
+import * as Speech from "expo-speech"; // Integrated for Objective 2
+import { useEffect, useRef, useState } from "react";
+import {
+  Dimensions,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from "react-native";
+import {
+  Camera,
+  useCameraDevice,
+  useCameraPermission,
+} from "react-native-vision-camera";
+import { decodeJpegBase64, identifyColor } from "../../tensorHelper";
+import ModeSelector from "../components/ModeSelector";
+import { styles } from "../theme/styles";
+import { ScreenErrorBoundary } from "../utils/logger";
+
+const { width, height: screenHeight } = Dimensions.get("window");
+
+function ColorIdentifierScreenInner({ navigation }) {
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const isFocused = useIsFocused();
+  const [cameraPosition, setCameraPosition] = useState("back");
+  const [audio, setAudio] = useState(false); // Default to false
+  const [showModal, setShowModal] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState({
+    x: width / 2,
+    y: screenHeight / 2,
+  });
+  const [identifiedColor, setIdentifiedColor] = useState({
+    name: "Ready to Scan",
+    hex: "#333",
+    conf: "",
+  });
+  const [isDetecting, setIsDetecting] = useState(false);
+
+  const cameraRef = useRef(null);
+  const isProcessingRef = useRef(false);
+  const isMountedRef = useRef(true);
+  const device = useCameraDevice(cameraPosition);
+
+  // Sync with global settings on mount
+  useEffect(() => {
+    const syncAudio = async () => {
+      const saved = await AsyncStorage.getItem("audio_feedback_enabled");
+      setAudio(saved === "true");
+    };
+    syncAudio();
+  }, [isFocused]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    const timer = setTimeout(() => {
+      if (isMountedRef.current) setCameraReady(true);
+    }, 700);
+    return () => {
+      isMountedRef.current = false;
+      clearTimeout(timer);
+    };
+  }, []);
+
+  if (!hasPermission) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <Text style={{ marginBottom: 20 }}>Camera access is needed.</Text>
+        <TouchableOpacity style={styles.btnPrimary} onPress={requestPermission}>
+          <Text style={styles.btnText}>Grant Permission</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const runDetection = async (cx, cy) => {
+    if (!cameraRef.current || isProcessingRef.current) return;
+    isProcessingRef.current = true;
+    setIsDetecting(true);
+
+    try {
+      const photo = await cameraRef.current.takePhoto({
+        qualityPrioritization: "speed",
+        enableShutterSound: false,
+      });
+      const fileUri = `file://${photo.path}`;
+
+      const resized = await ImageManipulator.manipulateAsync(
+        fileUri,
+        [{ resize: { width: 640 } }],
+        {
+          base64: true,
+          format: ImageManipulator.SaveFormat.JPEG,
+          compress: 0.95,
+        },
+      );
+
+      const decoded = decodeJpegBase64(resized.base64);
+      const imgW = resized.width;
+      const imgH = resized.height;
+
+      // Maintain your original aspect ratio mapping logic
+      const screenAspect = width / screenHeight;
+      const photoAspect = imgW / imgH;
+      let pixX, pixY;
+
+      if (photoAspect > screenAspect) {
+        const visibleW = screenAspect * imgH;
+        const offsetX = (imgW - visibleW) / 2;
+        pixX = Math.round(offsetX + (cx / width) * visibleW);
+        pixY = Math.round((cy / screenHeight) * imgH);
+      } else {
+        const visibleH = imgW / screenAspect;
+        const offsetY = (imgH - visibleH) / 2;
+        pixX = Math.round((cx / width) * imgW);
+        pixY = Math.round(offsetY + (cy / screenHeight) * visibleH);
+      }
+
+      // Pixel averaging logic
+      const half = 5;
+      const x0 = Math.max(0, pixX - half),
+        y0 = Math.max(0, pixY - half);
+      const x1 = Math.min(imgW, pixX + half),
+        y1 = Math.min(imgH, pixY + half);
+      let avgR = 0,
+        avgG = 0,
+        avgB = 0,
+        count = 0;
+
+      for (let py = y0; py < y1; py++) {
+        for (let px = x0; px < x1; px++) {
+          const idx = (py * imgW + px) * 4;
+          avgR += decoded.data[idx];
+          avgG += decoded.data[idx + 1];
+          avgB += decoded.data[idx + 2];
+          count++;
+        }
+      }
+      avgR = Math.round(avgR / count);
+      avgG = Math.round(avgG / count);
+      avgB = Math.round(avgB / count);
+
+      const result = identifyColor(avgR, avgG, avgB);
+      const sampledHex =
+        "#" +
+        [avgR, avgG, avgB].map((c) => c.toString(16).padStart(2, "0")).join("");
+
+      if (isMountedRef.current) {
+        setIdentifiedColor({
+          name: result.className,
+          hex: sampledHex,
+          conf: `${result.confidence}%`,
+        });
+
+        // Trigger Audio Feedback if enabled
+        if (audio) {
+          Speech.stop();
+          Speech.speak(result.className, { rate: 1.0 });
+        }
+      }
+    } catch (e) {
+      console.log("[ColorID] detection error:", e);
+    } finally {
+      isProcessingRef.current = false;
+      if (isMountedRef.current) setIsDetecting(false);
+    }
+  };
+
+  const toggleAudio = async () => {
+    const newVal = !audio;
+    setAudio(newVal);
+    await AsyncStorage.setItem("audio_feedback_enabled", newVal.toString());
+  };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: "#000" }}>
+      {device && cameraReady && (
+        <Camera
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          device={device}
+          isActive={isFocused}
+          photo
+          enableShutterSound={false}
+        />
+      )}
+      <View
+        style={StyleSheet.absoluteFill}
+        onStartShouldSetResponder={() => true}
+        onResponderMove={(evt) =>
+          setCursorPosition({
+            x: evt.nativeEvent.locationX,
+            y: evt.nativeEvent.locationY,
+          })
+        }
+        onResponderRelease={(evt) => {
+          setCursorPosition({
+            x: evt.nativeEvent.locationX,
+            y: evt.nativeEvent.locationY,
+          });
+          runDetection(evt.nativeEvent.locationX, evt.nativeEvent.locationY);
+        }}
+      />
+
+      <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
+        <View style={styles.camTopBar}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={{ marginRight: 10 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
+            <View style={styles.camPill}>
+              <Text style={{ color: "#FFF", fontSize: 12, fontWeight: "bold" }}>
+                Color Identifier
+              </Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity onPress={toggleAudio} style={{ marginRight: 15 }}>
+              <Ionicons
+                name={audio ? "volume-high" : "volume-mute"}
+                size={24}
+                color="#FFF"
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowModal(true)}>
+              <Ionicons name="menu" size={28} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Reticle */}
+        <View
+          pointerEvents="none"
+          style={[
+            localStyles.cursor,
+            { top: cursorPosition.y - 50, left: cursorPosition.x - 50 },
+          ]}
+        >
+          <View style={localStyles.reticleLineV} />
+          <View style={localStyles.reticleLineH} />
+          <View style={localStyles.reticleCircle} />
+        </View>
+
+        {/* Result Card */}
+        <View style={localStyles.resultCardContainer}>
+          <View style={localStyles.resultCard}>
+            <View
+              style={[
+                localStyles.colorPreview,
+                { backgroundColor: identifiedColor.hex },
+              ]}
+            />
+            <Text style={localStyles.colorName}>{identifiedColor.name}</Text>
+            <Text style={localStyles.calculatingText}>
+              {isDetecting ? "Calculating..." : ""}
+            </Text>
+          </View>
+        </View>
+
+        <ModeSelector
+          visible={showModal}
+          onClose={() => setShowModal(false)}
+          navigation={navigation}
+          currentMode="Identifier"
+        />
+      </SafeAreaView>
+    </View>
+  );
+}
+
+const localStyles = StyleSheet.create({
+  cursor: {
+    position: "absolute",
+    width: 100,
+    height: 100,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  reticleLineV: {
+    width: 2,
+    height: 50,
+    backgroundColor: "rgba(255,255,255,0.8)",
+    position: "absolute",
+  },
+  reticleLineH: {
+    width: 50,
+    height: 2,
+    backgroundColor: "rgba(255,255,255,0.8)",
+    position: "absolute",
+  },
+  reticleCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#FFF",
+  },
+  resultCardContainer: {
+    position: "absolute",
+    top: "60%",
+    alignSelf: "center",
+    pointerEvents: "none",
+  },
+  resultCard: {
+    backgroundColor: "rgba(0,0,0,0.85)",
+    padding: 15,
+    borderRadius: 12,
+    alignItems: "center",
+    minWidth: 150,
+  },
+  colorPreview: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    marginBottom: 5,
+    borderWidth: 2,
+    borderColor: "#FFF",
+  },
+  colorName: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
+  calculatingText: { color: "#CCC", fontSize: 12 },
+});
+
+// DEFAULT EXPORT (Must match your navigator import)
+export default function ColorIdentifierScreen(props) {
+  return (
+    <ScreenErrorBoundary navigation={props.navigation}>
+      <ColorIdentifierScreenInner {...props} />
+    </ScreenErrorBoundary>
+  );
+}
+</file>
+
+<file path="src/screens/HistoryScreen.js">
+import { Ionicons } from "@expo/vector-icons";
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { auth, db, onAuthStateChanged } from "../../firebaseConfig";
+import BackgroundBubbles from "../components/BackgroundBubbles";
+import Card from "../components/Card";
+import Header from "../components/Header";
+import { COLORS } from "../theme/colors";
+import { styles } from "../theme/styles";
+
+export default function HistoryScreen({ navigation }) {
+  const [historyData, setHistoryData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let unsubFirestore = null;
+
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (unsubFirestore) {
+        unsubFirestore();
+        unsubFirestore = null;
+      }
+      if (!user) {
+        setHistoryData([]);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      const q = query(
+        collection(db, "users", user.uid, "history"),
+        orderBy("date", "desc"),
+      );
+      unsubFirestore = onSnapshot(
+        q,
+        (snap) => {
+          setHistoryData(
+            snap.docs.map((doc) => {
+              const d = doc.data();
+              return {
+                id: doc.id,
+                type: d.diagnosis || "Unknown",
+                score: d.score !== undefined ? d.score : "?",
+                total: d.total || 14,
+                severity: d.severity || "N/A",
+                date: d.date?.toDate
+                  ? d.date.toDate().toLocaleDateString()
+                  : "Just now",
+              };
+            }),
+          );
+          setLoading(false);
+        },
+        (err) => {
+          console.error("History fetch error:", err);
+          setLoading(false);
+        },
+      );
+    });
+
+    return () => {
+      unsubAuth();
+      if (unsubFirestore) unsubFirestore();
+    };
+  }, []);
+
+  return (
+    <View style={styles.container}>
+      <Header title="Your History" back />
+      <BackgroundBubbles />
+
+      {loading ? (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : historyData.length === 0 ? (
+        /* Conversational Empty State as per PDF Suggestions  */
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 30,
+          }}
+        >
+          {/* Approachable Illustration  */}
+          <View
+            style={{
+              backgroundColor: "#F0F2FF",
+              padding: 25,
+              borderRadius: 100,
+              marginBottom: 20,
+            }}
+          >
+            <Ionicons name="stats-chart" size={60} color={COLORS.primary} />
+          </View>
+
+          {/* Human Labels & Conversational Copy  */}
+          <Text
+            style={{
+              fontSize: 20,
+              fontWeight: "800",
+              color: "#1A1A2E",
+              textAlign: "center",
+            }}
+          >
+            Ready for your first screening?
+          </Text>
+
+          <Text
+            style={{
+              fontSize: 14,
+              color: "#4A4A4A",
+              textAlign: "center",
+              marginTop: 10,
+              lineHeight: 20,
+            }}
+          >
+            Take a 5-minute test to start tracking your color perception
+            journey. [cite: 68, 69]
+          </Text>
+
+          {/* Call to Action Button  */}
+          <TouchableOpacity
+            style={[
+              styles.btnPrimary,
+              { marginTop: 30, width: "100%", paddingVertical: 16 },
+            ]}
+            onPress={() => navigation.navigate("IshiharaIntro")}
+          >
+            <Text style={[styles.btnText, { fontSize: 16 }]}>
+              Take the test{" "}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={{ padding: 20 }}>
+          {historyData.map((item, index) => (
+            <Card key={index} style={{ marginBottom: 15, paddingVertical: 18 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  {/* Improved Color Contrast for Accessibility  */}
+                  <Text
+                    style={{
+                      fontSize: 17,
+                      fontWeight: "bold",
+                      color: "#1A1A2E",
+                    }}
+                  >
+                    {item.type}
+                  </Text>
+                  <Text
+                    style={{ fontSize: 13, color: "#4A4A4A", marginTop: 2 }}
+                  >
+                    Completed on {item.date}
+                  </Text>
+                </View>
+
+                <View style={{ alignItems: "flex-end", marginLeft: 10 }}>
+                  <Text
+                    style={{
+                      fontSize: 22,
+                      fontWeight: "800",
+                      color: COLORS.primary,
+                    }}
+                  >
+                    {item.score}/{item.total}
+                  </Text>
+                  <View
+                    style={{
+                      backgroundColor:
+                        item.severity === "Severe" ? "#FFEBEE" : "#FFF3E0",
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
+                      borderRadius: 6,
+                      marginTop: 4,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: "800",
+                        color:
+                          item.severity === "Severe"
+                            ? COLORS.danger
+                            : "#E65100",
+                      }}
+                    >
+                      {item.severity.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </Card>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+</file>
+
+<file path="src/screens/IshiharaOnboarding.js">
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MotiView } from "moti";
+import { useEffect, useRef, useState } from "react";
+import {
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
+
+const { width } = Dimensions.get("window");
+
+const INSTRUCTIONS = [
+  {
+    id: "1",
+    step: 1,
+    icon: "sunny-outline",
+    iconBg: "#FFF3E0",
+    iconColor: "#FF9F43",
+    label: "SCREEN LUMINOSITY",
+    title: "Min. 80% Brightness",
+    points: [
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Set screen brightness to at least 80%",
+      },
+      {
+        icon: "ellipse",
+        color: "#CCC",
+        text: "App will automatically verify your brightness level",
+      },
+      {
+        icon: "close-circle",
+        color: COLORS.danger,
+        text: "Dim screens distort colour perception",
+      },
+    ],
+    tip: "Like pre-flight checks: Just as pilots verify all instruments before takeoff, ensure your screen brightness is optimal.",
+    cta: "Next: Lighting Conditions",
+  },
+  {
+    id: "2",
+    step: 2,
+    icon: "bulb-outline",
+    iconBg: "#E8F5E9",
+    iconColor: "#2ECC71",
+    label: "LIGHTING CONDITIONS",
+    title: "Natural or White Light",
+    points: [
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Sit in a well-lit room with white light",
+      },
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Avoid direct sunlight on screen (glare)",
+      },
+      {
+        icon: "close-circle",
+        color: COLORS.danger,
+        text: "Avoid yellow incandescent lighting",
+      },
+    ],
+    tip: "Coloured ambient light shifts your perception of hues and can produce false results.",
+    cta: "Next: Viewing Distance",
+  },
+  {
+    id: "3",
+    step: 3,
+    icon: "expand-outline",
+    iconBg: "#E3F2FD",
+    iconColor: "#2196F3",
+    label: "VIEWING DISTANCE",
+    title: "35–75 cm Distance",
+    points: [
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Hold device 35–75 cm (arm's length) away",
+      },
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Plates fill your central vision field",
+      },
+      {
+        icon: "close-circle",
+        color: COLORS.danger,
+        text: "Too close or too far skews the test",
+      },
+    ],
+    tip: "The Ishihara test is calibrated for a specific viewing angle. Distance consistency matters.",
+    cta: "Next: Time Limit",
+  },
+  {
+    id: "4",
+    step: 4,
+    icon: "timer-outline",
+    iconBg: "#FCE4EC",
+    iconColor: "#FF4081",
+    label: "TIME LIMIT",
+    title: "3-Second Rule",
+    points: [
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Each plate is visible for 3 seconds",
+      },
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Enter your answer using the numpad",
+      },
+      {
+        icon: "close-circle",
+        color: COLORS.danger,
+        text: "Do not guess — trust your first impression",
+      },
+    ],
+    tip: "Prolonged viewing allows non-colour cues (size, density) to bias the result. Your first impression is the most clinically valid.",
+    cta: "Next: Corrective Lenses",
+  },
+  {
+    id: "5",
+    step: 5,
+    icon: "glasses-outline",
+    iconBg: "#EDE7F6",
+    iconColor: "#6C63FF",
+    label: "CORRECTIVE LENSES",
+    title: "Glasses & Contact Lenses",
+    points: [
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Wear your usual prescription lenses",
+      },
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Standard clear lenses are fine",
+      },
+      {
+        icon: "close-circle",
+        color: COLORS.danger,
+        text: "Remove tinted or coloured contact lenses",
+      },
+    ],
+    tip: "Tinted lenses alter colour perception. Clear prescription lenses do not affect Ishihara results.",
+    cta: "Next: Environment",
+  },
+  {
+    id: "6",
+    step: 6,
+    icon: "home-outline",
+    iconBg: "#E8F5E9",
+    iconColor: "#2ECC71",
+    label: "ENVIRONMENT",
+    title: "Quiet, Distraction-Free",
+    points: [
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Find a calm, quiet environment",
+      },
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Do not rush — take each plate seriously",
+      },
+      {
+        icon: "close-circle",
+        color: COLORS.danger,
+        text: "Avoid testing when fatigued or stressed",
+      },
+    ],
+    tip: "Visual fatigue affects colour discrimination. Best results are obtained when well-rested.",
+    cta: "I'm Ready",
+    isFinal: true,
+  },
+];
+
+function InstructionSlide({ item, onNext, isFinal, onBegin }) {
+  return (
+    <View style={[styles.slide, { width }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Header card */}
+        <MotiView
+          from={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", damping: 18 }}
+          style={styles.headerCard}
+        >
+          <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
+            <Ionicons name={item.icon} size={28} color={item.iconColor} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>{item.label}</Text>
+            <Text style={styles.cardTitle}>{item.title}</Text>
+          </View>
+        </MotiView>
+
+        {/* Checklist */}
+        <MotiView
+          from={{ opacity: 0, translateY: 16 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "spring", damping: 18, delay: 150 }}
+          style={styles.checklistCard}
+        >
+          <View style={styles.checklistHeader}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.checklistLabel}>
+              PREPARATION CHECKLIST · {INSTRUCTIONS.length} REQUIREMENTS
+            </Text>
+            <View style={styles.dividerLine} />
+          </View>
+          {item.points.map((pt, i) => (
+            <View key={i} style={styles.pointRow}>
+              <Ionicons name={pt.icon} size={20} color={pt.color} />
+              <Text style={styles.pointText}>{pt.text}</Text>
+            </View>
+          ))}
+        </MotiView>
+
+        {/* Tip */}
+        {item.tip && (
+          <MotiView
+            from={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 300 }}
+            style={styles.tipCard}
+          >
+            <Text style={styles.tipText}>
+              <Text style={{ fontWeight: "700", color: COLORS.primary }}>
+                Tip:{" "}
+              </Text>
+              {item.tip}
+            </Text>
+          </MotiView>
+        )}
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
+
+      {/* CTA */}
+      <View style={styles.ctaContainer}>
+        <TouchableOpacity
+          style={styles.ctaBtn}
+          onPress={isFinal ? onBegin : onNext}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.ctaText}>{item.cta}</Text>
+        </TouchableOpacity>
+        <Text style={styles.ctaHint}>
+          The test takes approximately 3–5 minutes
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+export default function IshiharaOnboarding({ navigation, route }) {
+  const { testType = "comprehensive" } = route?.params || {};
+  const scrollRef = useRef(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [hasSeen, setHasSeen] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem("@seen_ishihara_onboard").then((val) => {
+      if (val === "1") setHasSeen(true);
+    });
+  }, []);
+
+  const goNext = () => {
+    if (currentIndex < INSTRUCTIONS.length - 1) {
+      const next = currentIndex + 1;
+      scrollRef.current?.scrollTo({ x: next * width, animated: true });
+      setCurrentIndex(next);
+    }
+  };
+
+  const begin = () => {
+    AsyncStorage.setItem("@seen_ishihara_onboard", "1");
+    navigation.replace("IshiharaTest", { testType });
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Top bar */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+        >
+          <Ionicons name="arrow-back" size={22} color={COLORS.text} />
+        </TouchableOpacity>
+        <Text style={styles.topTitle}>Before You Begin</Text>
+        {hasSeen ? (
+          <TouchableOpacity onPress={begin}>
+            <Text style={{ color: COLORS.primary, fontWeight: "700" }}>
+              Skip
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <Image
+            source={require("../../assets/icon.png")}
+            style={{ width: 36, height: 36, resizeMode: "contain" }}
+          />
+        )}
+      </View>
+
+      {/* Progress dots */}
+      <View style={styles.dotsRow}>
+        {INSTRUCTIONS.map((_, i) => (
+          <MotiView
+            key={i}
+            animate={{
+              width: i === currentIndex ? 20 : 6,
+              opacity: i === currentIndex ? 1 : 0.3,
+            }}
+            transition={{ type: "spring", damping: 18 }}
+            style={[styles.dot, { backgroundColor: COLORS.primary }]}
+          />
+        ))}
+      </View>
+
+      {/* Sticky disclaimer */}
+      <View style={styles.disclaimerBanner}>
+        <Ionicons name="warning-outline" size={13} color="#F59E0B" />
+        <Text style={styles.disclaimerText}>
+          NOT A MEDICAL DIAGNOSIS — SCREENING PURPOSE ONLY
+        </Text>
+      </View>
+
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEnabled={false}
+      >
+        {INSTRUCTIONS.map((item, index) => (
+          <InstructionSlide
+            key={item.id}
+            item={item}
+            onNext={goNext}
+            isFinal={index === INSTRUCTIONS.length - 1}
+            onBegin={begin}
+          />
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.background },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: SPACING.md,
+    paddingTop: 52,
+    paddingBottom: SPACING.sm,
+    backgroundColor: COLORS.card,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  backBtn: { padding: 4 },
+  topTitle: { fontSize: 16, fontWeight: "700", color: COLORS.text },
+  eyeCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: SPACING.sm,
+    backgroundColor: COLORS.card,
+  },
+  dot: { height: 6, borderRadius: 3 },
+  disclaimerBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#FFF8E1",
+    paddingVertical: 6,
+  },
+  disclaimerText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#F59E0B",
+    letterSpacing: 0.5,
+  },
+  slide: { flex: 1 },
+  scrollContent: { padding: SPACING.md, gap: SPACING.md },
+  headerCard: {
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.md,
+    ...SHADOW.md,
+  },
+  iconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  label: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+    color: "rgba(255,255,255,0.7)",
+  },
+  cardTitle: { fontSize: 18, fontWeight: "800", color: "#FFF", marginTop: 2 },
+  checklistCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    gap: SPACING.md,
+    ...SHADOW.sm,
+  },
+  checklistHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
+  checklistLabel: {
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+    color: COLORS.textLight,
+  },
+  pointRow: { flexDirection: "row", alignItems: "flex-start", gap: SPACING.sm },
+  pointText: { flex: 1, fontSize: 14, color: COLORS.text, lineHeight: 20 },
+  tipCard: {
+    backgroundColor: COLORS.surfaceAlt,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primary,
+  },
+  tipText: { fontSize: 13, color: COLORS.text, lineHeight: 20 },
+  ctaContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.card,
+    padding: SPACING.md,
+    paddingBottom: SPACING.xl,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    gap: SPACING.sm,
+  },
+  ctaBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.lg,
+    paddingVertical: 16,
+    alignItems: "center",
+    ...SHADOW.md,
+  },
+  ctaText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  ctaHint: { fontSize: 12, color: COLORS.textLight, textAlign: "center" },
+});
+</file>
+
+<file path="src/screens/SignUp.js">
+import { Ionicons } from "@expo/vector-icons";
+import { doc, setDoc } from "firebase/firestore"; // ADDED THIS
+import { MotiView } from "moti";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import {
+  auth, // ADDED THIS
+  createUserWithEmailAndPassword,
+  db,
+  sendEmailVerification,
+} from "../../firebaseConfig";
+import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
+
+const APP_VERSION = "v1.0.5-thesis";
+
+export default function SignUp({ navigation }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSignUp = async () => {
+    const targetEmail = email.trim();
+    if (!targetEmail || !password || !confirmPassword) {
+      Alert.alert("Missing Fields", "Please fill in all fields.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert("Password Mismatch", "Passwords do not match.");
+      return;
+    }
+
+    const passRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,14}$/;
+    if (!passRegex.test(password)) {
+      Alert.alert(
+        "Weak Password",
+        "Use 6-14 characters with uppercase, lowercase, number, and special character.",
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 1. Create the Auth User
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        targetEmail,
+        password,
+      );
+
+      // 2. CREATE FIRESTORE DOCUMENT (The "Badge")
+      // This ensures every user has a role record indexed by their UID
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        email: targetEmail,
+        role: "user", // Default role
+        createdAt: new Date().toISOString(),
+      });
+
+      // 3. Send Verification (RA 10173 Compliance)
+      await sendEmailVerification(userCredential.user);
+
+      Alert.alert(
+        "Verification Sent",
+        `A secure link has been sent to ${targetEmail}. Please verify your email before logging in.`,
+        [{ text: "Go to Login", onPress: () => navigation.replace("Login") }],
+      );
+    } catch (err) {
+      if (err.code === "auth/email-already-in-use") {
+        Alert.alert("Account Exists", "This email is already registered.");
+      } else {
+        Alert.alert("Sign Up Error", err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <View style={styles.blob1} />
+      <View style={styles.blob2} />
+      <View style={styles.blob3} />
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <MotiView
+          from={{ opacity: 0, translateY: -20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "spring", damping: 18 }}
+          style={styles.logoWrap}
+        >
+          <Image
+            source={require("../../assets/logo_stack.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </MotiView>
+        <MotiView
+          from={{ opacity: 0, translateY: 30 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "spring", damping: 18, delay: 150 }}
+          style={styles.card}
+        >
+          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.subtitle}>
+            Join ReColor to track your colour perception
+          </Text>
+          <View style={styles.inputRow}>
+            <Ionicons name="mail-outline" size={18} color={COLORS.textLight} />
+            <TextInput
+              style={styles.input}
+              placeholder="you@example.com"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+          </View>
+          <View style={styles.inputRow}>
+            <Ionicons name="key-outline" size={18} color={COLORS.textLight} />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPass}
+            />
+            <TouchableOpacity onPress={() => setShowPass(!showPass)}>
+              <Ionicons
+                name={showPass ? "eye-off-outline" : "eye-outline"}
+                size={18}
+                color={COLORS.textLight}
+              />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.inputRow}>
+            <Ionicons
+              name="shield-checkmark-outline"
+              size={18}
+              color={COLORS.textLight}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirm}
+            />
+            <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
+              <Ionicons
+                name={showConfirm ? "eye-off-outline" : "eye-outline"}
+                size={18}
+                color={COLORS.textLight}
+              />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            style={styles.signUpBtn}
+            onPress={handleSignUp}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.signUpBtnText}>Create Account</Text>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.loginLink}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.loginLinkText}>
+              Already have an account?{" "}
+              <Text style={{ color: COLORS.primary, fontWeight: "700" }}>
+                Log In
+              </Text>
+            </Text>
+          </TouchableOpacity>
+        </MotiView>
+        <View style={styles.versionBadge}>
+          <Text style={styles.versionText}>{APP_VERSION}</Text>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: COLORS.background },
+  blob1: {
+    position: "absolute",
+    top: -60,
+    left: -60,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: "#FFCDD2",
+    opacity: 0.45,
+  },
+  blob2: {
+    position: "absolute",
+    bottom: -80,
+    right: -60,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: "#BBDEFB",
+    opacity: 0.4,
+  },
+  blob3: {
+    position: "absolute",
+    top: "40%",
+    right: -40,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: "#E1BEE7",
+    opacity: 0.35,
+  },
+  scroll: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xl,
+  },
+  logoWrap: { alignItems: "center", marginBottom: SPACING.lg },
+  logo: { width: 180, height: 100 },
+  card: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    ...SHADOW.lg,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: COLORS.text,
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: COLORS.textLight,
+    textAlign: "center",
+    marginBottom: SPACING.lg,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 12,
+    marginBottom: SPACING.sm,
+    backgroundColor: COLORS.background,
+    gap: SPACING.sm,
+  },
+  input: { flex: 1, fontSize: 15, color: COLORS.text },
+  signUpBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: SPACING.md,
+    ...SHADOW.sm,
+  },
+  signUpBtnText: { color: "#FFF", fontWeight: "700", fontSize: 16 },
+  loginLink: {
+    alignItems: "center",
+    marginTop: SPACING.md,
+    padding: SPACING.sm,
+  },
+  loginLinkText: { fontSize: 14, color: COLORS.textLight },
+  versionBadge: {
+    alignSelf: "center",
+    marginTop: SPACING.lg,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: COLORS.surfaceAlt,
+  },
+  versionText: { fontSize: 11, color: COLORS.primary, fontWeight: "600" },
+});
+</file>
+
+<file path="src/screens/SurveyScreen.js">
+import { Ionicons } from "@expo/vector-icons";
+import {
+  addDoc,
+  collection,
+  getDocs,
+  query,
+  serverTimestamp,
+  where,
+} from "firebase/firestore";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { auth, db } from "../../firebaseConfig";
+import Card from "../components/Card";
+import Header from "../components/Header";
+import { COLORS } from "../theme/colors";
+import { styles } from "../theme/styles";
+
+const CAUSES = ["Medical Intake", "Genetics", "Ageing", "Others"];
+
+export default function SurveyScreen({ navigation }) {
+  const [selectedCause, setSelectedCause] = useState(null);
+  const [selectedSex, setSelectedSex] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) {
+      setChecking(false);
+      return;
+    }
+    getDocs(query(collection(db, "surveys"), where("userId", "==", uid)))
+      .then((snap) => setAlreadySubmitted(!snap.empty))
+      .catch(() => {})
+      .finally(() => setChecking(false));
+  }, []);
+
+  const handleSubmit = async () => {
+    if (alreadySubmitted) {
+      Alert.alert(
+        "Already Submitted",
+        "You have already completed this survey. Thank you for your contribution!",
+      );
+      return;
+    }
+    if (selectedCause === null || !selectedSex) {
+      Alert.alert(
+        "Incomplete",
+        "Please answer all questions before submitting.",
+      );
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const surveyData = {
+        cause: CAUSES[selectedCause],
+        sex: selectedSex,
+        userId: auth.currentUser?.uid || "anonymous",
+        timestamp: serverTimestamp(),
+      };
+      await addDoc(collection(db, "surveys"), surveyData);
+      if (auth.currentUser) {
+        await addDoc(
+          collection(db, "users", auth.currentUser.uid, "surveys"),
+          surveyData,
+        );
+      }
+      navigation.replace("SurveySuccess");
+    } catch (e) {
+      console.warn("[Survey] save failed:", e);
+      navigation.replace("SurveySuccess");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <Header title="Quick Survey" back />
+      <ScrollView
+        contentContainerStyle={{ padding: 20 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text
+          style={{
+            textAlign: "center",
+            fontWeight: "bold",
+            fontSize: 18,
+            marginBottom: 5,
+          }}
+        >
+          Help Us Understand
+        </Text>
+        <Text style={{ textAlign: "center", color: "#777", marginBottom: 25 }}>
+          What do you think are the causes of your CVD?
+        </Text>
+
+        {checking ? (
+          <ActivityIndicator style={{ marginTop: 30 }} color={COLORS.primary} />
+        ) : alreadySubmitted ? (
+          <View
+            style={{
+              marginTop: 30,
+              backgroundColor: "#E8F5E9",
+              padding: 16,
+              borderRadius: 12,
+              alignItems: "center",
+              borderWidth: 1,
+              borderColor: "#C8E6C9",
+            }}
+          >
+            <Ionicons
+              name="checkmark-circle"
+              size={28}
+              color={COLORS.success}
+            />
+            <Text style={{ color: "#2E7D32", fontWeight: "700", marginTop: 8 }}>
+              Survey Already Submitted
+            </Text>
+            <Text
+              style={{
+                color: "#555",
+                fontSize: 12,
+                marginTop: 4,
+                textAlign: "center",
+              }}
+            >
+              Thank you for your contribution to the research.
+            </Text>
+          </View>
+        ) : (
+          <>
+            {/* Moved interactive UI inside the else block */}
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                justifyContent: "space-between",
+                marginBottom: 20,
+              }}
+            >
+              {CAUSES.map((item, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  onPress={() => setSelectedCause(idx)}
+                  style={[
+                    styles.surveyOption,
+                    selectedCause === idx && {
+                      borderColor: COLORS.primary,
+                      borderWidth: 2,
+                      backgroundColor: "#F3E5F5",
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      selectedCause === idx
+                        ? "checkmark-circle"
+                        : "radio-button-off"
+                    }
+                    size={24}
+                    color={selectedCause === idx ? COLORS.primary : "#CCC"}
+                  />
+                  <Text style={{ fontWeight: "bold", marginTop: 10 }}>
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Card>
+              <Text style={{ fontWeight: "bold", marginBottom: 15 }}>Sex</Text>
+              <View
+                style={{ flexDirection: "row", justifyContent: "space-around" }}
+              >
+                {["Male", "Female"].map((sex) => (
+                  <TouchableOpacity
+                    key={sex}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      padding: 10,
+                      borderWidth: 1,
+                      borderColor:
+                        selectedSex === sex ? COLORS.primary : "#EEE",
+                      borderRadius: 8,
+                      width: "45%",
+                      justifyContent: "center",
+                    }}
+                    onPress={() => setSelectedSex(sex)}
+                  >
+                    <Ionicons
+                      name={
+                        selectedSex === sex
+                          ? "radio-button-on"
+                          : "radio-button-off"
+                      }
+                      size={20}
+                      color={selectedSex === sex ? COLORS.primary : "#999"}
+                    />
+                    <Text
+                      style={{
+                        marginLeft: 10,
+                        fontWeight: selectedSex === sex ? "bold" : "normal",
+                      }}
+                    >
+                      {sex}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </Card>
+
+            <TouchableOpacity
+              style={[
+                styles.btnPrimary,
+                { marginTop: 30, backgroundColor: "#111" },
+              ]}
+              onPress={handleSubmit}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.btnText}>Submit Survey</Text>
+              )}
+            </TouchableOpacity>
+          </>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+</file>
+
+<file path="src/data/ishiharaData.js">
+// 25-plate Ishihara colour vision test dataset.
+// Plate #1 is the demonstration plate — MUST always be shown first.
+// Categories:
+//   'demo'         — shown to everyone, verifies the test is working
+//   'screening'    — detects presence of red-green CVD (weight 1)
+//   'vanishing'    — visible only to normal vision (weight 1)
+//   'hidden'       — visible only to CVD (weight 1)
+//   'diagnostic'   — differentiates Protan vs Deutan (weight 2)
+//   'tracing'      — tracing plates for qualitative assessment (weight 1)
+
+export const ISHIHARA_PLATES = [
+  // ── DEMONSTRATION ──────────────────────────────────────────────
+  {
+    id: 1,
+    img: require("../../assets/1.png"),
+    answer: "12",
+    category: "demo",
+    weight: 0,
+    description: 'Demonstration plate – everyone should read "12".',
+  },
+
+  // ── SCREENING (Plates 2–9) ──────────────────────────────────────
+  {
+    id: 2,
+    img: require("../../assets/2.png"),
+    answer: "8",
+    category: "screening",
+    weight: 1,
+    description: "Normal: 8 | CVD: 3",
+  },
+  {
+    id: 3,
+    img: require("../../assets/3.png"),
+    answer: "6",
+    category: "screening",
+    weight: 1,
+    description: "Normal: 6 | CVD: 5",
+  },
+  {
+    id: 4,
+    img: require("../../assets/4.png"),
+    answer: "29",
+    category: "screening",
+    weight: 1,
+    description: "Normal: 29 | CVD: 70",
+  },
+  {
+    id: 5,
+    img: require("../../assets/5.png"),
+    answer: "57",
+    category: "screening",
+    weight: 1,
+    description: "Normal: 57 | CVD: 35",
+  },
+  {
+    id: 6,
+    img: require("../../assets/6.png"),
+    answer: "5",
+    category: "screening",
+    weight: 1,
+    description: "Normal: 5 | CVD: 2",
+  },
+  {
+    id: 7,
+    img: require("../../assets/7.png"),
+    answer: "3",
+    category: "screening",
+    weight: 1,
+    description: "Normal: 3 | CVD: 5",
+  },
+  {
+    id: 8,
+    img: require("../../assets/8.png"),
+    answer: "15",
+    category: "screening",
+    weight: 1,
+    description: "Normal: 15 | CVD: 17",
+  },
+  {
+    id: 9,
+    img: require("../../assets/9.png"),
+    answer: "74",
+    category: "screening",
+    weight: 1,
+    description: "Normal: 74 | CVD: 21",
+  },
+
+  // ── VANISHING (Plates 10–17, visible only to normal vision) ────
+  {
+    id: 10,
+    img: require("../../assets/10.png"),
+    answer: "2",
+    category: "vanishing",
+    weight: 1,
+    description: "Normal: 2 | CVD: none",
+  },
+  {
+    id: 11,
+    img: require("../../assets/11.png"),
+    answer: "6",
+    category: "vanishing",
+    weight: 1,
+    description: "Normal: 6 | CVD: none",
+  },
+  {
+    id: 12,
+    img: require("../../assets/12.png"),
+    answer: "97",
+    category: "vanishing",
+    weight: 1,
+    description: "Normal: 97 | CVD: none",
+  },
+  {
+    id: 13,
+    img: require("../../assets/13.png"),
+    answer: "45",
+    category: "vanishing",
+    weight: 1,
+    description: "Normal: 45 | CVD: none",
+  },
+  {
+    id: 14,
+    img: require("../../assets/14.png"),
+    answer: "5",
+    category: "vanishing",
+    weight: 1,
+    description: "Normal: 5 | CVD: none",
+  },
+  {
+    id: 15,
+    img: require("../../assets/15.png"),
+    answer: "7",
+    category: "vanishing",
+    weight: 1,
+    description: "Normal: 7 | CVD: none",
+  },
+  {
+    id: 16,
+    img: require("../../assets/16.png"),
+    answer: "16",
+    category: "vanishing",
+    weight: 1,
+    description: "Normal: 16 | CVD: none",
+  },
+  {
+    id: 17,
+    img: require("../../assets/17.png"),
+    answer: "73",
+    category: "vanishing",
+    weight: 1,
+    description: "Normal: 73 | CVD: none",
+  },
+
+  // ── HIDDEN (Plates 18–21, visible only to CVD) ─────────────────
+  {
+    id: 18,
+    img: require("../../assets/18.png"),
+    answer: "",
+    category: "hidden",
+    weight: 1,
+    description: "Normal: none | CVD: 5",
+  },
+  {
+    id: 19,
+    img: require("../../assets/19.png"),
+    answer: "",
+    category: "hidden",
+    weight: 1,
+    description: "Normal: none | CVD: 45",
+  },
+  {
+    id: 20,
+    img: require("../../assets/20.png"),
+    answer: "",
+    category: "hidden",
+    weight: 1,
+    description: "Normal: none | CVD: 73",
+  },
+  {
+    id: 21,
+    img: require("../../assets/21.png"),
+    answer: "",
+    category: "hidden",
+    weight: 1,
+    description: "Normal: none | CVD: number",
+  },
+
+  // ── DIAGNOSTIC Protan/Deutan (Plates 22–25, weight = 2) ────────
+  {
+    id: 22,
+    img: require("../../assets/22.png"),
+    answer: "26",
+    category: "diagnostic",
+    weight: 2,
+    protanAnswer: "6",
+    deutanAnswer: "2",
+    description: "Protan: 6 | Deutan: 2 | Normal: 26",
+  },
+  {
+    id: 23,
+    img: require("../../assets/23.png"),
+    answer: "42",
+    category: "diagnostic",
+    weight: 2,
+    protanAnswer: "2",
+    deutanAnswer: "4",
+    description: "Protan: 2 | Deutan: 4 | Normal: 42",
+  },
+  {
+    id: 24,
+    img: require("../../assets/24.png"),
+    answer: "35",
+    category: "diagnostic",
+    weight: 2,
+    protanAnswer: "5",
+    deutanAnswer: "3",
+    description: "Protan: 5 | Deutan: 3 | Normal: 35",
+  },
+  {
+    id: 25,
+    img: require("../../assets/25.png"),
+    answer: "96",
+    category: "diagnostic",
+    weight: 2,
+    protanAnswer: "6",
+    deutanAnswer: "9",
+    description: "Protan: 6 | Deutan: 9 | Normal: 96",
+  },
+];
 </file>
 
 <file path="src/screens/CameraEnhanceScreen.js">
@@ -6477,497 +7473,6 @@ export default function CVDSimulationScreen(props) {
 }
 </file>
 
-<file path="src/screens/IshiharaOnboarding.js">
-import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { MotiView } from "moti";
-import { useEffect, useRef, useState } from "react";
-import {
-  Dimensions,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
-
-const { width } = Dimensions.get("window");
-
-const INSTRUCTIONS = [
-  {
-    id: "1",
-    step: 1,
-    icon: "sunny-outline",
-    iconBg: "#FFF3E0",
-    iconColor: "#FF9F43",
-    label: "SCREEN LUMINOSITY",
-    title: "Min. 80% Brightness",
-    points: [
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Set screen brightness to at least 80%",
-      },
-      {
-        icon: "ellipse",
-        color: "#CCC",
-        text: "App will automatically verify your brightness level",
-      },
-      {
-        icon: "close-circle",
-        color: COLORS.danger,
-        text: "Dim screens distort colour perception",
-      },
-    ],
-    tip: "Like pre-flight checks: Just as pilots verify all instruments before takeoff, ensure your screen brightness is optimal.",
-    cta: "Next: Lighting Conditions",
-  },
-  {
-    id: "2",
-    step: 2,
-    icon: "bulb-outline",
-    iconBg: "#E8F5E9",
-    iconColor: "#2ECC71",
-    label: "LIGHTING CONDITIONS",
-    title: "Natural or White Light",
-    points: [
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Sit in a well-lit room with white light",
-      },
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Avoid direct sunlight on screen (glare)",
-      },
-      {
-        icon: "close-circle",
-        color: COLORS.danger,
-        text: "Avoid yellow incandescent lighting",
-      },
-    ],
-    tip: "Coloured ambient light shifts your perception of hues and can produce false results.",
-    cta: "Next: Viewing Distance",
-  },
-  {
-    id: "3",
-    step: 3,
-    icon: "expand-outline",
-    iconBg: "#E3F2FD",
-    iconColor: "#2196F3",
-    label: "VIEWING DISTANCE",
-    title: "35–75 cm Distance",
-    points: [
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Hold device 35–75 cm (arm's length) away",
-      },
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Plates fill your central vision field",
-      },
-      {
-        icon: "close-circle",
-        color: COLORS.danger,
-        text: "Too close or too far skews the test",
-      },
-    ],
-    tip: "The Ishihara test is calibrated for a specific viewing angle. Distance consistency matters.",
-    cta: "Next: Time Limit",
-  },
-  {
-    id: "4",
-    step: 4,
-    icon: "timer-outline",
-    iconBg: "#FCE4EC",
-    iconColor: "#FF4081",
-    label: "TIME LIMIT",
-    title: "3-Second Rule",
-    points: [
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Each plate is visible for 3 seconds",
-      },
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Enter your answer using the numpad",
-      },
-      {
-        icon: "close-circle",
-        color: COLORS.danger,
-        text: "Do not guess — trust your first impression",
-      },
-    ],
-    tip: "Prolonged viewing allows non-colour cues (size, density) to bias the result. Your first impression is the most clinically valid.",
-    cta: "Next: Corrective Lenses",
-  },
-  {
-    id: "5",
-    step: 5,
-    icon: "glasses-outline",
-    iconBg: "#EDE7F6",
-    iconColor: "#6C63FF",
-    label: "CORRECTIVE LENSES",
-    title: "Glasses & Contact Lenses",
-    points: [
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Wear your usual prescription lenses",
-      },
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Standard clear lenses are fine",
-      },
-      {
-        icon: "close-circle",
-        color: COLORS.danger,
-        text: "Remove tinted or coloured contact lenses",
-      },
-    ],
-    tip: "Tinted lenses alter colour perception. Clear prescription lenses do not affect Ishihara results.",
-    cta: "Next: Environment",
-  },
-  {
-    id: "6",
-    step: 6,
-    icon: "home-outline",
-    iconBg: "#E8F5E9",
-    iconColor: "#2ECC71",
-    label: "ENVIRONMENT",
-    title: "Quiet, Distraction-Free",
-    points: [
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Find a calm, quiet environment",
-      },
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Do not rush — take each plate seriously",
-      },
-      {
-        icon: "close-circle",
-        color: COLORS.danger,
-        text: "Avoid testing when fatigued or stressed",
-      },
-    ],
-    tip: "Visual fatigue affects colour discrimination. Best results are obtained when well-rested.",
-    cta: "I'm Ready",
-    isFinal: true,
-  },
-];
-
-function InstructionSlide({ item, onNext, isFinal, onBegin }) {
-  return (
-    <View style={[styles.slide, { width }]}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Header card */}
-        <MotiView
-          from={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", damping: 18 }}
-          style={styles.headerCard}
-        >
-          <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
-            <Ionicons name={item.icon} size={28} color={item.iconColor} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>{item.label}</Text>
-            <Text style={styles.cardTitle}>{item.title}</Text>
-          </View>
-        </MotiView>
-
-        {/* Checklist */}
-        <MotiView
-          from={{ opacity: 0, translateY: 16 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: "spring", damping: 18, delay: 150 }}
-          style={styles.checklistCard}
-        >
-          <View style={styles.checklistHeader}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.checklistLabel}>
-              PREPARATION CHECKLIST · {INSTRUCTIONS.length} REQUIREMENTS
-            </Text>
-            <View style={styles.dividerLine} />
-          </View>
-          {item.points.map((pt, i) => (
-            <View key={i} style={styles.pointRow}>
-              <Ionicons name={pt.icon} size={20} color={pt.color} />
-              <Text style={styles.pointText}>{pt.text}</Text>
-            </View>
-          ))}
-        </MotiView>
-
-        {/* Tip */}
-        {item.tip && (
-          <MotiView
-            from={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 300 }}
-            style={styles.tipCard}
-          >
-            <Text style={styles.tipText}>
-              <Text style={{ fontWeight: "700", color: COLORS.primary }}>
-                Tip:{" "}
-              </Text>
-              {item.tip}
-            </Text>
-          </MotiView>
-        )}
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
-
-      {/* CTA */}
-      <View style={styles.ctaContainer}>
-        <TouchableOpacity
-          style={styles.ctaBtn}
-          onPress={isFinal ? onBegin : onNext}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.ctaText}>{item.cta}</Text>
-        </TouchableOpacity>
-        <Text style={styles.ctaHint}>
-          The test takes approximately 3–5 minutes
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-export default function IshiharaOnboarding({ navigation, route }) {
-  const { testType = "comprehensive" } = route?.params || {};
-  const scrollRef = useRef(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [hasSeen, setHasSeen] = useState(false);
-
-  useEffect(() => {
-    AsyncStorage.getItem("@seen_ishihara_onboard").then((val) => {
-      if (val === "1") setHasSeen(true);
-    });
-  }, []);
-
-  const goNext = () => {
-    if (currentIndex < INSTRUCTIONS.length - 1) {
-      const next = currentIndex + 1;
-      scrollRef.current?.scrollTo({ x: next * width, animated: true });
-      setCurrentIndex(next);
-    }
-  };
-
-  const begin = () => {
-    AsyncStorage.setItem("@seen_ishihara_onboard", "1");
-    navigation.replace("IshiharaTest", { testType });
-  };
-
-  return (
-    <View style={styles.container}>
-      {/* Top bar */}
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-        >
-          <Ionicons name="arrow-back" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.topTitle}>Before You Begin</Text>
-        {hasSeen ? (
-          <TouchableOpacity onPress={begin}>
-            <Text style={{ color: COLORS.primary, fontWeight: "700" }}>
-              Skip
-            </Text>
-          </TouchableOpacity>
-        ) : (
-          <Image
-            source={require("../../assets/icon.png")}
-            style={{ width: 36, height: 36, resizeMode: "contain" }}
-          />
-        )}
-      </View>
-
-      {/* Progress dots */}
-      <View style={styles.dotsRow}>
-        {INSTRUCTIONS.map((_, i) => (
-          <MotiView
-            key={i}
-            animate={{
-              width: i === currentIndex ? 20 : 6,
-              opacity: i === currentIndex ? 1 : 0.3,
-            }}
-            transition={{ type: "spring", damping: 18 }}
-            style={[styles.dot, { backgroundColor: COLORS.primary }]}
-          />
-        ))}
-      </View>
-
-      {/* Sticky disclaimer */}
-      <View style={styles.disclaimerBanner}>
-        <Ionicons name="warning-outline" size={13} color="#F59E0B" />
-        <Text style={styles.disclaimerText}>
-          NOT A MEDICAL DIAGNOSIS — SCREENING PURPOSE ONLY
-        </Text>
-      </View>
-
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEnabled={false}
-      >
-        {INSTRUCTIONS.map((item, index) => (
-          <InstructionSlide
-            key={item.id}
-            item={item}
-            onNext={goNext}
-            isFinal={index === INSTRUCTIONS.length - 1}
-            onBegin={begin}
-          />
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: SPACING.md,
-    paddingTop: 52,
-    paddingBottom: SPACING.sm,
-    backgroundColor: COLORS.card,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  backBtn: { padding: 4 },
-  topTitle: { fontSize: 16, fontWeight: "700", color: COLORS.text },
-  eyeCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dotsRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: SPACING.sm,
-    backgroundColor: COLORS.card,
-  },
-  dot: { height: 6, borderRadius: 3 },
-  disclaimerBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: "#FFF8E1",
-    paddingVertical: 6,
-  },
-  disclaimerText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#F59E0B",
-    letterSpacing: 0.5,
-  },
-  slide: { flex: 1 },
-  scrollContent: { padding: SPACING.md, gap: SPACING.md },
-  headerCard: {
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.md,
-    ...SHADOW.md,
-  },
-  iconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  label: {
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.5,
-    color: "rgba(255,255,255,0.7)",
-  },
-  cardTitle: { fontSize: 18, fontWeight: "800", color: "#FFF", marginTop: 2 },
-  checklistCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    gap: SPACING.md,
-    ...SHADOW.sm,
-  },
-  checklistHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.sm,
-  },
-  dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
-  checklistLabel: {
-    fontSize: 9,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    color: COLORS.textLight,
-  },
-  pointRow: { flexDirection: "row", alignItems: "flex-start", gap: SPACING.sm },
-  pointText: { flex: 1, fontSize: 14, color: COLORS.text, lineHeight: 20 },
-  tipCard: {
-    backgroundColor: COLORS.surfaceAlt,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.primary,
-  },
-  tipText: { fontSize: 13, color: COLORS.text, lineHeight: 20 },
-  ctaContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.card,
-    padding: SPACING.md,
-    paddingBottom: SPACING.xl,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    gap: SPACING.sm,
-  },
-  ctaBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.lg,
-    paddingVertical: 16,
-    alignItems: "center",
-    ...SHADOW.md,
-  },
-  ctaText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
-  ctaHint: { fontSize: 12, color: COLORS.textLight, textAlign: "center" },
-});
-</file>
-
 <file path="src/screens/SettingsScreen.js">
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -7170,482 +7675,6 @@ const styles = StyleSheet.create({
   },
   expertBtnText: { color: "#FFF", fontWeight: "bold" },
 });
-</file>
-
-<file path="src/screens/SurveyScreen.js">
-import { Ionicons } from "@expo/vector-icons";
-import {
-  addDoc,
-  collection,
-  getDocs,
-  query,
-  serverTimestamp,
-  where,
-} from "firebase/firestore";
-import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { auth, db } from "../../firebaseConfig";
-import Card from "../components/Card";
-import Header from "../components/Header";
-import { COLORS } from "../theme/colors";
-import { styles } from "../theme/styles";
-
-const CAUSES = ["Medical Intake", "Genetics", "Ageing", "Others"];
-
-export default function SurveyScreen({ navigation }) {
-  const [selectedCause, setSelectedCause] = useState(null);
-  const [selectedSex, setSelectedSex] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
-  const [checking, setChecking] = useState(true);
-
-  useEffect(() => {
-    const uid = auth.currentUser?.uid;
-    if (!uid) {
-      setChecking(false);
-      return;
-    }
-    getDocs(query(collection(db, "surveys"), where("userId", "==", uid)))
-      .then((snap) => setAlreadySubmitted(!snap.empty))
-      .catch(() => {})
-      .finally(() => setChecking(false));
-  }, []);
-
-  const handleSubmit = async () => {
-    if (alreadySubmitted) {
-      Alert.alert(
-        "Already Submitted",
-        "You have already completed this survey. Thank you for your contribution!",
-      );
-      return;
-    }
-    if (selectedCause === null || !selectedSex) {
-      Alert.alert(
-        "Incomplete",
-        "Please answer all questions before submitting.",
-      );
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const surveyData = {
-        cause: CAUSES[selectedCause],
-        sex: selectedSex,
-        userId: auth.currentUser?.uid || "anonymous",
-        timestamp: serverTimestamp(),
-      };
-      await addDoc(collection(db, "surveys"), surveyData);
-      if (auth.currentUser) {
-        await addDoc(
-          collection(db, "users", auth.currentUser.uid, "surveys"),
-          surveyData,
-        );
-      }
-      navigation.replace("SurveySuccess");
-    } catch (e) {
-      console.warn("[Survey] save failed:", e);
-      navigation.replace("SurveySuccess");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <View style={styles.container}>
-      <Header title="Quick Survey" back />
-      <ScrollView
-        contentContainerStyle={{ padding: 20 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text
-          style={{
-            textAlign: "center",
-            fontWeight: "bold",
-            fontSize: 18,
-            marginBottom: 5,
-          }}
-        >
-          Help Us Understand
-        </Text>
-        <Text style={{ textAlign: "center", color: "#777", marginBottom: 25 }}>
-          What do you think are the causes of your CVD?
-        </Text>
-
-        {checking ? (
-          <ActivityIndicator style={{ marginTop: 30 }} color={COLORS.primary} />
-        ) : alreadySubmitted ? (
-          <View
-            style={{
-              marginTop: 30,
-              backgroundColor: "#E8F5E9",
-              padding: 16,
-              borderRadius: 12,
-              alignItems: "center",
-              borderWidth: 1,
-              borderColor: "#C8E6C9",
-            }}
-          >
-            <Ionicons
-              name="checkmark-circle"
-              size={28}
-              color={COLORS.success}
-            />
-            <Text style={{ color: "#2E7D32", fontWeight: "700", marginTop: 8 }}>
-              Survey Already Submitted
-            </Text>
-            <Text
-              style={{
-                color: "#555",
-                fontSize: 12,
-                marginTop: 4,
-                textAlign: "center",
-              }}
-            >
-              Thank you for your contribution to the research.
-            </Text>
-          </View>
-        ) : (
-          <>
-            {/* Moved interactive UI inside the else block */}
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                justifyContent: "space-between",
-                marginBottom: 20,
-              }}
-            >
-              {CAUSES.map((item, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  onPress={() => setSelectedCause(idx)}
-                  style={[
-                    styles.surveyOption,
-                    selectedCause === idx && {
-                      borderColor: COLORS.primary,
-                      borderWidth: 2,
-                      backgroundColor: "#F3E5F5",
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={
-                      selectedCause === idx
-                        ? "checkmark-circle"
-                        : "radio-button-off"
-                    }
-                    size={24}
-                    color={selectedCause === idx ? COLORS.primary : "#CCC"}
-                  />
-                  <Text style={{ fontWeight: "bold", marginTop: 10 }}>
-                    {item}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Card>
-              <Text style={{ fontWeight: "bold", marginBottom: 15 }}>Sex</Text>
-              <View
-                style={{ flexDirection: "row", justifyContent: "space-around" }}
-              >
-                {["Male", "Female"].map((sex) => (
-                  <TouchableOpacity
-                    key={sex}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      padding: 10,
-                      borderWidth: 1,
-                      borderColor:
-                        selectedSex === sex ? COLORS.primary : "#EEE",
-                      borderRadius: 8,
-                      width: "45%",
-                      justifyContent: "center",
-                    }}
-                    onPress={() => setSelectedSex(sex)}
-                  >
-                    <Ionicons
-                      name={
-                        selectedSex === sex
-                          ? "radio-button-on"
-                          : "radio-button-off"
-                      }
-                      size={20}
-                      color={selectedSex === sex ? COLORS.primary : "#999"}
-                    />
-                    <Text
-                      style={{
-                        marginLeft: 10,
-                        fontWeight: selectedSex === sex ? "bold" : "normal",
-                      }}
-                    >
-                      {sex}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </Card>
-
-            <TouchableOpacity
-              style={[
-                styles.btnPrimary,
-                { marginTop: 30, backgroundColor: "#111" },
-              ]}
-              onPress={handleSubmit}
-              disabled={submitting}
-            >
-              {submitting ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.btnText}>Submit Survey</Text>
-              )}
-            </TouchableOpacity>
-          </>
-        )}
-      </ScrollView>
-    </View>
-  );
-}
-</file>
-
-<file path="src/data/ishiharaData.js">
-// 25-plate Ishihara colour vision test dataset.
-// Plate #1 is the demonstration plate — MUST always be shown first.
-// Categories:
-//   'demo'         — shown to everyone, verifies the test is working
-//   'screening'    — detects presence of red-green CVD (weight 1)
-//   'vanishing'    — visible only to normal vision (weight 1)
-//   'hidden'       — visible only to CVD (weight 1)
-//   'diagnostic'   — differentiates Protan vs Deutan (weight 2)
-//   'tracing'      — tracing plates for qualitative assessment (weight 1)
-
-export const ISHIHARA_PLATES = [
-  // ── DEMONSTRATION ──────────────────────────────────────────────
-  {
-    id: 1,
-    img: require("../../assets/1.png"),
-    answer: "12",
-    category: "demo",
-    weight: 0,
-    description: 'Demonstration plate – everyone should read "12".',
-  },
-
-  // ── SCREENING (Plates 2–9) ──────────────────────────────────────
-  {
-    id: 2,
-    img: require("../../assets/2.png"),
-    answer: "8",
-    category: "screening",
-    weight: 1,
-    description: "Normal: 8 | CVD: 3",
-  },
-  {
-    id: 3,
-    img: require("../../assets/3.png"),
-    answer: "6",
-    category: "screening",
-    weight: 1,
-    description: "Normal: 6 | CVD: 5",
-  },
-  {
-    id: 4,
-    img: require("../../assets/4.png"),
-    answer: "29",
-    category: "screening",
-    weight: 1,
-    description: "Normal: 29 | CVD: 70",
-  },
-  {
-    id: 5,
-    img: require("../../assets/5.png"),
-    answer: "57",
-    category: "screening",
-    weight: 1,
-    description: "Normal: 57 | CVD: 35",
-  },
-  {
-    id: 6,
-    img: require("../../assets/6.png"),
-    answer: "5",
-    category: "screening",
-    weight: 1,
-    description: "Normal: 5 | CVD: 2",
-  },
-  {
-    id: 7,
-    img: require("../../assets/7.png"),
-    answer: "3",
-    category: "screening",
-    weight: 1,
-    description: "Normal: 3 | CVD: 5",
-  },
-  {
-    id: 8,
-    img: require("../../assets/8.png"),
-    answer: "15",
-    category: "screening",
-    weight: 1,
-    description: "Normal: 15 | CVD: 17",
-  },
-  {
-    id: 9,
-    img: require("../../assets/9.png"),
-    answer: "74",
-    category: "screening",
-    weight: 1,
-    description: "Normal: 74 | CVD: 21",
-  },
-
-  // ── VANISHING (Plates 10–17, visible only to normal vision) ────
-  {
-    id: 10,
-    img: require("../../assets/10.png"),
-    answer: "2",
-    category: "vanishing",
-    weight: 1,
-    description: "Normal: 2 | CVD: none",
-  },
-  {
-    id: 11,
-    img: require("../../assets/11.png"),
-    answer: "6",
-    category: "vanishing",
-    weight: 1,
-    description: "Normal: 6 | CVD: none",
-  },
-  {
-    id: 12,
-    img: require("../../assets/12.png"),
-    answer: "97",
-    category: "vanishing",
-    weight: 1,
-    description: "Normal: 97 | CVD: none",
-  },
-  {
-    id: 13,
-    img: require("../../assets/13.png"),
-    answer: "45",
-    category: "vanishing",
-    weight: 1,
-    description: "Normal: 45 | CVD: none",
-  },
-  {
-    id: 14,
-    img: require("../../assets/14.png"),
-    answer: "5",
-    category: "vanishing",
-    weight: 1,
-    description: "Normal: 5 | CVD: none",
-  },
-  {
-    id: 15,
-    img: require("../../assets/15.png"),
-    answer: "7",
-    category: "vanishing",
-    weight: 1,
-    description: "Normal: 7 | CVD: none",
-  },
-  {
-    id: 16,
-    img: require("../../assets/16.png"),
-    answer: "16",
-    category: "vanishing",
-    weight: 1,
-    description: "Normal: 16 | CVD: none",
-  },
-  {
-    id: 17,
-    img: require("../../assets/17.png"),
-    answer: "73",
-    category: "vanishing",
-    weight: 1,
-    description: "Normal: 73 | CVD: none",
-  },
-
-  // ── HIDDEN (Plates 18–21, visible only to CVD) ─────────────────
-  {
-    id: 18,
-    img: require("../../assets/18.png"),
-    answer: "",
-    category: "hidden",
-    weight: 1,
-    description: "Normal: none | CVD: 5",
-  },
-  {
-    id: 19,
-    img: require("../../assets/19.png"),
-    answer: "",
-    category: "hidden",
-    weight: 1,
-    description: "Normal: none | CVD: 45",
-  },
-  {
-    id: 20,
-    img: require("../../assets/20.png"),
-    answer: "",
-    category: "hidden",
-    weight: 1,
-    description: "Normal: none | CVD: 73",
-  },
-  {
-    id: 21,
-    img: require("../../assets/21.png"),
-    answer: "",
-    category: "hidden",
-    weight: 1,
-    description: "Normal: none | CVD: number",
-  },
-
-  // ── DIAGNOSTIC Protan/Deutan (Plates 22–25, weight = 2) ────────
-  {
-    id: 22,
-    img: require("../../assets/22.png"),
-    answer: "26",
-    category: "diagnostic",
-    weight: 2,
-    protanAnswer: "6",
-    deutanAnswer: "2",
-    description: "Protan: 6 | Deutan: 2 | Normal: 26",
-  },
-  {
-    id: 23,
-    img: require("../../assets/23.png"),
-    answer: "42",
-    category: "diagnostic",
-    weight: 2,
-    protanAnswer: "2",
-    deutanAnswer: "4",
-    description: "Protan: 2 | Deutan: 4 | Normal: 42",
-  },
-  {
-    id: 24,
-    img: require("../../assets/24.png"),
-    answer: "35",
-    category: "diagnostic",
-    weight: 2,
-    protanAnswer: "5",
-    deutanAnswer: "3",
-    description: "Protan: 5 | Deutan: 3 | Normal: 35",
-  },
-  {
-    id: 25,
-    img: require("../../assets/25.png"),
-    answer: "96",
-    category: "diagnostic",
-    weight: 2,
-    protanAnswer: "6",
-    deutanAnswer: "9",
-    description: "Protan: 6 | Deutan: 9 | Normal: 96",
-  },
-];
 </file>
 
 <file path="src/screens/ResearchDashboardScreen.js">
@@ -8258,103 +8287,6 @@ export default function ResearchDashboardScreen({ navigation }) {
 }
 </file>
 
-<file path="firebaseConfig.js">
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { initializeApp } from "firebase/app";
-import {
-  GoogleAuthProvider,
-  createUserWithEmailAndPassword,
-  getReactNativePersistence,
-  initializeAuth,
-  onAuthStateChanged,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  signInWithCredential,
-  signInWithEmailAndPassword,
-  signOut,
-} from "firebase/auth";
-import {
-  addDoc,
-  collection,
-  initializeFirestore,
-  persistentLocalCache,
-  serverTimestamp,
-} from "firebase/firestore";
-
-// --- 1. NEW RECOLOR-DEV KEYS ---
-const firebaseConfig = {
-  apiKey: "AIzaSyCc_EYXVkqwSLYm67K5x-JGazLxxa-Vi7M",
-  authDomain: "recolor-dev.firebaseapp.com",
-  projectId: "recolor-dev",
-  storageBucket: "recolor-dev.firebasestorage.app",
-  messagingSenderId: "1047364142133",
-  appId: "1:1047364142133:web:a0b3deb67836acf727dd7c",
-  measurementId: "G-VEPWR9T85C",
-};
-
-// --- 2. INITIALIZE APP ---
-const app = initializeApp(firebaseConfig);
-
-// --- 3. AUTHENTICATION (With Persistence) ---
-// This keeps you logged in even if you close the app—crucial for the "User Profiling" requirement.
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage),
-});
-
-// --- 4. DATABASE (OFFLINE FIRST) ---
-// This allows the app to work without Wi-Fi and sync later—a major requirement for your thesis.
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache(),
-});
-
-// --- 5. HELPER: DUAL WRITE FOR PRIVACY ---
-// This anonymizes data for PERI Researchers (Slide 56).
-export const saveExamResult = async (
-  userId,
-  score,
-  diagnosis,
-  severity,
-  total = 14,
-) => {
-  try {
-    // WRITE 1: Private User History
-    await addDoc(collection(db, "users", userId, "history"), {
-      score,
-      total,
-      diagnosis,
-      severity,
-      date: serverTimestamp(),
-    });
-
-    // WRITE 2: Anonymized Research Data
-    await addDoc(collection(db, "research_data_anonymized"), {
-      diagnosis,
-      severity,
-      score,
-      total,
-      device: "Mobile_Client",
-      timestamp: serverTimestamp(),
-    });
-
-    console.log("Dual write successful: Private + Research");
-    return true;
-  } catch (error) {
-    console.error("Save failed", error);
-    return false;
-  }
-};
-
-export {
-  GoogleAuthProvider,
-  auth,
-  createUserWithEmailAndPassword,
-  db,
-  onAuthStateChanged, sendEmailVerification, sendPasswordResetEmail,
-  signInWithCredential,
-  signInWithEmailAndPassword, signOut
-};
-</file>
-
 <file path="src/screens/ResultsScreen.js">
 import { Ionicons } from "@expo/vector-icons";
 import { MotiView } from "moti";
@@ -8742,6 +8674,103 @@ const styles = StyleSheet.create({
 });
 </file>
 
+<file path="firebaseConfig.js">
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { initializeApp } from "firebase/app";
+import {
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  getReactNativePersistence,
+  initializeAuth,
+  onAuthStateChanged,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
+import {
+  addDoc,
+  collection,
+  initializeFirestore,
+  persistentLocalCache,
+  serverTimestamp,
+} from "firebase/firestore";
+
+// --- 1. NEW RECOLOR-DEV KEYS ---
+const firebaseConfig = {
+  apiKey: "AIzaSyCc_EYXVkqwSLYm67K5x-JGazLxxa-Vi7M",
+  authDomain: "recolor-dev.firebaseapp.com",
+  projectId: "recolor-dev",
+  storageBucket: "recolor-dev.firebasestorage.app",
+  messagingSenderId: "1047364142133",
+  appId: "1:1047364142133:web:a0b3deb67836acf727dd7c",
+  measurementId: "G-VEPWR9T85C",
+};
+
+// --- 2. INITIALIZE APP ---
+const app = initializeApp(firebaseConfig);
+
+// --- 3. AUTHENTICATION (With Persistence) ---
+// This keeps you logged in even if you close the app—crucial for the "User Profiling" requirement.
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage),
+});
+
+// --- 4. DATABASE (OFFLINE FIRST) ---
+// This allows the app to work without Wi-Fi and sync later—a major requirement for your thesis.
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache(),
+});
+
+// --- 5. HELPER: DUAL WRITE FOR PRIVACY ---
+// This anonymizes data for PERI Researchers (Slide 56).
+export const saveExamResult = async (
+  userId,
+  score,
+  diagnosis,
+  severity,
+  total = 14,
+) => {
+  try {
+    // WRITE 1: Private User History
+    await addDoc(collection(db, "users", userId, "history"), {
+      score,
+      total,
+      diagnosis,
+      severity,
+      date: serverTimestamp(),
+    });
+
+    // WRITE 2: Anonymized Research Data
+    await addDoc(collection(db, "research_data_anonymized"), {
+      diagnosis,
+      severity,
+      score,
+      total,
+      device: "Mobile_Client",
+      timestamp: serverTimestamp(),
+    });
+
+    console.log("Dual write successful: Private + Research");
+    return true;
+  } catch (error) {
+    console.error("Save failed", error);
+    return false;
+  }
+};
+
+export {
+  GoogleAuthProvider,
+  auth,
+  createUserWithEmailAndPassword,
+  db,
+  onAuthStateChanged, sendEmailVerification, sendPasswordResetEmail,
+  signInWithCredential,
+  signInWithEmailAndPassword, signOut
+};
+</file>
+
 <file path="src/screens/HomeScreen.js">
 import { Ionicons } from "@expo/vector-icons";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
@@ -8898,6 +8927,212 @@ export default function HomeScreen({ navigation }) {
       </ScrollView>
     </View>
   );
+}
+</file>
+
+<file path="src/utils/colorLogic.js">
+import { ISHIHARA_PLATES } from "../data/ishiharaData";
+import { QUICK_ISHIHARA_PLATES } from "../data/quickIshiharaData";
+
+// ─────────────────────────────────────────────────────────────
+// Shared utilities
+// ─────────────────────────────────────────────────────────────
+
+// Fisher-Yates shuffle — O(n), unbiased
+export function fisherYatesShuffle(arr) {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// Mode-specific constants.
+// Comprehensive: 25 plates, Stage 1 = 21, Stage 2 = 4 diagnostic, ≥3/4 classification.
+// Quick:         14 plates, Stage 1 = 11, Stage 2 = 3 diagnostic, ≥2/3 classification.
+const MODE_CONFIG = {
+  comprehensive: {
+    totalPlates: 25,
+    stage1Length: 21, // demo + plates 2-21
+    stage2Length: 4,  // plates 22-25
+    normalThreshold: 17,       // ≥17 → Normal
+    indeterminateThreshold: 14, // 14-16 → Indeterminate, <14 → Stage 2
+    classificationHits: 3,      // ≥3 of 4 diagnostic matches
+  },
+  quick: {
+    totalPlates: 14,
+    stage1Length: 11, // demo + plates 2-11
+    stage2Length: 3,  // plates 12-14
+    normalThreshold: 10,       // ≥10 → Normal (perfect)
+    indeterminateThreshold: 8,  // 8-9 → Borderline, <8 → Stage 2
+    classificationHits: 2,      // ≥2 of 3 diagnostic matches
+  },
+};
+
+function getConfig(testType) {
+  return MODE_CONFIG[testType] ?? MODE_CONFIG.comprehensive;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Queue construction
+// ─────────────────────────────────────────────────────────────
+
+// Build test queue: Plate #1 (demo) always first; Stage 1 plates randomised;
+// Stage 2 (diagnostic) plates kept in clinical order at the tail.
+export function buildTestQueue(testType = "comprehensive") {
+  if (testType === "quick") return buildQuickQueue();
+  return buildComprehensiveQueue();
+}
+
+function buildComprehensiveQueue() {
+  const plate1 = ISHIHARA_PLATES.find((p) => p.id === 1);
+  const stage1Plates = ISHIHARA_PLATES.filter((p) => p.id >= 2 && p.id <= 21);
+  const diagnosticPlates = ISHIHARA_PLATES.filter(
+    (p) => p.id >= 22 && p.id <= 25,
+  );
+  const shuffledStage1 = fisherYatesShuffle(stage1Plates);
+  return [plate1, ...shuffledStage1, ...diagnosticPlates];
+}
+
+function buildQuickQueue() {
+  const plate1 = QUICK_ISHIHARA_PLATES.find((p) => p.id === 1);
+  const stage1Plates = QUICK_ISHIHARA_PLATES.filter(
+    (p) => p.id >= 2 && p.id <= 11,
+  );
+  const diagnosticPlates = QUICK_ISHIHARA_PLATES.filter(
+    (p) => p.id >= 12 && p.id <= 14,
+  );
+  const shuffledStage1 = fisherYatesShuffle(stage1Plates);
+  return [plate1, ...shuffledStage1, ...diagnosticPlates];
+}
+
+// ─────────────────────────────────────────────────────────────
+// Stage 1 evaluation
+// ─────────────────────────────────────────────────────────────
+
+// Counts correct answers in the Stage-1 slice for the given mode and
+// decides whether Stage 2 should run.
+//
+// Quick mode excludes the demo plate from scoring per the clinical spec
+// ("Plate 1 is excluded from scoring", Ishihara Concise Edition 1960).
+// Comprehensive mode counts all 21 Stage-1 answers (demo included) per
+// the ≥17/21 rule the user verified earlier.
+export function evaluateStage1(answers, testType = "comprehensive") {
+  const { stage1Length, indeterminateThreshold } = getConfig(testType);
+  const stage1Answers = answers.slice(0, stage1Length);
+
+  const scoredAnswers =
+    testType === "quick"
+      ? stage1Answers.filter(({ plate }) => plate.category !== "demo")
+      : stage1Answers;
+
+  let correctCount = 0;
+  scoredAnswers.forEach(({ isCorrect }) => {
+    if (isCorrect) correctCount++;
+  });
+
+  return {
+    correctCount,
+    totalStage1: scoredAnswers.length, // 10 for quick, 21 for comprehensive
+    shouldProceedToStage2: correctCount < indeterminateThreshold,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Stage 2 classification (Protan vs Deutan)
+// ─────────────────────────────────────────────────────────────
+
+// Checks if ≥ minHits of the diagnostic plates match the protan or deutan pattern.
+// Returns 'Protan', 'Deutan', or null if inconclusive.
+function detectProtanDeutan(diagnosticAnswers, minHits) {
+  const diagnostic = diagnosticAnswers.filter(
+    ({ plate }) => plate.category === "diagnostic",
+  );
+
+  if (diagnostic.length === 0) return null;
+
+  let protanHits = 0;
+  let deutanHits = 0;
+
+  diagnostic.forEach(({ plate, userAnswer }) => {
+    if (plate.protanAnswer && userAnswer === plate.protanAnswer) protanHits++;
+    if (plate.deutanAnswer && userAnswer === plate.deutanAnswer) deutanHits++;
+  });
+
+  if (protanHits >= minHits) return "Protan";
+  if (deutanHits >= minHits) return "Deutan";
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Full diagnosis (Stage 1 + optional Stage 2)
+// ─────────────────────────────────────────────────────────────
+
+export function computeDiagnosis(answers, testType = "comprehensive") {
+  const config = getConfig(testType);
+  const stage1 = evaluateStage1(answers, testType);
+
+  if (stage1.correctCount >= config.normalThreshold) {
+    return {
+      diagnosis: "Normal Vision",
+      severity: "None",
+      diagnosisCode: "N",
+      score: stage1.correctCount,
+      maxScore: stage1.totalStage1,
+      percentage: Math.round((stage1.correctCount / stage1.totalStage1) * 100),
+      stage: 1,
+    };
+  }
+
+  if (stage1.correctCount >= config.indeterminateThreshold) {
+    return {
+      diagnosis: "Indeterminate Result",
+      severity: "Borderline",
+      diagnosisCode: "I",
+      score: stage1.correctCount,
+      maxScore: stage1.totalStage1,
+      percentage: Math.round((stage1.correctCount / stage1.totalStage1) * 100),
+      stage: 1,
+    };
+  }
+
+  // Stage 2: diagnostic plates begin at position stage1Length
+  const stage2Answers = answers.slice(config.stage1Length);
+
+  let totalCorrect = stage1.correctCount;
+  stage2Answers.forEach(({ isCorrect }) => {
+    if (isCorrect) totalCorrect++;
+  });
+  const totalAnswered = stage1.totalStage1 + stage2Answers.length;
+
+  if (stage2Answers.length === 0) {
+    return {
+      diagnosis: "Incomplete",
+      severity: "N/A",
+      diagnosisCode: "X",
+      score: stage1.correctCount,
+      maxScore: stage1.totalStage1,
+      percentage: Math.round((stage1.correctCount / stage1.totalStage1) * 100),
+      stage: 1,
+    };
+  }
+
+  const subtype = detectProtanDeutan(stage2Answers, config.classificationHits);
+  const base = {
+    score: totalCorrect,
+    maxScore: totalAnswered,
+    percentage: Math.round((totalCorrect / totalAnswered) * 100),
+    stage: 2,
+  };
+
+  if (subtype === "Protan") {
+    return { ...base, diagnosis: "Protanomaly", severity: "Mild", diagnosisCode: "P" };
+  }
+  if (subtype === "Deutan") {
+    return { ...base, diagnosis: "Deuteranomaly", severity: "Mild", diagnosisCode: "D" };
+  }
+  return { ...base, diagnosis: "Indeterminate Result", severity: "Borderline", diagnosisCode: "I" };
 }
 </file>
 
@@ -9220,212 +9455,6 @@ const styles = StyleSheet.create({
   },
   versionText: { fontSize: 11, color: COLORS.primary, fontWeight: "600" },
 });
-</file>
-
-<file path="src/utils/colorLogic.js">
-import { ISHIHARA_PLATES } from "../data/ishiharaData";
-import { QUICK_ISHIHARA_PLATES } from "../data/quickIshiharaData";
-
-// ─────────────────────────────────────────────────────────────
-// Shared utilities
-// ─────────────────────────────────────────────────────────────
-
-// Fisher-Yates shuffle — O(n), unbiased
-export function fisherYatesShuffle(arr) {
-  const shuffled = [...arr];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-}
-
-// Mode-specific constants.
-// Comprehensive: 25 plates, Stage 1 = 21, Stage 2 = 4 diagnostic, ≥3/4 classification.
-// Quick:         14 plates, Stage 1 = 11, Stage 2 = 3 diagnostic, ≥2/3 classification.
-const MODE_CONFIG = {
-  comprehensive: {
-    totalPlates: 25,
-    stage1Length: 21, // demo + plates 2-21
-    stage2Length: 4,  // plates 22-25
-    normalThreshold: 17,       // ≥17 → Normal
-    indeterminateThreshold: 14, // 14-16 → Indeterminate, <14 → Stage 2
-    classificationHits: 3,      // ≥3 of 4 diagnostic matches
-  },
-  quick: {
-    totalPlates: 14,
-    stage1Length: 11, // demo + plates 2-11
-    stage2Length: 3,  // plates 12-14
-    normalThreshold: 10,       // ≥10 → Normal (perfect)
-    indeterminateThreshold: 8,  // 8-9 → Borderline, <8 → Stage 2
-    classificationHits: 2,      // ≥2 of 3 diagnostic matches
-  },
-};
-
-function getConfig(testType) {
-  return MODE_CONFIG[testType] ?? MODE_CONFIG.comprehensive;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Queue construction
-// ─────────────────────────────────────────────────────────────
-
-// Build test queue: Plate #1 (demo) always first; Stage 1 plates randomised;
-// Stage 2 (diagnostic) plates kept in clinical order at the tail.
-export function buildTestQueue(testType = "comprehensive") {
-  if (testType === "quick") return buildQuickQueue();
-  return buildComprehensiveQueue();
-}
-
-function buildComprehensiveQueue() {
-  const plate1 = ISHIHARA_PLATES.find((p) => p.id === 1);
-  const stage1Plates = ISHIHARA_PLATES.filter((p) => p.id >= 2 && p.id <= 21);
-  const diagnosticPlates = ISHIHARA_PLATES.filter(
-    (p) => p.id >= 22 && p.id <= 25,
-  );
-  const shuffledStage1 = fisherYatesShuffle(stage1Plates);
-  return [plate1, ...shuffledStage1, ...diagnosticPlates];
-}
-
-function buildQuickQueue() {
-  const plate1 = QUICK_ISHIHARA_PLATES.find((p) => p.id === 1);
-  const stage1Plates = QUICK_ISHIHARA_PLATES.filter(
-    (p) => p.id >= 2 && p.id <= 11,
-  );
-  const diagnosticPlates = QUICK_ISHIHARA_PLATES.filter(
-    (p) => p.id >= 12 && p.id <= 14,
-  );
-  const shuffledStage1 = fisherYatesShuffle(stage1Plates);
-  return [plate1, ...shuffledStage1, ...diagnosticPlates];
-}
-
-// ─────────────────────────────────────────────────────────────
-// Stage 1 evaluation
-// ─────────────────────────────────────────────────────────────
-
-// Counts correct answers in the Stage-1 slice for the given mode and
-// decides whether Stage 2 should run.
-//
-// Quick mode excludes the demo plate from scoring per the clinical spec
-// ("Plate 1 is excluded from scoring", Ishihara Concise Edition 1960).
-// Comprehensive mode counts all 21 Stage-1 answers (demo included) per
-// the ≥17/21 rule the user verified earlier.
-export function evaluateStage1(answers, testType = "comprehensive") {
-  const { stage1Length, indeterminateThreshold } = getConfig(testType);
-  const stage1Answers = answers.slice(0, stage1Length);
-
-  const scoredAnswers =
-    testType === "quick"
-      ? stage1Answers.filter(({ plate }) => plate.category !== "demo")
-      : stage1Answers;
-
-  let correctCount = 0;
-  scoredAnswers.forEach(({ isCorrect }) => {
-    if (isCorrect) correctCount++;
-  });
-
-  return {
-    correctCount,
-    totalStage1: scoredAnswers.length, // 10 for quick, 21 for comprehensive
-    shouldProceedToStage2: correctCount < indeterminateThreshold,
-  };
-}
-
-// ─────────────────────────────────────────────────────────────
-// Stage 2 classification (Protan vs Deutan)
-// ─────────────────────────────────────────────────────────────
-
-// Checks if ≥ minHits of the diagnostic plates match the protan or deutan pattern.
-// Returns 'Protan', 'Deutan', or null if inconclusive.
-function detectProtanDeutan(diagnosticAnswers, minHits) {
-  const diagnostic = diagnosticAnswers.filter(
-    ({ plate }) => plate.category === "diagnostic",
-  );
-
-  if (diagnostic.length === 0) return null;
-
-  let protanHits = 0;
-  let deutanHits = 0;
-
-  diagnostic.forEach(({ plate, userAnswer }) => {
-    if (plate.protanAnswer && userAnswer === plate.protanAnswer) protanHits++;
-    if (plate.deutanAnswer && userAnswer === plate.deutanAnswer) deutanHits++;
-  });
-
-  if (protanHits >= minHits) return "Protan";
-  if (deutanHits >= minHits) return "Deutan";
-  return null;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Full diagnosis (Stage 1 + optional Stage 2)
-// ─────────────────────────────────────────────────────────────
-
-export function computeDiagnosis(answers, testType = "comprehensive") {
-  const config = getConfig(testType);
-  const stage1 = evaluateStage1(answers, testType);
-
-  if (stage1.correctCount >= config.normalThreshold) {
-    return {
-      diagnosis: "Normal Vision",
-      severity: "None",
-      diagnosisCode: "N",
-      score: stage1.correctCount,
-      maxScore: stage1.totalStage1,
-      percentage: Math.round((stage1.correctCount / stage1.totalStage1) * 100),
-      stage: 1,
-    };
-  }
-
-  if (stage1.correctCount >= config.indeterminateThreshold) {
-    return {
-      diagnosis: "Indeterminate Result",
-      severity: "Borderline",
-      diagnosisCode: "I",
-      score: stage1.correctCount,
-      maxScore: stage1.totalStage1,
-      percentage: Math.round((stage1.correctCount / stage1.totalStage1) * 100),
-      stage: 1,
-    };
-  }
-
-  // Stage 2: diagnostic plates begin at position stage1Length
-  const stage2Answers = answers.slice(config.stage1Length);
-
-  let totalCorrect = stage1.correctCount;
-  stage2Answers.forEach(({ isCorrect }) => {
-    if (isCorrect) totalCorrect++;
-  });
-  const totalAnswered = stage1.totalStage1 + stage2Answers.length;
-
-  if (stage2Answers.length === 0) {
-    return {
-      diagnosis: "Incomplete",
-      severity: "N/A",
-      diagnosisCode: "X",
-      score: stage1.correctCount,
-      maxScore: stage1.totalStage1,
-      percentage: Math.round((stage1.correctCount / stage1.totalStage1) * 100),
-      stage: 1,
-    };
-  }
-
-  const subtype = detectProtanDeutan(stage2Answers, config.classificationHits);
-  const base = {
-    score: totalCorrect,
-    maxScore: totalAnswered,
-    percentage: Math.round((totalCorrect / totalAnswered) * 100),
-    stage: 2,
-  };
-
-  if (subtype === "Protan") {
-    return { ...base, diagnosis: "Protanomaly", severity: "Mild", diagnosisCode: "P" };
-  }
-  if (subtype === "Deutan") {
-    return { ...base, diagnosis: "Deuteranomaly", severity: "Mild", diagnosisCode: "D" };
-  }
-  return { ...base, diagnosis: "Indeterminate Result", severity: "Borderline", diagnosisCode: "I" };
-}
 </file>
 
 <file path="src/screens/TestScreen.js">
