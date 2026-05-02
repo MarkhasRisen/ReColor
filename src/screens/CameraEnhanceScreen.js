@@ -336,7 +336,8 @@ function CameraEnhanceScreenInner({ navigation }) {
                 <Text
                   style={{ color: "#FFF", fontSize: 10, fontWeight: "bold" }}
                 >
-                  {a === "daltonization" ? "DALTO" : "HUE"}
+                  {a === "daltonization" ? "ADAPT" : "HUE"} //changed dalto to
+                  adapt for less jargon
                 </Text>
               </TouchableOpacity>
             ))}

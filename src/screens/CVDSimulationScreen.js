@@ -233,7 +233,7 @@ function CVDSimulationScreenInner({ navigation, route }) {
             />
           </TouchableOpacity>
           <Text style={{ color: "#FFF", fontWeight: "bold" }}>
-            {frozen ? `${cvdType} Simulation` : "CVD Simulation"}
+            {frozen ? `${cvdType} Simulation` : "ColorBlind Simulation"}
           </Text>
           {!frozen && (
             <TouchableOpacity onPress={() => setShowModal(true)}>

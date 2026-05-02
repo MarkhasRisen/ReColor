@@ -37,10 +37,10 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 15,
-    paddingTop: 55,
-    backgroundColor: "rgba(255, 255, 255, 0.85)",
+    //paddingTop: 55,
+    backgroundColor: "#FFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#252323",
+    borderBottomColor: "rgba(0,0,0,0.05)",
     height: 100,
   },
   headerTitle: {

@@ -17,8 +17,8 @@ import { styles } from "../theme/styles";
 export default function EducationListScreen({ navigation }) {
   return (
     <View style={styles.container}>
-      <Header title="Learn & Understand" back />
       <BackgroundBubbles />
+      <Header title="Learn & Understand" back />
 
       <ScrollView
         contentContainerStyle={{ padding: 20 }}

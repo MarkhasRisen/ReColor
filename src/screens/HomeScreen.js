@@ -1,43 +1,145 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { MotiView } from "moti";
+import {
+  Dimensions,
+  Image,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { auth } from "../../firebaseConfig";
 import BackgroundBubbles from "../components/BackgroundBubbles";
+import { COLORS, SHADOW } from "../theme/colors";
 import { styles } from "../theme/styles";
 
-const bentoCard = (bg, onPress, icon, iconColor, title, desc, cardStyle) => (
-  <TouchableOpacity
-    activeOpacity={0.85}
-    onPress={onPress}
-    style={[
-      {
+const { width } = Dimensions.get("window");
+
+// --- DOMINANT CARD COMPONENT ---
+// Uses pulsing shadow and scale to feel "alive"
+const DominantCard = ({
+  bg,
+  onPress,
+  icon,
+  iconColor,
+  title,
+  desc,
+  delay = 0,
+}) => (
+  <MotiView
+    from={{ opacity: 0, scale: 0.9 }}
+    animate={{ opacity: 1, scale: 1 }}
+    transition={{ type: "timing", duration: 800, delay }}
+  >
+    <TouchableOpacity activeOpacity={0.9} onPress={onPress}>
+      <MotiView
+        animate={{
+          scale: [1, 1.02, 1],
+          shadowOpacity: [0.1, 0.3, 0.1],
+        }}
+        transition={{
+          loop: true,
+          duration: 3000,
+          type: "timing",
+        }}
+        style={{
+          backgroundColor: bg,
+          borderRadius: 28,
+          padding: 24,
+          marginBottom: 16,
+          flexDirection: "row",
+          alignItems: "center",
+          borderWidth: 1,
+          borderColor: "rgba(255,255,255,0.6)",
+          ...SHADOW.lg,
+        }}
+      >
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: "800",
+              color: iconColor,
+              letterSpacing: 1.5,
+              marginBottom: 4,
+            }}
+          >
+            RECOMMENDED
+          </Text>
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: "900",
+              color: "#1A1A2E",
+              marginBottom: 6,
+            }}
+          >
+            {title}
+          </Text>
+          <Text
+            style={{
+              fontSize: 13,
+              color: "#4A4A4A",
+              lineHeight: 18,
+              paddingRight: 20,
+            }}
+          >
+            {desc}
+          </Text>
+        </View>
+
+        <MotiView
+          animate={{ translateY: [-5, 5, -5] }}
+          transition={{ loop: true, duration: 2500, type: "timing" }}
+          style={{
+            width: 70,
+            height: 70,
+            borderRadius: 35,
+            backgroundColor: "rgba(255,255,255,0.5)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons name={icon} size={36} color={iconColor} />
+        </MotiView>
+      </MotiView>
+    </TouchableOpacity>
+  </MotiView>
+);
+
+// --- SECONDARY SMALL CARD ---
+const SecondaryCard = ({ bg, onPress, icon, iconColor, title, delay = 0 }) => (
+  <MotiView
+    from={{ opacity: 0, scale: 0.5 }}
+    animate={{ opacity: 1, scale: 1 }}
+    transition={{ type: "spring", delay }}
+    style={{ flex: 1 }}
+  >
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
         backgroundColor: bg,
         borderRadius: 20,
         padding: 16,
+        alignItems: "center",
+        justifyContent: "center",
+        height: 100,
         borderWidth: 1,
-        borderColor: "rgba(0,0,0,0.06)",
-      },
-      cardStyle,
-    ]}
-  >
-    <Ionicons
-      name={icon}
-      size={26}
-      color={iconColor}
-      style={{ marginBottom: 8 }}
-    />
-    <Text
-      style={{
-        fontWeight: "700",
-        fontSize: 15,
-        color: "#1A1A2E",
-        marginBottom: 4,
+        borderColor: "rgba(255,255,255,0.3)",
       }}
     >
-      {title}
-    </Text>
-    <Text style={{ fontSize: 12, color: "#666", lineHeight: 17 }}>{desc}</Text>
-  </TouchableOpacity>
+      <Ionicons
+        name={icon}
+        size={24}
+        color={iconColor}
+        style={{ marginBottom: 8 }}
+      />
+      <Text style={{ fontSize: 12, fontWeight: "700", color: "#1A1A2E" }}>
+        {title}
+      </Text>
+    </TouchableOpacity>
+  </MotiView>
 );
 
 export default function HomeScreen({ navigation }) {
@@ -47,7 +149,8 @@ export default function HomeScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <BackgroundBubbles />
-      {/* Sticky disclaimer — padded for notch/camera bump */}
+
+      {/* Sticky disclaimer — notch-aware */}
       <View
         style={{
           flexDirection: "row",
@@ -56,100 +159,111 @@ export default function HomeScreen({ navigation }) {
           gap: 6,
           backgroundColor: "#FFF8E1",
           paddingTop: insets.top + 4,
-          paddingBottom: 5,
-          paddingHorizontal: 12,
+          paddingBottom: 6,
           borderBottomWidth: 1,
           borderBottomColor: "#FFE082",
         }}
       >
         <Ionicons name="warning-outline" size={12} color="#F59E0B" />
-        <Text
-          style={{
-            fontSize: 10,
-            fontWeight: "700",
-            color: "#F59E0B",
-            letterSpacing: 0.4,
-          }}
-        >
-          NOT A MEDICAL DIAGNOSIS — SCREENING PURPOSE ONLY
+        <Text style={{ fontSize: 10, fontWeight: "700", color: "#F59E0B" }}>
+          NOT A MEDICAL DIAGNOSIS — SCREENING ONLY
         </Text>
       </View>
+
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
-        style={{ backgroundColor: "transparent" }}
       >
-        <View style={{ marginTop: 10, marginBottom: 24 }}>
-          <Text style={{ color: "#666", marginBottom: 5 }}>
-            Hello, {userName}
-          </Text>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
+        {/* Welcome Section */}
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 30,
+            marginTop: 10,
+          }}
+        >
+          <View>
             <Text
               style={{
-                fontSize: 28,
-                fontWeight: "bold",
-                flex: 1,
-                marginRight: 10,
+                color: COLORS.textLight,
+                fontSize: 14,
+                fontWeight: "600",
               }}
             >
-              Welcome to ReColor
+              Hello, {userName}
             </Text>
+            <Text
+              style={{ fontSize: 32, fontWeight: "900", color: COLORS.text }}
+            >
+              ReColor
+            </Text>
+          </View>
+          <MotiView
+            from={{ rotate: "0deg" }}
+            animate={{ rotate: "10deg" }}
+            transition={{ loop: true, repeatReverse: true, duration: 2000 }}
+          >
             <Image
               source={require("../../assets/icon.png")}
-              style={{ width: 80, height: 80, resizeMode: "contain" }} //reduced to 80 from 180
+              style={{ width: 60, height: 60, resizeMode: "contain" }}
             />
-          </View>
+          </MotiView>
         </View>
 
-        {/* Hero — Ishihara Test */}
-        {bentoCard(
-          "#E3F2FD",
-          () => navigation.navigate("IshiharaIntro"),
-          "eye",
-          "#2196F3",
-          "Take Ishihara Test",
-          "Screen for color vision deficiency with our digital 25-plate test",
-          { marginBottom: 12 },
-        )}
+        {/* DOMINANT CARD 1: VISION ASSESSMENT */}
+        <DominantCard
+          bg="#E3F2FD" // Light Blue
+          icon="eye"
+          iconColor="#2196F3"
+          title="Vision Assessment"
+          desc="Standardized Ishihara screening to identify your specific color sensitivity."
+          onPress={() => navigation.navigate("IshiharaIntro")}
+          delay={200}
+        />
 
-        {/* Row — Enhancement + Education */}
-        <View style={{ flexDirection: "row", gap: 16, marginBottom: 16 }}>
-          {bentoCard(
-            "#F3E5F5",
-            () => navigation.navigate("CameraEnhance"),
-            "camera",
-            "#9C27B0",
-            "Color Enhancement",
-            "Adaptive color correction",
-            { flex: 1 },
-          )}
-          {bentoCard(
-            "#FCE4EC",
-            () => navigation.navigate("EducationList"),
-            "book",
-            "#E91E63",
-            "Awareness & Education",
-            "Articles and CVD simulation",
-            { flex: 1 },
-          )}
+        {/* DOMINANT CARD 2: VISION ASSISTANT */}
+        <DominantCard
+          bg="#F3E5F5" // Light Purple
+          icon="camera"
+          iconColor="#9C27B0"
+          title="Camera and ColorBlind Simulation"
+          desc="Point your camera to apply adaptive correction and identify colors in real-time."
+          onPress={() => navigation.navigate("CameraEnhance")}
+          delay={400}
+        />
+
+        {/* SECONDARY ROW */}
+        <Text
+          style={{
+            fontSize: 12,
+            fontWeight: "800",
+            color: "#999",
+            marginBottom: 12,
+            letterSpacing: 1,
+          }}
+        >
+          TOOLS & RESEARCH
+        </Text>
+        <View style={{ flexDirection: "row", gap: 12 }}>
+          <SecondaryCard
+            bg="#FCE4EC"
+            title="Education"
+            icon="book"
+            iconColor="#E91E63"
+            onPress={() => navigation.navigate("EducationList")}
+            delay={600}
+          />
+          <SecondaryCard
+            bg="#E8F5E9"
+            title="Survey"
+            icon="clipboard"
+            iconColor="#4CAF50"
+            onPress={() => navigation.navigate("Survey")}
+            delay={700}
+          />
         </View>
-
-        {/* Secondary — Survey */}
-        {bentoCard(
-          "#E8F5E9",
-          () => navigation.navigate("Survey"),
-          "clipboard",
-          "#4CAF50",
-          "Quick Survey",
-          "Help us understand your color vision experience",
-          { marginBottom: 0 },
-        )}
       </ScrollView>
     </View>
   );
