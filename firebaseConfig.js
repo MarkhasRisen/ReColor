@@ -56,7 +56,6 @@ export const saveExamResult = async (
   total = 14,
 ) => {
   try {
-    // WRITE 1: Private (Includes UID)[cite: 15]
     await addDoc(collection(db, "users", userId, "history"), {
       score,
       total,
@@ -65,7 +64,6 @@ export const saveExamResult = async (
       date: serverTimestamp(),
     });
 
-    // WRITE 2: Anonymized (NO UID - THIS IS THE "REAL SHIT" Brandon mentioned)[cite: 15, 19]
     await addDoc(collection(db, "research_data_anonymized"), {
       diagnosis,
       severity,

@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { auth, saveExamResult } from "../../firebaseConfig";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 import {
@@ -26,6 +27,7 @@ const { width } = Dimensions.get("window");
 const DISPLAY_TIME = 3; // seconds each plate is shown
 
 export default function TestScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
   const { testType = "comprehensive" } = route?.params || {};
   const isQuick = testType === "quick";
   const stage1Length = isQuick ? 11 : 21;
