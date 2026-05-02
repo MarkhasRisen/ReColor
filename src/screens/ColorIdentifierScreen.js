@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
 import * as ImageManipulator from "expo-image-manipulator";
+import * as Speech from "expo-speech"; // Integrated for Objective 2
 import { useEffect, useRef, useState } from "react";
 import {
-  Alert,
   Dimensions,
   SafeAreaView,
   StyleSheet,
@@ -27,7 +28,7 @@ function ColorIdentifierScreenInner({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
   const isFocused = useIsFocused();
   const [cameraPosition, setCameraPosition] = useState("back");
-  const [audio, setAudio] = useState(true);
+  const [audio, setAudio] = useState(false); // Default to false
   const [showModal, setShowModal] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [cursorPosition, setCursorPosition] = useState({
@@ -47,34 +48,29 @@ function ColorIdentifierScreenInner({ navigation }) {
   const viewSizeRef = useRef({ width, height: screenHeight });
   const device = useCameraDevice(cameraPosition);
 
+  // Sync with global settings on mount
   const handleResponderLayout = (e) => {
     const { width: vw, height: vh } = e.nativeEvent.layout;
     if (vw > 0 && vh > 0) viewSizeRef.current = { width: vw, height: vh };
   };
+  // Sync audio preference from Settings
+  useEffect(() => {
+    const syncAudio = async () => {
+      const saved = await AsyncStorage.getItem("audio_feedback_enabled");
+      setAudio(saved === "true");
+    };
+    syncAudio();
+  }, [isFocused]);
 
   useEffect(() => {
     isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
     const timer = setTimeout(() => {
       if (isMountedRef.current) setCameraReady(true);
     }, 700);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    const unsub = navigation.addListener("beforeRemove", () =>
-      setCameraReady(false),
-    );
-    return unsub;
-  }, [navigation]);
-
-  useEffect(() => {
-    if (!hasPermission) requestPermission();
+    return () => {
+      isMountedRef.current = false;
+      clearTimeout(timer);
+    };
   }, []);
 
   if (!hasPermission) {
@@ -114,9 +110,10 @@ function ColorIdentifierScreenInner({ navigation }) {
           compress: 0.95,
         },
       );
+
+      const decoded = decodeJpegBase64(resized.base64);
       const imgW = resized.width;
       const imgH = resized.height;
-      const decoded = decodeJpegBase64(resized.base64);
 
       const { width: viewW, height: viewH } = viewSizeRef.current;
       const screenAspect = viewW / viewH;
@@ -134,8 +131,18 @@ function ColorIdentifierScreenInner({ navigation }) {
         pixX = Math.round((cx / viewW) * imgW);
         pixY = Math.round(offsetY + (cy / viewH) * visibleH);
       }
-      console.log("[ColorID] map", { imgW, imgH, viewW, viewH, cx, cy, pixX, pixY });
+      console.log("[ColorID] map", {
+        imgW,
+        imgH,
+        viewW,
+        viewH,
+        cx,
+        cy,
+        pixX,
+        pixY,
+      });
 
+      // Pixel averaging logic
       const half = 5;
       const x0 = Math.max(0, pixX - half),
         y0 = Math.max(0, pixY - half);
@@ -163,12 +170,20 @@ function ColorIdentifierScreenInner({ navigation }) {
       const sampledHex =
         "#" +
         [avgR, avgG, avgB].map((c) => c.toString(16).padStart(2, "0")).join("");
-      if (isMountedRef.current)
+
+      if (isMountedRef.current) {
         setIdentifiedColor({
           name: result.className,
           hex: sampledHex,
           conf: `${result.confidence}%`,
         });
+
+        // Trigger Audio Feedback if enabled
+        if (audio) {
+          Speech.stop();
+          Speech.speak(result.className, { rate: 1.0 });
+        }
+      }
     } catch (e) {
       console.log("[ColorID] detection error:", e);
     } finally {
@@ -177,14 +192,10 @@ function ColorIdentifierScreenInner({ navigation }) {
     }
   };
 
-  const handleTouchMove = (evt) => {
-    const { locationX, locationY } = evt.nativeEvent;
-    setCursorPosition({ x: locationX, y: locationY });
-  };
-  const handleTouchEnd = (evt) => {
-    const { locationX, locationY } = evt.nativeEvent;
-    setCursorPosition({ x: locationX, y: locationY });
-    runDetection(locationX, locationY);
+  const toggleAudio = async () => {
+    const newVal = !audio;
+    setAudio(newVal);
+    await AsyncStorage.setItem("audio_feedback_enabled", newVal.toString());
   };
 
   return (
@@ -203,9 +214,19 @@ function ColorIdentifierScreenInner({ navigation }) {
         style={StyleSheet.absoluteFill}
         onLayout={handleResponderLayout}
         onStartShouldSetResponder={() => true}
-        onResponderMove={handleTouchMove}
-        onResponderGrant={handleTouchMove}
-        onResponderRelease={handleTouchEnd}
+        onResponderMove={(evt) =>
+          setCursorPosition({
+            x: evt.nativeEvent.locationX,
+            y: evt.nativeEvent.locationY,
+          })
+        }
+        onResponderRelease={(evt) => {
+          setCursorPosition({
+            x: evt.nativeEvent.locationX,
+            y: evt.nativeEvent.locationY,
+          });
+          runDetection(evt.nativeEvent.locationX, evt.nativeEvent.locationY);
+        }}
       />
 
       <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
@@ -224,18 +245,7 @@ function ColorIdentifierScreenInner({ navigation }) {
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <TouchableOpacity
-              onPress={() => {
-                setAudio((a) => !a);
-                Alert.alert(
-                  "Audio",
-                  audio
-                    ? "Audio off (feature coming soon)"
-                    : "Audio on (feature coming soon)",
-                );
-              }}
-              style={{ marginRight: 15 }}
-            >
+            <TouchableOpacity onPress={toggleAudio} style={{ marginRight: 15 }}>
               <Ionicons
                 name={audio ? "volume-high" : "volume-mute"}
                 size={24}
@@ -248,128 +258,32 @@ function ColorIdentifierScreenInner({ navigation }) {
           </View>
         </View>
 
+        {/* Reticle */}
         <View
           pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: cursorPosition.y - 50,
-            left: cursorPosition.x - 50,
-            width: 100,
-            height: 100,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
+          style={[
+            localStyles.cursor,
+            { top: cursorPosition.y - 50, left: cursorPosition.x - 50 },
+          ]}
         >
-          <View
-            style={{
-              width: 2,
-              height: 50,
-              backgroundColor: "rgba(255,255,255,0.8)",
-              position: "absolute",
-            }}
-          />
-          <View
-            style={{
-              width: 50,
-              height: 2,
-              backgroundColor: "rgba(255,255,255,0.8)",
-              position: "absolute",
-            }}
-          />
-          <View
-            style={{
-              width: 20,
-              height: 20,
-              borderRadius: 10,
-              borderWidth: 2,
-              borderColor: "#FFF",
-            }}
-          />
+          <View style={localStyles.reticleLineV} />
+          <View style={localStyles.reticleLineH} />
+          <View style={localStyles.reticleCircle} />
         </View>
 
-        <View
-          style={{
-            position: "absolute",
-            top: "60%",
-            alignSelf: "center",
-            pointerEvents: "none",
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: "rgba(0,0,0,0.85)",
-              padding: 15,
-              borderRadius: 12,
-              alignItems: "center",
-              minWidth: 150,
-            }}
-          >
+        {/* Result Card */}
+        <View style={localStyles.resultCardContainer}>
+          <View style={localStyles.resultCard}>
             <View
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 15,
-                backgroundColor: identifiedColor.hex,
-                marginBottom: 5,
-                borderWidth: 2,
-                borderColor: "#FFF",
-              }}
+              style={[
+                localStyles.colorPreview,
+                { backgroundColor: identifiedColor.hex },
+              ]}
             />
-            <Text style={{ color: "#FFF", fontWeight: "bold", fontSize: 16 }}>
-              {identifiedColor.name}
-            </Text>
-            {/* Removed the Delta-E Match text, retaining only the Calculating state */}
-            <Text style={{ color: "#CCC", fontSize: 12 }}>
+            <Text style={localStyles.colorName}>{identifiedColor.name}</Text>
+            <Text style={localStyles.calculatingText}>
               {isDetecting ? "Calculating..." : ""}
             </Text>
-          </View>
-        </View>
-
-        <View
-          style={{
-            position: "absolute",
-            bottom: 30,
-            width: "100%",
-            alignItems: "center",
-            zIndex: 30,
-          }}
-        >
-          <View
-            style={{
-              marginBottom: 20,
-              backgroundColor: "rgba(0,0,0,0.6)",
-              paddingHorizontal: 15,
-              paddingVertical: 8,
-              borderRadius: 20,
-            }}
-          >
-            <Text style={{ color: "#FFF", fontSize: 12, fontWeight: "bold" }}>
-              Tap to identify color
-            </Text>
-          </View>
-          <View
-            style={{
-              flexDirection: "row",
-              width: "100%",
-              justifyContent: "space-between",
-              paddingHorizontal: 30,
-              alignItems: "center",
-            }}
-          >
-            <TouchableOpacity
-              style={styles.camBtnCircleSmall}
-              onPress={() =>
-                setCameraPosition((p) => (p === "back" ? "front" : "back"))
-              }
-            >
-              <Ionicons name="camera-reverse-outline" size={24} color="#FFF" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.camBtnCircleSmall}
-              onPress={() => navigation.navigate("CVDGallery")}
-            >
-              <Ionicons name="image-outline" size={24} color="#FFF" />
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -384,6 +298,59 @@ function ColorIdentifierScreenInner({ navigation }) {
   );
 }
 
+const localStyles = StyleSheet.create({
+  cursor: {
+    position: "absolute",
+    width: 100,
+    height: 100,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  reticleLineV: {
+    width: 2,
+    height: 50,
+    backgroundColor: "rgba(255,255,255,0.8)",
+    position: "absolute",
+  },
+  reticleLineH: {
+    width: 50,
+    height: 2,
+    backgroundColor: "rgba(255,255,255,0.8)",
+    position: "absolute",
+  },
+  reticleCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#FFF",
+  },
+  resultCardContainer: {
+    position: "absolute",
+    top: "60%",
+    alignSelf: "center",
+    pointerEvents: "none",
+  },
+  resultCard: {
+    backgroundColor: "rgba(0,0,0,0.85)",
+    padding: 15,
+    borderRadius: 12,
+    alignItems: "center",
+    minWidth: 150,
+  },
+  colorPreview: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    marginBottom: 5,
+    borderWidth: 2,
+    borderColor: "#FFF",
+  },
+  colorName: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
+  calculatingText: { color: "#CCC", fontSize: 12 },
+});
+
+// DEFAULT EXPORT (Must match your navigator import)
 export default function ColorIdentifierScreen(props) {
   return (
     <ScreenErrorBoundary navigation={props.navigation}>

@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
@@ -16,7 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { auth } from "../../firebaseConfig"; // Added Firebase Auth import
+import { auth } from "../../firebaseConfig";
 import {
   decodeJpegBase64,
   encodeToDataUri,
@@ -42,9 +42,8 @@ export default function CVDGalleryScreen({ navigation }) {
       quality: 1,
     });
     if (!result.canceled) {
-      const uri = result.assets[0].uri;
-      setOriginalUri(uri);
-      setDisplayUri(uri);
+      setOriginalUri(result.assets[0].uri);
+      setDisplayUri(result.assets[0].uri);
       setMode("Off");
     }
   };
@@ -57,7 +56,7 @@ export default function CVDGalleryScreen({ navigation }) {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission needed", "Please allow access to save photos.");
+        Alert.alert("Permission needed", "Allow gallery access in settings.");
         return;
       }
 
@@ -66,18 +65,22 @@ export default function CVDGalleryScreen({ navigation }) {
         const b64 = displayUri.split(",")[1];
         savePath = `${FileSystem.documentDirectory}recolor_gallery_${Date.now()}.jpg`;
         await FileSystem.writeAsStringAsync(savePath, b64, {
-          encoding: FileSystem.EncodingType.Base64,
+          encoding: "base64",
         });
       }
 
-      // Dynamic Album Name based on the current user
+      const asset = await MediaLibrary.createAssetAsync(savePath);
       const userName = auth.currentUser?.email?.split("@")[0] || "Guest";
       const albumName = `ReColor_${userName}`;
 
-      const asset = await MediaLibrary.createAssetAsync(savePath);
-      await MediaLibrary.createAlbumAsync(albumName, asset, false);
+      const album = await MediaLibrary.getAlbumAsync(albumName);
+      if (!album) {
+        await MediaLibrary.createAlbumAsync(albumName, asset, false);
+      } else {
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+      }
 
-      Alert.alert("Saved", `Image saved to your ${albumName} album.`);
+      Alert.alert("Saved", `Image added to your Recolor album.`);
     } catch (e) {
       Alert.alert("Error", "Could not save image.");
     }
@@ -145,7 +148,6 @@ export default function CVDGalleryScreen({ navigation }) {
             <Ionicons name="add-circle" size={28} color="#FFF" />
           </TouchableOpacity>
         </View>
-
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
         >
@@ -185,7 +187,6 @@ export default function CVDGalleryScreen({ navigation }) {
             </TouchableOpacity>
           )}
         </View>
-
         {originalUri && (
           <View style={{ paddingBottom: 30 }}>
             <View
@@ -199,12 +200,7 @@ export default function CVDGalleryScreen({ navigation }) {
               {["Off", "Protan", "Deutan", "Tritan"].map((m) => (
                 <TouchableOpacity
                   key={m}
-                  onPress={() => {
-                    Haptics.impactAsync(
-                      Haptics.ImpactFeedbackStyle.Light,
-                    ).catch(() => {});
-                    applyFilter(m);
-                  }}
+                  onPress={() => applyFilter(m)}
                   disabled={processing}
                   style={{
                     backgroundColor: mode === m ? COLORS.primary : "#333",
@@ -223,19 +219,25 @@ export default function CVDGalleryScreen({ navigation }) {
               disabled={processing}
               style={{
                 alignSelf: "center",
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
                 backgroundColor: COLORS.primary,
                 paddingHorizontal: 28,
                 paddingVertical: 12,
                 borderRadius: 24,
                 opacity: processing ? 0.5 : 1,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: 10,
               }}
             >
-              <Ionicons name="download-outline" size={20} color="#FFF" />
-              <Text style={{ color: "#FFF", fontWeight: "700", fontSize: 15 }}>
-                Save to Gallery
+              <Ionicons
+                name="download-outline"
+                size={20}
+                color="#FFF"
+                style={{ marginRight: 8 }}
+              />
+              <Text style={{ color: "#FFF", fontWeight: "700" }}>
+                Save to Account Album
               </Text>
             </TouchableOpacity>
           </View>

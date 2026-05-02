@@ -6,6 +6,7 @@ import {
   getReactNativePersistence,
   initializeAuth,
   onAuthStateChanged,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithCredential,
   signInWithEmailAndPassword,
@@ -55,7 +56,6 @@ export const saveExamResult = async (
   total = 14,
 ) => {
   try {
-    // WRITE 1: Private User History
     await addDoc(collection(db, "users", userId, "history"), {
       score,
       total,
@@ -64,17 +64,15 @@ export const saveExamResult = async (
       date: serverTimestamp(),
     });
 
-    // WRITE 2: Anonymized Research Data
     await addDoc(collection(db, "research_data_anonymized"), {
       diagnosis,
       severity,
       score,
       total,
-      device: "Mobile_Client",
+      device: "Mobile_Client_Node", // General identifier only
       timestamp: serverTimestamp(),
     });
 
-    console.log("Dual write successful: Private + Research");
     return true;
   } catch (error) {
     console.error("Save failed", error);
@@ -88,6 +86,7 @@ export {
   createUserWithEmailAndPassword,
   db,
   onAuthStateChanged,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithCredential,
   signInWithEmailAndPassword,

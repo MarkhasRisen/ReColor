@@ -8,8 +8,6 @@ export default function Header({ title, subtitle, back }) {
   return (
     <View style={styles.header}>
       <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-        {" "}
-        {/* Added flex: 1 here */}
         {back && (
           <TouchableOpacity
             onPress={() => navigation.goBack()}
@@ -25,7 +23,7 @@ export default function Header({ title, subtitle, back }) {
       </View>
       <Image
         source={require("../../assets/icon.png")}
-        style={{ width: 60, height: 60, resizeMode: "contain" }} // Reduced from 80x80
+        style={{ width: 60, height: 60, resizeMode: "contain" }}
       />
     </View>
   );

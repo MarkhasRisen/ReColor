@@ -1,9 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import * as Google from "expo-auth-session/providers/google";
 import * as Haptics from "expo-haptics";
-import * as WebBrowser from "expo-web-browser";
+import { doc, getDoc } from "firebase/firestore";
 import { MotiView } from "moti";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,22 +17,15 @@ import {
   View,
 } from "react-native";
 import {
-  GoogleAuthProvider,
   auth,
+  db,
   sendPasswordResetEmail,
-  signInWithCredential,
   signInWithEmailAndPassword,
+  signOut,
 } from "../../firebaseConfig";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
-WebBrowser.maybeCompleteAuthSession();
-
-// OAuth Web Client ID updated for production handshake
-const GOOGLE_WEB_CLIENT_ID =
-  "1047364142133-g2bl9ki2t2o1jvvie6b89m3ugkoptf3c.apps.googleusercontent.com";
-const GOOGLE_CONFIGURED = !GOOGLE_WEB_CLIENT_ID.includes("YOUR_OAUTH");
-
-const APP_VERSION = "v1.0.4-thesis";
+const APP_VERSION = "v1.0.0-beta";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
@@ -41,53 +33,26 @@ export default function LoginScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: GOOGLE_WEB_CLIENT_ID,
-    androidClientId: GOOGLE_WEB_CLIENT_ID,
-  });
-
-  useEffect(() => {
-    if (response?.type === "success") {
-      const { id_token } = response.params;
-      if (!id_token) {
-        Alert.alert("Sign-in failed", "Google did not return a token.");
-        return;
-      }
-      setLoading(true);
-      const credential = GoogleAuthProvider.credential(id_token);
-      signInWithCredential(auth, credential)
-        .then(() => navigation.replace("MainTabs"))
-        .catch((err) => Alert.alert("Google Sign-in Failed", err.message))
-        .finally(() => setLoading(false));
-    } else if (response?.type === "error") {
-      Alert.alert(
-        "Sign-in Failed",
-        response.error?.message || "Google Sign-in was unsuccessful.",
-      );
-    }
-  }, [response]);
-
   const handleForgotPassword = async () => {
     const target = email.trim();
-    if (!target) {
+    if (!target || !target.includes("@")) {
       Alert.alert(
-        "Enter your email",
-        'Type your email address above, then tap "Forgot password?".',
+        "Valid Email Required",
+        "Please enter your full email address first.",
       );
       return;
     }
     try {
       await sendPasswordResetEmail(auth, target);
       Alert.alert(
-        "Email sent",
-        `A password reset link has been sent to ${target}.`,
+        "Email Sent",
+        `A reset link has been sent to ${target}. Check your Inbox and Spam.`,
       );
     } catch (err) {
-      if (err.code === "auth/user-not-found") {
-        Alert.alert("Not found", "No account found with that email address.");
-      } else {
-        Alert.alert("Error", err.message);
-      }
+      Alert.alert(
+        "Request Failed",
+        "Check your connection or if the email is correct.",
+      );
     }
   };
 
@@ -97,35 +62,45 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
-    // New strict password validation enforced on Login
-    const passRegex =
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,14}$/;
-    if (!passRegex.test(password)) {
-      Alert.alert(
-        "Invalid Password",
-        "Password must be 6-14 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.",
-      );
-      return;
-    }
-
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setLoading(true);
+
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      navigation.replace("MainTabs");
-    } catch (err) {
-      if (
-        err.code === "auth/user-not-found" ||
-        err.code === "auth/invalid-credential" ||
-        err.code === "auth/wrong-password"
-      ) {
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password,
+      );
+      const user = userCredential.user;
+
+      // IDENTITY VERIFICATION BYPASS FOR DEV ACCOUNT
+      const isDevAccount =
+        email.trim().toLowerCase() === "recolor.dev@gmail.com";
+
+      if (!user.emailVerified && !isDevAccount) {
+        await signOut(auth);
         Alert.alert(
-          "Login Failed",
-          'Incorrect email or password. New user? Tap "Create an account" below.',
+          "Verification Required",
+          "Please verify your email before signing in.",
+          [{ text: "OK" }],
         );
-      } else {
-        Alert.alert("Error", err.message);
+        setLoading(false);
+        return;
       }
+
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (userDoc.exists()) {
+        const role = userDoc.data().role;
+        if (role === "admin" || role === "researcher") {
+          navigation.replace("AdminHub", { role });
+        } else {
+          navigation.replace("MainTabs");
+        }
+      } else {
+        navigation.replace("MainTabs");
+      }
+    } catch (err) {
+      Alert.alert("Login Failed", "Incorrect credentials or network error.");
     } finally {
       setLoading(false);
     }
@@ -139,7 +114,6 @@ export default function LoginScreen({ navigation }) {
       <View style={styles.blob1} />
       <View style={styles.blob2} />
       <View style={styles.blob3} />
-
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -148,7 +122,7 @@ export default function LoginScreen({ navigation }) {
         <MotiView
           from={{ opacity: 0, translateY: -20 }}
           animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: "spring", damping: 18 }}
+          transition={{ type: "timing", duration: 600 }}
           style={styles.logoWrap}
         >
           <Image
@@ -157,18 +131,16 @@ export default function LoginScreen({ navigation }) {
             resizeMode="contain"
           />
         </MotiView>
-
         <MotiView
           from={{ opacity: 0, translateY: 30 }}
           animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: "spring", damping: 18, delay: 150 }}
+          transition={{ type: "timing", duration: 800, delay: 150 }}
           style={styles.card}
         >
           <Text style={styles.welcomeTitle}>Welcome Back</Text>
           <Text style={styles.welcomeSub}>
-            Sign in to enhance your colour perception
+            Sign in to enhance your color perception
           </Text>
-
           <View style={styles.inputRow}>
             <Ionicons
               name="person-outline"
@@ -177,21 +149,18 @@ export default function LoginScreen({ navigation }) {
             />
             <TextInput
               style={styles.input}
-              placeholder="Username"
-              placeholderTextColor={COLORS.textLight}
+              placeholder="Email Address"
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
             />
           </View>
-
           <View style={styles.inputRow}>
             <Ionicons name="key-outline" size={18} color={COLORS.textLight} />
             <TextInput
               style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor={COLORS.textLight}
+              placeholder="Password"
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPass}
@@ -205,51 +174,23 @@ export default function LoginScreen({ navigation }) {
               />
             </TouchableOpacity>
           </View>
-
           <TouchableOpacity
             onPress={handleForgotPassword}
             style={styles.forgotBtn}
           >
             <Text style={styles.forgotText}>Forgot password?</Text>
           </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.loginBtn}
             onPress={handleLogin}
             disabled={loading}
-            activeOpacity={0.85}
           >
             {loading ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.loginBtnText}>Login / Sign Up</Text>
+              <Text style={styles.loginBtnText}>Login</Text>
             )}
           </TouchableOpacity>
-
-          {/* GOOGLE SIGN-IN HIDDEN FOR STABLE DEMO ENVIRONMENT */}
-          {/* <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.googleBtn, !GOOGLE_CONFIGURED && { opacity: 0.5 }]}
-            onPress={() => {
-              if (!GOOGLE_CONFIGURED) {
-                Alert.alert('Not Configured', 'Google Sign-In registration required.');
-                return;
-              }
-              promptAsync();
-            }}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="logo-google" size={20} color="#DB4437" />
-            <Text style={styles.googleBtnText}>Continue with Google</Text>
-          </TouchableOpacity> 
-          */}
-
           <TouchableOpacity
             style={styles.createAccountLink}
             onPress={() => navigation.navigate("SignUp")}
@@ -261,24 +202,10 @@ export default function LoginScreen({ navigation }) {
               </Text>
             </Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.adminLink}
-            onPress={() => navigation.navigate("AdminLogin")}
-          >
-            <Ionicons name="lock-closed" size={13} color={COLORS.warning} />
-            <Text style={styles.adminLinkText}> Admin / Expert Portal</Text>
-          </TouchableOpacity>
         </MotiView>
-
-        <MotiView
-          from={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 500 }}
-          style={styles.versionBadge}
-        >
+        <View style={styles.versionBadge}>
           <Text style={styles.versionText}>{APP_VERSION}</Text>
-        </MotiView>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -355,11 +282,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     gap: SPACING.sm,
   },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: COLORS.text,
-  },
+  input: { flex: 1, fontSize: 15, color: COLORS.text },
   forgotBtn: {
     alignSelf: "flex-end",
     marginTop: 4,
@@ -382,35 +305,6 @@ const styles = StyleSheet.create({
     padding: SPACING.sm,
   },
   createAccountText: { fontSize: 14, color: COLORS.textLight },
-  adminLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: SPACING.xs,
-    padding: SPACING.sm,
-  },
-  adminLinkText: { fontSize: 13, color: COLORS.textLight },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: SPACING.md,
-    gap: SPACING.sm,
-  },
-  dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
-  dividerText: { fontSize: 12, color: COLORS.textLight },
-  googleBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: SPACING.sm,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    paddingVertical: 13,
-    backgroundColor: COLORS.background,
-    marginBottom: SPACING.sm,
-  },
-  googleBtnText: { color: COLORS.text, fontWeight: "600", fontSize: 15 },
   versionBadge: {
     alignSelf: "center",
     marginTop: SPACING.lg,

@@ -17,6 +17,7 @@ import {
   View,
 } from "react-native";
 import { auth, db } from "../../firebaseConfig";
+import BackgroundBubbles from "../components/BackgroundBubbles";
 import Card from "../components/Card";
 import Header from "../components/Header";
 import { COLORS } from "../theme/colors";
@@ -84,6 +85,7 @@ export default function SurveyScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <BackgroundBubbles />
       <Header title="Quick Survey" back />
       <ScrollView
         contentContainerStyle={{ padding: 20 }}

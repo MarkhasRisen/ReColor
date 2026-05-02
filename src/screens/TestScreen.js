@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { auth, saveExamResult } from "../../firebaseConfig";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 import {
@@ -26,6 +27,7 @@ const { width } = Dimensions.get("window");
 const DISPLAY_TIME = 3; // seconds each plate is shown
 
 export default function TestScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
   const { testType = "comprehensive" } = route?.params || {};
   const isQuick = testType === "quick";
   const stage1Length = isQuick ? 11 : 21;
@@ -161,6 +163,7 @@ export default function TestScreen({ route, navigation }) {
               severity: result.severity,
               percentage: result.percentage,
               shuffledOrder,
+              type: testType,
             });
           }, 1500);
         }
@@ -208,6 +211,7 @@ export default function TestScreen({ route, navigation }) {
             severity: result.severity,
             percentage: result.percentage,
             shuffledOrder,
+            type: testType,
           });
         }, 1500);
       }
@@ -279,7 +283,7 @@ export default function TestScreen({ route, navigation }) {
           key={index}
           from={{ opacity: 0, scale: 0.88 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", damping: 16, stiffness: 160 }}
+          transition={{ type: "timing", duration: 250 }} // Changed from spring to timing to remove bounce
           style={styles.plateCard}
         >
           {showImage ? (
@@ -316,7 +320,12 @@ export default function TestScreen({ route, navigation }) {
       </View>
 
       {isTracingYesNo ? (
-        <View style={styles.tracingPanel}>
+        <View
+          style={[
+            styles.tracingPanel,
+            { paddingBottom: insets.bottom + SPACING.lg },
+          ]}
+        >
           <Text style={styles.tracingQuestion}>
             Can you trace the coloured line in this plate?
           </Text>
@@ -340,7 +349,12 @@ export default function TestScreen({ route, navigation }) {
           </View>
         </View>
       ) : isTracingMulti ? (
-        <View style={styles.tracingPanel}>
+        <View
+          style={[
+            styles.tracingPanel,
+            { paddingBottom: insets.bottom + SPACING.lg },
+          ]}
+        >
           <Text style={styles.tracingQuestion}>
             Which line(s) can you see in this plate?
           </Text>
@@ -376,7 +390,9 @@ export default function TestScreen({ route, navigation }) {
           </View>
         </View>
       ) : (
-        <View style={styles.inputPanel}>
+        <View
+          style={[styles.inputPanel, { paddingBottom: insets.bottom + 10 }]}
+        >
           <View style={styles.answerDisplay}>
             <Text style={styles.answerLabel}>YOUR ANSWER</Text>
             <Text style={styles.answerValue}>{userInput || "—"}</Text>
@@ -483,6 +499,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
+    paddingTop: 10, // Reduced padding
+    paddingBottom: 5,
   },
   headerLabel: { fontSize: 17, fontWeight: "800", color: COLORS.text },
   headerSub: { fontSize: 12, color: COLORS.textLight, marginTop: 1 },
@@ -497,15 +515,17 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   plateArea: {
-    flex: 1,
+    flex: 1.2,
     justifyContent: "center",
     alignItems: "center",
+    gap: 10, // Reduced gap
+    paddingVertical: 10, // Added padding
     gap: SPACING.md,
   },
   plateCard: {
-    width: width * 0.82,
+    width: width * 0.75,
     maxWidth: 350,
-    maxHeight: Dimensions.get("window").height * 0.45,
+    maxHeight: Dimensions.get("window").height * 0.32,
     aspectRatio: 1,
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.xl,
@@ -513,6 +533,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
     ...SHADOW.lg,
+  },
+  timerRow: {
+    marginTop: 10, // Ensure the timer is pushed away from the plate but above the keypad
+    alignItems: "center",
+    zIndex: 10,
   },
   plateImage: { width: "90%", height: "90%" },
   hiddenState: { alignItems: "center", gap: SPACING.sm },
@@ -533,8 +558,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: RADIUS.xl,
     borderTopRightRadius: RADIUS.xl,
     paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.xl,
+    paddingTop: 10,
+    //paddingBottom: 20,
     ...SHADOW.lg,
   },
   answerDisplay: { alignItems: "center", marginBottom: SPACING.md },
@@ -585,7 +610,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: RADIUS.xl,
     paddingHorizontal: SPACING.md,
     paddingTop: SPACING.lg,
-    paddingBottom: SPACING.xl,
+    //paddingBottom: SPACING.xl,
     ...SHADOW.lg,
   },
   tracingQuestion: {
