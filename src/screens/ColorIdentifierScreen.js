@@ -172,8 +172,12 @@ function ColorIdentifierScreenInner({ navigation }) {
         [avgR, avgG, avgB].map((c) => c.toString(16).padStart(2, "0")).join("");
 
       if (isMountedRef.current) {
+        const displayName =
+          result.class && result.class !== result.name
+            ? `${result.name} (${result.class})`
+            : result.name;
         setIdentifiedColor({
-          name: result.className,
+          name: displayName,
           hex: sampledHex,
           conf: `${result.confidence}%`,
         });
@@ -181,7 +185,11 @@ function ColorIdentifierScreenInner({ navigation }) {
         // Trigger Audio Feedback if enabled
         if (audio) {
           Speech.stop();
-          Speech.speak(result.className, { rate: 1.0 });
+          const spoken =
+            result.class && result.class !== result.name
+              ? `${result.name}, in the ${result.class.toLowerCase()} family`
+              : result.name;
+          Speech.speak(spoken, { rate: 1.0 });
         }
       }
     } catch (e) {

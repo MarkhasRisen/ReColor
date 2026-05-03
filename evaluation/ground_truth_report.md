@@ -1,6 +1,6 @@
 # ReColor — Ground-Truth-Anchored Evaluation
 
-**Generated:** 2026-05-01 09:34:09
+**Generated:** 2026-05-03 13:30:00
 
 This report answers the adviser's question: **"Where is the ground truth, and
 what is the actual truth produced by the algorithms?"** Every score below is

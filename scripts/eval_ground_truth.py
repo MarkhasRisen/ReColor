@@ -116,26 +116,26 @@ TENSOR_HELPER_JS = ROOT / "tensorHelper.js"
 
 import re
 
-_SECTION_RE = re.compile(r"//\s*──\s*(Neutral|Red|Orange|Yellow|Green|Cyan|Blue|Violet|Pink|Brown)\b", re.IGNORECASE)
-_ENTRY_RE = re.compile(r'name:\s*"([^"]+)".*?rgbToLab\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)')
+_ENTRY_RE = re.compile(
+    r'class:\s*"([^"]+)"\s*,\s*name:\s*"([^"]+)".*?rgbToLab\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)'
+)
 
 def _load_identifier_db_from_js():
-    """Parse IDENTIFIER_DB from tensorHelper.js. Each DB entry's class is
-    inferred from the most-recent `// ── <Class> ──` section comment."""
+    """Parse IDENTIFIER_DB from tensorHelper.js using each entry's explicit
+    `class:` field. (Earlier versions inferred the class from section
+    comments — now it's read directly from the data.)"""
     text = TENSOR_HELPER_JS.read_text(encoding="utf-8")
     start = text.index("const IDENTIFIER_DB")
     end = text.index("];", start) + 2
     block = text[start:end]
-    db, current_class = [], None
+    db = []
     for line in block.splitlines():
-        sm = _SECTION_RE.search(line)
-        if sm:
-            current_class = sm.group(1).capitalize()
-            continue
         em = _ENTRY_RE.search(line)
-        if em and current_class is not None:
-            name, r, g, b = em.group(1), int(em.group(2)), int(em.group(3)), int(em.group(4))
-            db.append((name, current_class, (r, g, b)))
+        if em:
+            klass = em.group(1)
+            name = em.group(2)
+            r, g, b = int(em.group(3)), int(em.group(4)), int(em.group(5))
+            db.append((name, klass, (r, g, b)))
     if not db:
         raise RuntimeError("Could not parse IDENTIFIER_DB from tensorHelper.js")
     return db
