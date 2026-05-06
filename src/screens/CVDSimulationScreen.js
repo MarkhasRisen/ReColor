@@ -32,6 +32,7 @@ import { getCVDRows } from "../../tensorHelper";
 import ModeSelector from "../components/ModeSelector";
 import { COLORS } from "../theme/colors";
 import { styles } from "../theme/styles";
+import { loadCalibration } from "../utils/cameraCalibration";
 import { CVD_EFFECT } from "../utils/constants";
 import { ScreenErrorBoundary } from "../utils/logger";
 
@@ -48,13 +49,23 @@ function CVDSimulationScreenInner({ navigation, route }) {
   const [frozen, setFrozen] = useState(false);
   const [frozenUri, setFrozenUri] = useState(null);
   const [processing, setProcessing] = useState(false);
+  // Calibration is loaded once when the screen mounts and on focus.
+  // Used as a per-channel multiplier inside CVD_SHADER_SOURCE so the
+  // simulated CVD perception is computed from calibrated input pixels.
+  const [calib, setCalib] = useState({ rScale: 1, gScale: 1, bScale: 1 });
 
   const cameraRef = useRef(null);
   const isMountedRef = useRef(true);
   const canvasRef = useCanvasRef();
   const device = useCameraDevice(cameraPosition);
   const skImage = useImage(frozenUri);
-  const cvdUniforms = useMemo(() => getCVDRows(cvdType), [cvdType]);
+  const cvdUniforms = useMemo(() => {
+    const rows = getCVDRows(cvdType);
+    return {
+      ...rows,
+      calib: [calib.rScale, calib.gScale, calib.bScale],
+    };
+  }, [cvdType, calib]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -66,6 +77,25 @@ function CVDSimulationScreenInner({ navigation, route }) {
   useEffect(() => {
     if (!hasPermission) requestPermission();
   }, [hasPermission]);
+
+  // Refresh manual calibration on focus so the user sees the new value
+  // immediately after returning from Settings → Camera Calibration.
+  useEffect(() => {
+    const apply = (saved) => {
+      if (saved && isMountedRef.current) {
+        setCalib({
+          rScale: saved.rScale,
+          gScale: saved.gScale,
+          bScale: saved.bScale,
+        });
+      }
+    };
+    loadCalibration().then(apply);
+    const unsub = navigation.addListener("focus", () =>
+      loadCalibration().then(apply),
+    );
+    return unsub;
+  }, [navigation]);
 
   const handleFreeze = useCallback(async () => {
     if (!cameraRef.current) return;

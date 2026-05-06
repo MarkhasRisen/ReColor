@@ -16,19 +16,30 @@ import { auth, db, signOut } from "../../firebaseConfig";
 import BackgroundBubbles from "../components/BackgroundBubbles";
 import Header from "../components/Header";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
+import { loadCalibration } from "../utils/cameraCalibration";
 
 export default function SettingsScreen({ navigation }) {
   const [intensity, setIntensity] = useState(100);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [expertRole, setExpertRole] = useState(null);
   const [testCount, setTestCount] = useState(0);
+  const [calibration, setCalibration] = useState(null);
   const user = auth.currentUser;
 
   useEffect(() => {
     loadSettings();
     checkExpertStatus();
     fetchTestCount();
-  }, []);
+    refreshCalibration();
+    // Re-check calibration when this screen regains focus (e.g., user just
+    // returned from CameraCalibrationScreen).
+    const unsub = navigation.addListener("focus", refreshCalibration);
+    return unsub;
+  }, [navigation]);
+
+  const refreshCalibration = () => {
+    loadCalibration().then(setCalibration);
+  };
 
   const loadSettings = async () => {
     const savedIntensity = await AsyncStorage.getItem("@recolor_intensity");
@@ -138,6 +149,25 @@ export default function SettingsScreen({ navigation }) {
                 trackColor={{ true: COLORS.primary }}
               />
             </View>
+
+            {/* Camera Calibration — affects all 3 cameras (Identifier, Sim, Enhance).
+                Manual calibration overrides the automatic gray-world fallback. */}
+            <TouchableOpacity
+              style={[styles.row, { marginTop: 20 }]}
+              onPress={() => navigation.navigate("CameraCalibration")}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="color-wand-outline" size={22} color={COLORS.primary} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.label}>Camera Calibration</Text>
+                <Text style={styles.subtextCount}>
+                  {calibration
+                    ? `Calibrated · R${calibration.rScale.toFixed(2)} G${calibration.gScale.toFixed(2)} B${calibration.bScale.toFixed(2)}`
+                    : "Not calibrated · using auto white-balance"}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#CCC" />
+            </TouchableOpacity>
           </View>
         </View>
 

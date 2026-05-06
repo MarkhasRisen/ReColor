@@ -33,6 +33,10 @@ import {
 import ModeSelector from "../components/ModeSelector";
 import { COLORS } from "../theme/colors";
 import { styles } from "../theme/styles";
+import {
+  applyCalibrationToBuffer,
+  resolveCalibration,
+} from "../utils/cameraCalibration";
 import { ScreenErrorBoundary } from "../utils/logger";
 
 const { width } = Dimensions.get("window");
@@ -143,6 +147,14 @@ function CameraEnhanceScreenInner({ navigation }) {
       if (!isMountedRef.current) return;
       frozenUriRef.current = resized.uri;
       decodedRef.current = decodeJpegBase64(resized.base64);
+
+      // Apply camera calibration in place once on freeze. All subsequent
+      // re-enhancements (CVD type swap, algorithm swap, intensity change)
+      // operate on the already-calibrated buffer — no need to re-resolve.
+      // Manual calibration from Settings wins; otherwise gray-world auto-WB.
+      const calib = await resolveCalibration(decodedRef.current.data);
+      applyCalibrationToBuffer(decodedRef.current.data, calib);
+
       setResultUri(runEnhancement(cvdType, algorithm) || resized.uri);
       setFrozen(true);
     } catch (e) {
