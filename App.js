@@ -21,6 +21,7 @@ const navigationRef = createNavigationContainerRef();
 import AdminHubScreen from "./src/screens/AdminHubScreen";
 import AppOnboarding from "./src/screens/AppOnboarding";
 import ArticleScreen from "./src/screens/ArticleScreen";
+import CameraCalibrationScreen from "./src/screens/CameraCalibrationScreen";
 import CameraEnhanceScreen from "./src/screens/CameraEnhanceScreen";
 import CareerDetail from "./src/screens/CareerDetail";
 import ColorIdentifierScreen from "./src/screens/ColorIdentifierScreen";
@@ -89,6 +90,11 @@ export default function App() {
               component={ResearchDashboardScreen}
             />
             <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen
+              name="CameraCalibration"
+              component={CameraCalibrationScreen}
+              options={{ headerShown: false }}
+            />
             <Stack.Screen name="MainTabs" component={MainTabNavigator} />
             {/* ── Ishihara Test Flow ── */}
             <Stack.Screen

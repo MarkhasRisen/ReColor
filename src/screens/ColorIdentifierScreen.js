@@ -20,6 +20,10 @@ import {
 import { decodeJpegBase64, identifyColor } from "../../tensorHelper";
 import ModeSelector from "../components/ModeSelector";
 import { styles } from "../theme/styles";
+import {
+  applyCalibrationToRGB,
+  resolveCalibration,
+} from "../utils/cameraCalibration";
 import { ScreenErrorBoundary } from "../utils/logger";
 
 const { width, height: screenHeight } = Dimensions.get("window");
@@ -166,10 +170,22 @@ function ColorIdentifierScreenInner({ navigation }) {
       avgG = Math.round(avgG / count);
       avgB = Math.round(avgB / count);
 
-      const result = identifyColor(avgR, avgG, avgB);
+      // Apply camera calibration before classification. Manual calibration
+      // (from Settings) wins; otherwise fall back to gray-world auto-WB
+      // computed from the surrounding image so cross-device color drift
+      // doesn't bias the Lab/Delta-E classification.
+      const calib = await resolveCalibration(decoded.data);
+      const [calR, calG, calB] = applyCalibrationToRGB(
+        avgR,
+        avgG,
+        avgB,
+        calib,
+      );
+
+      const result = identifyColor(calR, calG, calB);
       const sampledHex =
         "#" +
-        [avgR, avgG, avgB].map((c) => c.toString(16).padStart(2, "0")).join("");
+        [calR, calG, calB].map((c) => c.toString(16).padStart(2, "0")).join("");
 
       if (isMountedRef.current) {
         const displayName =
