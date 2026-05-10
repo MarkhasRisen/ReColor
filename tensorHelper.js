@@ -105,6 +105,73 @@ export function getCVDRows(cvdType) {
   return { row0: [...m[0]], row1: [...m[1]], row2: [...m[2]] };
 }
 
+const IDENTITY_ROW = [
+  [1, 0, 0],
+  [0, 1, 0],
+  [0, 0, 1],
+];
+const ZERO_ROW = [
+  [0, 0, 0],
+  [0, 0, 0],
+  [0, 0, 0],
+];
+
+/**
+ * Builds the uniforms object for DALTONIZATION_EFFECT.
+ *
+ * GPU port of applyDaltonization: the shader needs both the simulation
+ * matrix (sim0/sim1/sim2) and the error redistribution matrix
+ * (err0/err1/err2) plus the camera calibration scalars and an intensity
+ * blend factor.
+ *
+ * @param {'Protan'|'Deutan'|'Tritan'|'Off'} cvdType
+ * @param {{rScale,gScale,bScale} | null} calib  Optional calibration scalars
+ * @param {number} intensity                     0..1 blend (1 = full effect)
+ */
+export function getDaltonizationUniforms(cvdType, calib, intensity = 1) {
+  const sim = CVD_COMBINED[cvdType] || IDENTITY_ROW;
+  const err = CVD_ERR_SHIFT[cvdType] || ZERO_ROW;
+  const c = calib || { rScale: 1, gScale: 1, bScale: 1 };
+  return {
+    sim0: [...sim[0]],
+    sim1: [...sim[1]],
+    sim2: [...sim[2]],
+    err0: [...err[0]],
+    err1: [...err[1]],
+    err2: [...err[2]],
+    calib: [c.rScale, c.gScale, c.bScale],
+    intensity: cvdType === "Off" ? 0 : Math.max(0, Math.min(1, intensity)),
+  };
+}
+
+/**
+ * Builds the uniforms object for HUE_ROTATION_EFFECT.
+ *
+ * GPU port of applyHueRotation. Looks up the per-CVD band config (center,
+ * range, shift) from the shared HUE_ROTATION_CONFIG and packages it for
+ * the SkSL shader.
+ *
+ * @param {'Protan'|'Deutan'|'Tritan'|'Off'} cvdType
+ * @param {{rScale,gScale,bScale} | null} calib
+ * @param {number} intensity
+ */
+export function getHueRotationUniforms(cvdType, calib, intensity = 1) {
+  const cfg = HUE_ROTATION_CONFIG[cvdType] || {
+    center: 0,
+    range: 1,
+    shift: 0,
+  };
+  const c = calib || { rScale: 1, gScale: 1, bScale: 1 };
+  return {
+    calib: [c.rScale, c.gScale, c.bScale],
+    center: cfg.center,
+    range: cfg.range,
+    shift: cfg.shift,
+    satMin: 0.15,
+    intensity: cvdType === "Off" ? 0 : Math.max(0, Math.min(1, intensity)),
+  };
+}
+
 const CVD_ERR_SHIFT = {
   Protan: [
     [0.0, 0.0, 0.0],
