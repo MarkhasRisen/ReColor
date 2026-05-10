@@ -2,12 +2,19 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Slider from "@react-native-community/slider";
 import { useIsFocused } from "@react-navigation/native";
+import {
+  Canvas,
+  RuntimeShader,
+  Image as SkiaImage,
+  useCanvasRef,
+  useImage,
+} from "@shopify/react-native-skia";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as MediaLibrary from "expo-media-library";
 import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -26,21 +33,20 @@ import {
 } from "react-native-vision-camera";
 import { auth, db } from "../../firebaseConfig";
 import {
-  applyDaltonization,
-  applyHueRotation,
-  decodeJpegBase64,
-  encodeToDataUri,
+  getDaltonizationUniforms,
+  getHueRotationUniforms,
 } from "../../tensorHelper";
 import ModeSelector from "../components/ModeSelector";
 import { COLORS } from "../theme/colors";
 import { styles } from "../theme/styles";
+import { loadCalibration } from "../utils/cameraCalibration";
 import {
-  applyCalibrationToBuffer,
-  resolveCalibration,
-} from "../utils/cameraCalibration";
+  DALTONIZATION_EFFECT,
+  HUE_ROTATION_EFFECT,
+} from "../utils/constants";
 import { ScreenErrorBoundary } from "../utils/logger";
 
-const { width } = Dimensions.get("window");
+const { width, height: screenHeight } = Dimensions.get("window");
 
 function CameraEnhanceScreenInner({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
@@ -51,24 +57,22 @@ function CameraEnhanceScreenInner({ navigation }) {
   const [showModal, setShowModal] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [frozen, setFrozen] = useState(false);
+  const [frozenUri, setFrozenUri] = useState(null);
   const [processing, setProcessing] = useState(false);
-  const [resultUri, setResultUri] = useState(null);
   const [showOriginal, setShowOriginal] = useState(false);
+  const [intensity, setIntensity] = useState(100);
+  const [calib, setCalib] = useState({ rScale: 1, gScale: 1, bScale: 1 });
 
   const cameraRef = useRef(null);
   const isMountedRef = useRef(true);
-  const decodedRef = useRef(null);
-  const frozenUriRef = useRef(null);
-  const intensityRef = useRef(100);
-  const [intensity, setIntensity] = useState(100);
+  const canvasRef = useCanvasRef();
   const device = useCameraDevice(cameraPosition);
+  const skImage = useImage(frozenUri);
 
+  // Load saved intensity once
   useEffect(() => {
     AsyncStorage.getItem("@recolor_intensity").then((val) => {
-      if (val !== null) {
-        intensityRef.current = Number(val);
-        setIntensity(Number(val));
-      }
+      if (val !== null && isMountedRef.current) setIntensity(Number(val));
     });
 
     const fetchCVDDefault = async () => {
@@ -120,52 +124,50 @@ function CameraEnhanceScreenInner({ navigation }) {
 
   useEffect(() => {
     if (!hasPermission) requestPermission();
-  }, [hasPermission]);
+  }, [hasPermission, requestPermission]);
 
-  const runEnhancement = useCallback((cvd, algo) => {
-    if (!decodedRef.current || cvd === "Off") return null;
-    const { data, width: w, height: h } = decodedRef.current;
-    const src = { data, width: w, height: h };
+  // Refresh manual camera calibration on mount + on focus, so changes made
+  // in Settings → Camera Calibration take effect immediately.
+  useEffect(() => {
+    const apply = (saved) => {
+      if (!isMountedRef.current) return;
+      if (saved) {
+        setCalib({
+          rScale: saved.rScale,
+          gScale: saved.gScale,
+          bScale: saved.bScale,
+        });
+      } else {
+        setCalib({ rScale: 1, gScale: 1, bScale: 1 });
+      }
+    };
+    loadCalibration().then(apply);
+    const unsub = navigation.addListener("focus", () =>
+      loadCalibration().then(apply),
+    );
+    return unsub;
+  }, [navigation]);
 
-    const enhanced =
-      algo === "hue_rotation"
-        ? applyHueRotation(src, cvd)
-        : applyDaltonization(src, null, cvd);
+  // ── Build the shader uniforms ─────────────────────────────────────
+  // The shader runs on the GPU. When showOriginal is true (long-press) or
+  // cvdType === 'Off', we force intensity to 0 — calibration still applies
+  // but enhancement is skipped, so the user sees the calibrated original.
+  const effectiveIntensity =
+    showOriginal || cvdType === "Off" ? 0 : intensity / 100;
 
-    const blend = intensityRef.current / 100;
-    if (blend >= 1) return encodeToDataUri(enhanced, w, h);
-
-    const blended = new Uint8Array(data.length);
-    for (let i = 0; i < data.length; i += 4) {
-      blended[i] = Math.round(data[i] * (1 - blend) + enhanced[i] * blend);
-      blended[i + 1] = Math.round(
-        data[i + 1] * (1 - blend) + enhanced[i + 1] * blend,
-      );
-      blended[i + 2] = Math.round(
-        data[i + 2] * (1 - blend) + enhanced[i + 2] * blend,
-      );
-      blended[i + 3] = data[i + 3];
+  const shaderUniforms = useMemo(() => {
+    if (algorithm === "hue_rotation") {
+      return getHueRotationUniforms(cvdType, calib, effectiveIntensity);
     }
-    return encodeToDataUri(blended, w, h);
-  }, []);
+    return getDaltonizationUniforms(cvdType, calib, effectiveIntensity);
+  }, [algorithm, cvdType, calib, effectiveIntensity]);
 
-  const handleIntensityCommit = (val) => {
-    intensityRef.current = val;
-    setIntensity(val);
-    AsyncStorage.setItem("@recolor_intensity", String(val));
-    if (frozen && decodedRef.current) {
-      setProcessing(true);
-      setTimeout(() => {
-        setResultUri(
-          runEnhancement(cvdType, algorithm) || frozenUriRef.current,
-        );
-        setProcessing(false);
-      }, 50);
-    }
-  };
+  const shaderEffect =
+    algorithm === "hue_rotation" ? HUE_ROTATION_EFFECT : DALTONIZATION_EFFECT;
 
+  // ── Freeze (capture only — no JS pixel work) ──────────────────────
   const handleFreeze = async () => {
-    if (!cameraRef.current) return;
+    if (!cameraRef.current || processing) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setProcessing(true);
     try {
@@ -177,27 +179,32 @@ function CameraEnhanceScreenInner({ navigation }) {
         `file://${photo.path}`,
         [{ resize: { width: 1040 } }],
         {
-          base64: true,
+          base64: false,
           format: ImageManipulator.SaveFormat.JPEG,
           compress: 0.92,
         },
       );
       if (!isMountedRef.current) return;
-      frozenUriRef.current = resized.uri;
-      decodedRef.current = decodeJpegBase64(resized.base64);
-
-      const calib = await resolveCalibration(decodedRef.current.data);
-      applyCalibrationToBuffer(decodedRef.current.data, calib);
-
-      setResultUri(runEnhancement(cvdType, algorithm) || resized.uri);
+      setFrozenUri(resized.uri);
       setFrozen(true);
     } catch (e) {
-      Alert.alert("Error", "Processing failed.");
+      console.warn("[CameraEnhance] freeze failed", e);
+      Alert.alert("Error", "Capture failed.");
     } finally {
-      setProcessing(false);
+      if (isMountedRef.current) setProcessing(false);
     }
   };
 
+  const handleIntensityCommit = useCallback((val) => {
+    setIntensity(val);
+    AsyncStorage.setItem("@recolor_intensity", String(val));
+    // No re-processing needed — uniforms update reactively and the GPU
+    // re-renders for free.
+  }, []);
+
+  // ── Save: snapshot the GPU canvas ────────────────────────────────
+  // canvasRef.current.makeImageSnapshot() returns a SkImage with the shader
+  // already applied, so we don't need to re-run any pixel math.
   const handleSave = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
       () => {},
@@ -211,20 +218,25 @@ function CameraEnhanceScreenInner({ navigation }) {
         );
       }
 
-      const targetUri = showOriginal ? frozenUriRef.current : resultUri;
-      if (!targetUri) return;
-
       let b64;
-      if (targetUri.startsWith("data:")) {
-        b64 = targetUri.split(",")[1];
-      } else {
-        b64 = await FileSystem.readAsStringAsync(targetUri, {
+      if (showOriginal && frozenUri) {
+        // Save the un-enhanced original directly from disk
+        b64 = await FileSystem.readAsStringAsync(frozenUri, {
           encoding: "base64",
         });
+      } else if (canvasRef.current) {
+        // Snapshot the GPU-rendered canvas (calibrated + shader-enhanced)
+        const snap = canvasRef.current.makeImageSnapshot();
+        if (!snap) throw new Error("snapshot failed");
+        b64 = snap.encodeToBase64();
+      } else {
+        throw new Error("no source");
       }
 
       const tmpPath = `${FileSystem.documentDirectory}recolor_final_save_${Date.now()}.jpg`;
-      await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: "base64" });
+      await FileSystem.writeAsStringAsync(tmpPath, b64, {
+        encoding: "base64",
+      });
 
       const asset = await MediaLibrary.createAssetAsync(tmpPath);
       const userName = auth.currentUser?.email?.split("@")[0] || "Guest";
@@ -246,9 +258,8 @@ function CameraEnhanceScreenInner({ navigation }) {
 
   const handleReset = () => {
     setFrozen(false);
-    setResultUri(null);
-    decodedRef.current = null;
-    frozenUriRef.current = null;
+    setFrozenUri(null);
+    setShowOriginal(false);
   };
 
   const showInfo = () => {
@@ -258,11 +269,15 @@ function CameraEnhanceScreenInner({ navigation }) {
     );
   };
 
-  const displayUri = showOriginal ? frozenUriRef.current : resultUri;
+  // ─────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────
+  const showShader = !showOriginal && cvdType !== "Off" && shaderEffect;
 
   return (
     <View style={{ flex: 1, backgroundColor: "#000" }}>
       {!frozen ? (
+        // Live camera preview before freeze
         device &&
         cameraReady && (
           <Camera
@@ -273,15 +288,32 @@ function CameraEnhanceScreenInner({ navigation }) {
             photo
           />
         )
+      ) : skImage ? (
+        // Skia GPU pipeline replaces the JS pixel loop
+        <Canvas ref={canvasRef} style={StyleSheet.absoluteFill}>
+          <SkiaImage
+            image={skImage}
+            x={0}
+            y={0}
+            width={width}
+            height={screenHeight}
+            fit="cover"
+          >
+            {showShader && (
+              <RuntimeShader source={shaderEffect} uniforms={shaderUniforms} />
+            )}
+          </SkiaImage>
+        </Canvas>
       ) : (
+        // Image still decoding — show plain Image as a placeholder
         <Image
-          source={{ uri: displayUri }}
+          source={{ uri: frozenUri }}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         />
       )}
 
-      {processing && (
+      {(processing || (frozen && frozenUri && !skImage)) && (
         <View
           style={[
             StyleSheet.absoluteFill,
@@ -298,6 +330,7 @@ function CameraEnhanceScreenInner({ navigation }) {
         </View>
       )}
 
+      {/* Long-press zone for original/enhanced toggle */}
       {frozen && !processing && (
         <View
           style={{
@@ -348,7 +381,8 @@ function CameraEnhanceScreenInner({ navigation }) {
           </View>
         </View>
 
-        {/* ALGORITHM BUTTONS (Visible ONLY after capture) */}
+        {/* Algorithm selector (visible after capture). Switching now just
+            swaps the shader effect — no JS pixel pass, no setTimeout dance. */}
         {frozen && (
           <View
             style={{
@@ -362,14 +396,7 @@ function CameraEnhanceScreenInner({ navigation }) {
             {["daltonization", "hue_rotation"].map((a) => (
               <TouchableOpacity
                 key={a}
-                onPress={() => {
-                  setAlgorithm(a);
-                  setProcessing(true);
-                  setTimeout(() => {
-                    setResultUri(runEnhancement(cvdType, a));
-                    setProcessing(false);
-                  }, 50);
-                }}
+                onPress={() => setAlgorithm(a)}
                 style={[
                   styles.filterBtn,
                   {
@@ -405,14 +432,7 @@ function CameraEnhanceScreenInner({ navigation }) {
             {["Off", "Protan", "Deutan", "Tritan"].map((m) => (
               <TouchableOpacity
                 key={m}
-                onPress={() => {
-                  setCvdType(m);
-                  setProcessing(true);
-                  setTimeout(() => {
-                    setResultUri(runEnhancement(m, algorithm));
-                    setProcessing(false);
-                  }, 50);
-                }}
+                onPress={() => setCvdType(m)}
                 style={[
                   styles.filterBtn,
                   {
