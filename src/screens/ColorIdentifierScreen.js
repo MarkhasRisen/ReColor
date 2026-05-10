@@ -2,9 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
 import * as ImageManipulator from "expo-image-manipulator";
-import * as Speech from "expo-speech"; // Integrated for Objective 2
+import * as Speech from "expo-speech";
 import { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Dimensions,
   SafeAreaView,
   StyleSheet,
@@ -32,7 +33,7 @@ function ColorIdentifierScreenInner({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
   const isFocused = useIsFocused();
   const [cameraPosition, setCameraPosition] = useState("back");
-  const [audio, setAudio] = useState(false); // Default to false
+  const [audio, setAudio] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [cursorPosition, setCursorPosition] = useState({
@@ -52,12 +53,11 @@ function ColorIdentifierScreenInner({ navigation }) {
   const viewSizeRef = useRef({ width, height: screenHeight });
   const device = useCameraDevice(cameraPosition);
 
-  // Sync with global settings on mount
   const handleResponderLayout = (e) => {
     const { width: vw, height: vh } = e.nativeEvent.layout;
     if (vw > 0 && vh > 0) viewSizeRef.current = { width: vw, height: vh };
   };
-  // Sync audio preference from Settings
+
   useEffect(() => {
     const syncAudio = async () => {
       const saved = await AsyncStorage.getItem("audio_feedback_enabled");
@@ -135,18 +135,7 @@ function ColorIdentifierScreenInner({ navigation }) {
         pixX = Math.round((cx / viewW) * imgW);
         pixY = Math.round(offsetY + (cy / viewH) * visibleH);
       }
-      console.log("[ColorID] map", {
-        imgW,
-        imgH,
-        viewW,
-        viewH,
-        cx,
-        cy,
-        pixX,
-        pixY,
-      });
 
-      // Pixel averaging logic
       const half = 5;
       const x0 = Math.max(0, pixX - half),
         y0 = Math.max(0, pixY - half);
@@ -170,17 +159,8 @@ function ColorIdentifierScreenInner({ navigation }) {
       avgG = Math.round(avgG / count);
       avgB = Math.round(avgB / count);
 
-      // Apply camera calibration before classification. Manual calibration
-      // (from Settings) wins; otherwise fall back to gray-world auto-WB
-      // computed from the surrounding image so cross-device color drift
-      // doesn't bias the Lab/Delta-E classification.
       const calib = await resolveCalibration(decoded.data);
-      const [calR, calG, calB] = applyCalibrationToRGB(
-        avgR,
-        avgG,
-        avgB,
-        calib,
-      );
+      const [calR, calG, calB] = applyCalibrationToRGB(avgR, avgG, avgB, calib);
 
       const result = identifyColor(calR, calG, calB);
       const sampledHex =
@@ -198,7 +178,6 @@ function ColorIdentifierScreenInner({ navigation }) {
           conf: `${result.confidence}%`,
         });
 
-        // Trigger Audio Feedback if enabled
         if (audio) {
           Speech.stop();
           const spoken =
@@ -220,6 +199,13 @@ function ColorIdentifierScreenInner({ navigation }) {
     const newVal = !audio;
     setAudio(newVal);
     await AsyncStorage.setItem("audio_feedback_enabled", newVal.toString());
+  };
+
+  const showInfo = () => {
+    Alert.alert(
+      "How to use Identifier",
+      "Point the camera at any object and tap the screen to freeze the frame. The app will identify the color exactly at the crosshair.",
+    );
   };
 
   return (
@@ -269,6 +255,13 @@ function ColorIdentifierScreenInner({ navigation }) {
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity onPress={showInfo} style={{ marginRight: 15 }}>
+              <Ionicons
+                name="information-circle-outline"
+                size={26}
+                color="#FFF"
+              />
+            </TouchableOpacity>
             <TouchableOpacity onPress={toggleAudio} style={{ marginRight: 15 }}>
               <Ionicons
                 name={audio ? "volume-high" : "volume-mute"}
@@ -374,7 +367,6 @@ const localStyles = StyleSheet.create({
   calculatingText: { color: "#CCC", fontSize: 12 },
 });
 
-// DEFAULT EXPORT (Must match your navigator import)
 export default function ColorIdentifierScreen(props) {
   return (
     <ScreenErrorBoundary navigation={props.navigation}>

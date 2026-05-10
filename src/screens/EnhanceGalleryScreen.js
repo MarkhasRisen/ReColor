@@ -108,12 +108,11 @@ export default function EnhanceGalleryScreen({ navigation }) {
       if (status !== "granted") return Alert.alert("Permission needed");
 
       let b64;
-      // Standardize source: Check if it's a filtered Data URI or a local gallery path
       if (displayUri.startsWith("data:")) {
         b64 = displayUri.split(",")[1];
       } else {
         b64 = await FileSystem.readAsStringAsync(displayUri, {
-          encoding: "base64", // Use literal string to prevent 'undefined' errors
+          encoding: "base64",
         });
       }
 
@@ -129,13 +128,19 @@ export default function EnhanceGalleryScreen({ navigation }) {
       if (!album) await MediaLibrary.createAlbumAsync(albumName, asset, false);
       else await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
 
-      // Cleanup temp file
       await FileSystem.deleteAsync(savePath, { idempotent: true });
 
       Alert.alert("Saved", "Successfully added to your ReColor album.");
     } catch (e) {
       Alert.alert("Error", "Save failed");
     }
+  };
+
+  const showInfo = () => {
+    Alert.alert(
+      "How to use Gallery Enhancement",
+      "Select an image from your gallery, then apply Daltonization or Hue Rotation filters to enhance color distinguishability. Adjust the intensity slider to your preference.",
+    );
   };
 
   return (
@@ -148,9 +153,18 @@ export default function EnhanceGalleryScreen({ navigation }) {
           <Text style={{ color: "#FFF", fontWeight: "bold" }}>
             Enhance Gallery
           </Text>
-          <TouchableOpacity onPress={pickImage}>
-            <Ionicons name="add-circle" size={28} color="#FFF" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity onPress={showInfo} style={{ marginRight: 15 }}>
+              <Ionicons
+                name="information-circle-outline"
+                size={26}
+                color="#FFF"
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={pickImage}>
+              <Ionicons name="add-circle" size={28} color="#FFF" />
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={{ flex: 1, justifyContent: "center" }}>
           {displayUri ? (
@@ -161,9 +175,12 @@ export default function EnhanceGalleryScreen({ navigation }) {
           ) : (
             <TouchableOpacity
               onPress={pickImage}
-              style={{ alignSelf: "center" }}
+              style={{ alignSelf: "center", alignItems: "center" }}
             >
               <Ionicons name="images-outline" size={60} color="#555" />
+              <Text style={{ color: "#777", marginTop: 10 }}>
+                Tap to pick an image
+              </Text>
             </TouchableOpacity>
           )}
           {processing && (
@@ -177,7 +194,6 @@ export default function EnhanceGalleryScreen({ navigation }) {
 
         {originalUri && (
           <View style={{ paddingBottom: 20 }}>
-            {/* Algorithm & CVD Selectors */}
             <View
               style={{
                 flexDirection: "row",

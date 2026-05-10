@@ -13,6 +13,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as MediaLibrary from "expo-media-library";
+import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -30,7 +31,7 @@ import {
   useCameraDevice,
   useCameraPermission,
 } from "react-native-vision-camera";
-import { auth } from "../../firebaseConfig";
+import { auth, db } from "../../firebaseConfig";
 import {
   getDaltonizationUniforms,
   getHueRotationUniforms,
@@ -51,7 +52,7 @@ function CameraEnhanceScreenInner({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
   const isFocused = useIsFocused();
   const [cameraPosition, setCameraPosition] = useState("back");
-  const [cvdType, setCvdType] = useState("Protan");
+  const [cvdType, setCvdType] = useState("Off");
   const [algorithm, setAlgorithm] = useState("daltonization");
   const [showModal, setShowModal] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
@@ -73,6 +74,43 @@ function CameraEnhanceScreenInner({ navigation }) {
     AsyncStorage.getItem("@recolor_intensity").then((val) => {
       if (val !== null && isMountedRef.current) setIntensity(Number(val));
     });
+
+    const fetchCVDDefault = async () => {
+      try {
+        let diag = await AsyncStorage.getItem("@recolor_latest_diagnosis");
+
+        if (!diag && auth.currentUser) {
+          const q = query(
+            collection(db, "users", auth.currentUser.uid, "history"),
+            orderBy("date", "desc"),
+            limit(1),
+          );
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            diag = snap.docs[0].data().diagnosis || "";
+            await AsyncStorage.setItem("@recolor_latest_diagnosis", diag);
+          }
+        }
+
+        if (diag) {
+          if (diag.includes("Protan")) setCvdType("Protan");
+          else if (diag.includes("Deutan")) setCvdType("Deutan");
+          else if (diag.includes("Tritan")) setCvdType("Tritan");
+          else setCvdType("Off");
+        } else {
+          setCvdType("Off");
+        }
+      } catch (e) {
+        console.warn("Failed to fetch CVD default", e);
+      }
+    };
+
+    const unsubscribe = navigation.addListener("focus", () => {
+      fetchCVDDefault();
+    });
+
+    fetchCVDDefault();
+
     isMountedRef.current = true;
     const timer = setTimeout(() => {
       if (isMountedRef.current) setCameraReady(true);
@@ -80,8 +118,9 @@ function CameraEnhanceScreenInner({ navigation }) {
     return () => {
       isMountedRef.current = false;
       clearTimeout(timer);
+      unsubscribe();
     };
-  }, []);
+  }, [navigation]);
 
   useEffect(() => {
     if (!hasPermission) requestPermission();
@@ -186,6 +225,7 @@ function CameraEnhanceScreenInner({ navigation }) {
           encoding: "base64",
         });
       } else if (canvasRef.current) {
+        // Snapshot the GPU-rendered canvas (calibrated + shader-enhanced)
         const snap = canvasRef.current.makeImageSnapshot();
         if (!snap) throw new Error("snapshot failed");
         b64 = snap.encodeToBase64();
@@ -212,7 +252,6 @@ function CameraEnhanceScreenInner({ navigation }) {
       await FileSystem.deleteAsync(tmpPath, { idempotent: true });
       Alert.alert("Saved", "Photo added to your ReColor album.");
     } catch (e) {
-      console.error("[CameraEnhance] Save error:", e);
       Alert.alert("Error", "Could not save photo.");
     }
   };
@@ -221,6 +260,13 @@ function CameraEnhanceScreenInner({ navigation }) {
     setFrozen(false);
     setFrozenUri(null);
     setShowOriginal(false);
+  };
+
+  const showInfo = () => {
+    Alert.alert(
+      "How to use Enhancement",
+      "BEFORE CAPTURE:\nFrame your subject and tap the shutter button.\n\nAFTER CAPTURE:\nYour diagnosed filter is automatically applied. You can change the filter type or adjust the intensity slider to enhance color distinguishability.",
+    );
   };
 
   // ─────────────────────────────────────────────────────────────────
@@ -319,15 +365,24 @@ function CameraEnhanceScreenInner({ navigation }) {
                 : `${cvdType} Enhanced`
               : "Color Enhancement"}
           </Text>
-          {!frozen && (
-            <TouchableOpacity onPress={() => setShowModal(true)}>
-              <Ionicons name="menu" size={28} color="#FFF" />
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity onPress={showInfo} style={{ marginRight: 15 }}>
+              <Ionicons
+                name="information-circle-outline"
+                size={26}
+                color="#FFF"
+              />
             </TouchableOpacity>
-          )}
+            {!frozen && (
+              <TouchableOpacity onPress={() => setShowModal(true)}>
+                <Ionicons name="menu" size={28} color="#FFF" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
-        {/* Algorithm selector — switching now just swaps the shader effect.
-            No JS pixel pass, no setProcessing/setTimeout dance needed. */}
+        {/* Algorithm selector (visible after capture). Switching now just
+            swaps the shader effect — no JS pixel pass, no setTimeout dance. */}
         {frozen && (
           <View
             style={{
@@ -363,6 +418,7 @@ function CameraEnhanceScreenInner({ navigation }) {
           </View>
         )}
 
+        {/* CVD TYPE BUTTONS (Visible ONLY after capture) */}
         {frozen && (
           <View
             style={{

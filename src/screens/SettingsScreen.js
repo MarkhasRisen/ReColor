@@ -31,8 +31,6 @@ export default function SettingsScreen({ navigation }) {
     checkExpertStatus();
     fetchTestCount();
     refreshCalibration();
-    // Re-check calibration when this screen regains focus (e.g., user just
-    // returned from CameraCalibrationScreen).
     const unsub = navigation.addListener("focus", refreshCalibration);
     return unsub;
   }, [navigation]);
@@ -67,11 +65,15 @@ export default function SettingsScreen({ navigation }) {
         const snap = await getDocs(
           collection(db, "users", user.uid, "history"),
         );
-        setTestCount(snap.size); // .size returns the number of documents
+        setTestCount(snap.size);
       } catch (error) {
         console.error("Could not fetch test count:", error);
       }
     }
+  };
+
+  const showInfo = (title, message) => {
+    Alert.alert(title, message);
   };
 
   const handleResetOnboarding = async () => {
@@ -85,13 +87,8 @@ export default function SettingsScreen({ navigation }) {
           style: "destructive",
           onPress: async () => {
             try {
-              // 1. Clear the onboarding completion flag
               await AsyncStorage.removeItem("@recolor_onboarded");
-
-              // 2. Log out the current session to ensure a clean slate
               await signOut(auth);
-
-              // 3. Send them to Splash to re-trigger the fresh flow
               navigation.replace("Splash");
             } catch (e) {
               Alert.alert("Error", "Could not reset the application state.");
@@ -101,6 +98,7 @@ export default function SettingsScreen({ navigation }) {
       ],
     );
   };
+
   return (
     <View style={styles.root}>
       <Header title="Settings" back />
@@ -124,9 +122,32 @@ export default function SettingsScreen({ navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>PREFERENCES</Text>
           <View style={styles.card}>
-            <Text style={styles.label}>
-              Color Enhancement Intensity: {Math.round(intensity)}%
-            </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 8,
+              }}
+            >
+              <Text style={styles.label}>
+                Color Enhancement Intensity: {Math.round(intensity)}%
+              </Text>
+              <TouchableOpacity
+                onPress={() =>
+                  showInfo(
+                    "Enhancement Intensity",
+                    "Adjusts the strength of the color enhancement filter applied to the camera feed.",
+                  )
+                }
+                style={{ marginLeft: 8 }}
+              >
+                <Ionicons
+                  name="information-circle-outline"
+                  size={18}
+                  color={COLORS.textLight}
+                />
+              </TouchableOpacity>
+            </View>
             <Slider
               style={styles.slider}
               minimumValue={0}
@@ -139,7 +160,26 @@ export default function SettingsScreen({ navigation }) {
               minimumTrackTintColor={COLORS.primary}
             />
             <View style={[styles.row, { marginTop: 20 }]}>
-              <Text style={[styles.label, { flex: 1 }]}>Audio Feedback</Text>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
+              >
+                <Text style={styles.label}>Audio Feedback</Text>
+                <TouchableOpacity
+                  onPress={() =>
+                    showInfo(
+                      "Audio Feedback",
+                      "Enables spoken color names in the Color Identifier mode.",
+                    )
+                  }
+                  style={{ marginLeft: 8 }}
+                >
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={18}
+                    color={COLORS.textLight}
+                  />
+                </TouchableOpacity>
+              </View>
               <Switch
                 value={audioEnabled}
                 onValueChange={(v) => {
@@ -150,16 +190,36 @@ export default function SettingsScreen({ navigation }) {
               />
             </View>
 
-            {/* Camera Calibration — affects all 3 cameras (Identifier, Sim, Enhance).
-                Manual calibration overrides the automatic gray-world fallback. */}
             <TouchableOpacity
               style={[styles.row, { marginTop: 20 }]}
               onPress={() => navigation.navigate("CameraCalibration")}
               activeOpacity={0.7}
             >
-              <Ionicons name="color-wand-outline" size={22} color={COLORS.primary} />
+              <Ionicons
+                name="color-wand-outline"
+                size={22}
+                color={COLORS.primary}
+              />
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.label}>Camera Calibration</Text>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Text style={styles.label}>Camera Calibration</Text>
+                  <TouchableOpacity
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      showInfo(
+                        "Camera Calibration",
+                        "Corrects cross-device color drift by setting a manual white-balance reference.",
+                      );
+                    }}
+                    style={{ marginLeft: 8, padding: 4 }}
+                  >
+                    <Ionicons
+                      name="information-circle-outline"
+                      size={18}
+                      color={COLORS.textLight}
+                    />
+                  </TouchableOpacity>
+                </View>
                 <Text style={styles.subtextCount}>
                   {calibration
                     ? `Calibrated · R${calibration.rScale.toFixed(2)} G${calibration.gScale.toFixed(2)} B${calibration.bScale.toFixed(2)}`
@@ -184,7 +244,6 @@ export default function SettingsScreen({ navigation }) {
               <Ionicons name="time-outline" size={24} color="#333" />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={styles.label}>View Test History</Text>
-                {/* Dynamic count display matching your screenshot reference */}
                 <Text style={styles.subtextCount}>
                   {testCount} {testCount === 1 ? "test" : "tests"} completed
                 </Text>
@@ -194,7 +253,7 @@ export default function SettingsScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* EXPERT UTILITIES - Restricted to Admin/Researcher[cite: 16, 21] */}
+        {/* EXPERT UTILITIES */}
         {expertRole && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>EXPERT UTILITIES</Text>
@@ -214,7 +273,6 @@ export default function SettingsScreen({ navigation }) {
               <Text style={styles.expertBtnText}>Launch Expert Portal</Text>
             </TouchableOpacity>
 
-            {/* Reset Button: Now correctly restricted and functionally complete */}
             <TouchableOpacity
               style={[styles.expertBtn, styles.resetBtn]}
               onPress={handleResetOnboarding}

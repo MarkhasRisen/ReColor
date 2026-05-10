@@ -100,7 +100,6 @@ export default function HistoryScreen({ navigation }) {
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       ) : historyData.length === 0 ? (
-        /* Conversational Empty State as per PDF Suggestions  */
         <View
           style={{
             flex: 1,

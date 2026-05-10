@@ -75,26 +75,26 @@ export default function ResultsScreen({ route, navigation }) {
     isNormal || isIndeterminate ? diagnosis : `Likely ${diagnosis}`;
 
   const getHeadline = () => {
-    if (isNormal) return "No colour vision deficiency detected";
+    if (isNormal) return "No color vision deficiency detected";
     if (isIndeterminate) return "Inconclusive — retake recommended";
     if (isProtan) return "Red-channel sensitivity pattern detected";
     if (isDeutan) return "Green-channel sensitivity pattern detected";
     if (isTritan) return "Blue-channel sensitivity pattern detected";
-    return "Possible colour vision variation";
+    return "Possible color vision variation";
   };
 
   const getDescription = () => {
     if (isNormal)
       return `You correctly read ${score} of ${displayScore} screening plates. No red-green confusion pattern was detected, so the diagnostic stage was skipped.`;
     if (isIndeterminate)
-      return `You scored ${score} of ${displayScore} in the screening stage, which falls in the borderline range. The test cannot confidently classify your colour vision from this result alone. Common causes: poor lighting, screen glare, fatigue, or a mild deficiency near the detection threshold. Retake in good natural lighting, or consult an eye-care professional for a definitive assessment.`;
+      return `You scored ${score} of ${displayScore} in the screening stage, which falls in the borderline range. The test cannot confidently classify your color vision from this result alone. Common causes: poor lighting, screen glare, fatigue, or a mild deficiency near the detection threshold. Retake in good natural lighting, or consult an eye-care professional for a definitive assessment.`;
     if (isProtan)
       return `The screening stage flagged red-green confusion, and your answers on the diagnostic plates matched the protan pattern in a majority of cases. This suggests reduced red-cone sensitivity, which can make red and green appear similar. Use the Enhancement camera to boost distinguishability. This is a screening result — clinical confirmation requires a professional eye exam.`;
     if (isDeutan)
       return `The screening stage flagged red-green confusion, and your answers on the diagnostic plates matched the deutan pattern in a majority of cases. This suggests reduced green-cone sensitivity, which can make red and green appear similar. Use the Enhancement camera to boost distinguishability. This is a screening result — clinical confirmation requires a professional eye exam.`;
     if (isTritan)
       return `Screening suggests possible blue-channel sensitivity (tritan pattern). Blue and yellow may appear similar. Tritan CVD is rare and often acquired — consult an eye-care professional for a comprehensive assessment.`;
-    return "Screening suggests a possible colour vision variation. This is not a diagnosis — consult a qualified eye-care professional for a comprehensive assessment.";
+    return "Screening suggests a possible color vision variation. This is not a diagnosis — consult a qualified eye-care professional for a comprehensive assessment.";
   };
 
   return (
@@ -168,8 +168,8 @@ export default function ResultsScreen({ route, navigation }) {
               <Ionicons name="camera" size={18} color="#9C27B0" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.recTitle}>Colour Enhancement</Text>
-              <Text style={styles.recSub}>Camera colour mode</Text>
+              <Text style={styles.recTitle}>Color Enhancement</Text>
+              <Text style={styles.recSub}>Camera color mode</Text>
             </View>
           </TouchableOpacity>
 

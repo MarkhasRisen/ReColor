@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MotiView } from "moti";
 import { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Dimensions,
   Image,
   ScrollView,
@@ -23,6 +24,9 @@ const INSTRUCTIONS = [
     iconBg: "#FFF3E0",
     iconColor: "#FF9F43",
     label: "SCREEN LUMINOSITY",
+    infoTitle: "Screen Luminosity",
+    infoText:
+      "Low brightness reduces contrast, making it harder to distinguish subtle color differences in the Ishihara plates.",
     title: "Min. 80% Brightness",
     points: [
       {
@@ -51,6 +55,9 @@ const INSTRUCTIONS = [
     iconBg: "#E8F5E9",
     iconColor: "#2ECC71",
     label: "LIGHTING CONDITIONS",
+    infoTitle: "Lighting Conditions",
+    infoText:
+      "Colored ambient light shifts your perception of hues and can produce false results. Natural or pure white light is required.",
     title: "Natural or White Light",
     points: [
       {
@@ -79,6 +86,9 @@ const INSTRUCTIONS = [
     iconBg: "#E3F2FD",
     iconColor: "#2196F3",
     label: "VIEWING DISTANCE",
+    infoTitle: "Viewing Distance",
+    infoText:
+      "The Ishihara test is calibrated for a specific viewing angle. Distance consistency ensures the color patches fall on the correct part of your retina.",
     title: "35–75 cm Distance",
     points: [
       {
@@ -107,6 +117,9 @@ const INSTRUCTIONS = [
     iconBg: "#FCE4EC",
     iconColor: "#FF4081",
     label: "TIME LIMIT",
+    infoTitle: "Time Limit",
+    infoText:
+      "Prolonged viewing allows non-color cues (like dot size or density) to bias the result. Your first impression is the most clinically valid.",
     title: "3-Second Rule",
     points: [
       {
@@ -135,6 +148,9 @@ const INSTRUCTIONS = [
     iconBg: "#EDE7F6",
     iconColor: "#6C63FF",
     label: "CORRECTIVE LENSES",
+    infoTitle: "Corrective Lenses",
+    infoText:
+      "Tinted lenses alter color perception. Clear prescription lenses do not affect Ishihara results.",
     title: "Glasses & Contact Lenses",
     points: [
       {
@@ -163,6 +179,9 @@ const INSTRUCTIONS = [
     iconBg: "#E8F5E9",
     iconColor: "#2ECC71",
     label: "ENVIRONMENT",
+    infoTitle: "Environment",
+    infoText:
+      "Visual fatigue affects color discrimination. Best results are obtained when well-rested in a distraction-free environment.",
     title: "Quiet, Distraction-Free",
     points: [
       {
@@ -205,10 +224,58 @@ function InstructionSlide({ item, onNext, isFinal, onBegin }) {
             <Ionicons name={item.icon} size={28} color={item.iconColor} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.label}>{item.label}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Text style={styles.label}>{item.label}</Text>
+              {item.infoText && (
+                <TouchableOpacity
+                  onPress={() =>
+                    Alert.alert(item.infoTitle || "Info", item.infoText)
+                  }
+                  style={{ marginLeft: 6, padding: 2 }}
+                >
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={14}
+                    color="rgba(255,255,255,0.8)"
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
             <Text style={styles.cardTitle}>{item.title}</Text>
           </View>
         </MotiView>
+
+        {/* Visual Distance Diagram (Only shows on Step 3) */}
+        {item.id === "3" && (
+          <MotiView
+            from={{ opacity: 0, translateY: 10 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: "spring", damping: 18, delay: 100 }}
+            style={styles.distanceDiagram}
+          >
+            <View style={styles.diagramContent}>
+              {/* Person Icon */}
+              <Ionicons
+                name="person"
+                size={54}
+                color={COLORS.primary}
+                style={{ zIndex: 2 }}
+              />
+
+              {/* Extended Arm Graphic */}
+              <View style={styles.armContainer}>
+                <Text style={styles.armLabel}>Arm's Length</Text>
+                <Text style={styles.armMeasurement}>35 - 75 cm</Text>
+                <View style={styles.armBar} />
+              </View>
+
+              {/* Phone Icon */}
+              <View style={styles.deviceContainer}>
+                <Ionicons name="phone-portrait" size={44} color={COLORS.text} />
+              </View>
+            </View>
+          </MotiView>
+        )}
 
         {/* Checklist */}
         <MotiView
@@ -435,6 +502,53 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.7)",
   },
   cardTitle: { fontSize: 18, fontWeight: "800", color: "#FFF", marginTop: 2 },
+
+  // --- New Native Arm's Length Diagram Styles ---
+  distanceDiagram: {
+    backgroundColor: COLORS.surfaceAlt,
+    padding: SPACING.lg,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.primary + "20",
+    ...SHADOW.sm,
+  },
+  diagramContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  armContainer: {
+    flex: 1,
+    alignItems: "center",
+    marginHorizontal: -12, // Pulls the arm slightly under the person and phone
+    zIndex: 1,
+  },
+  armLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: COLORS.primary,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  armMeasurement: {
+    fontSize: 11,
+    color: COLORS.textLight,
+    marginBottom: 8,
+    fontWeight: "600",
+  },
+  armBar: {
+    width: "100%",
+    height: 14,
+    backgroundColor: COLORS.primary + "40", // Soft primary color for the arm
+    borderRadius: 7,
+  },
+  deviceContainer: {
+    zIndex: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // ----------------------------------------------
+
   checklistCard: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
