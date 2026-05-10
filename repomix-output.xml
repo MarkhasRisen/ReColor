@@ -468,6 +468,66 @@ export function IconSymbol({
 }
 </file>
 
+<file path="constants/theme.ts">
+const tintColorLight = "#6C63FF"; // Updated to ReColor Purple
+const tintColorDark = "#fff";
+
+export const Colors = {
+  light: {
+    text: "#11181C",
+    background: "#F8F9FA", // Updated to your app background
+    tint: tintColorLight,
+    icon: "#687076",
+    tabIconDefault: "#A4B0BE",
+    tabIconSelected: tintColorLight,
+    // --- ReColor Custom Palette ---
+    primary: "#6C63FF",
+    secondary: "#FF4081",
+    accent: "#00D2D3",
+    card: "#FFFFFF",
+    success: "#2ECC71",
+    warning: "#FF9F43",
+    danger: "#FF6B6B",
+    darkOverlay: "rgba(0,0,0,0.6)",
+  },
+  dark: {
+    // Keep your existing dark mode or map ReColor colors to darker variants
+    text: "#ECEDEE",
+    background: "#151718",
+    tint: tintColorDark,
+    icon: "#9BA1A6",
+    tabIconDefault: "#9BA1A6",
+    tabIconSelected: tintColorDark,
+    card: "#1E1E1E",
+  },
+};
+
+// ... keep your existing Fonts object ...
+
+// --- The Brain: Ishihara Plate Data ---
+export const RAW_PLATES = [
+  { id: 1, img: require("../assets/plate_1.png"), answer: "9" },
+  { id: 2, img: require("../assets/plate_2.png"), answer: "8" },
+  { id: 3, img: require("../assets/plate_3.png"), answer: "12" },
+  { id: 4, img: require("../assets/plate_4.png"), answer: "42" },
+  { id: 5, img: require("../assets/plate_5.png"), answer: "6" },
+  { id: 6, img: require("../assets/plate_6.png"), answer: "2" },
+  { id: 7, img: require("../assets/plate_7.png"), answer: "74" },
+  { id: 8, img: require("../assets/plate_8.png"), answer: "6" },
+  { id: 9, img: require("../assets/plate_9.png"), answer: "16" },
+  { id: 10, img: require("../assets/plate_10.png"), answer: "2" },
+  { id: 11, img: require("../assets/plate_11.png"), answer: "29" },
+  { id: 12, img: require("../assets/plate_12.png"), answer: "7" },
+  { id: 13, img: require("../assets/plate_13.png"), answer: "45" },
+  { id: 14, img: require("../assets/plate_14.png"), answer: "5" },
+  { id: 15, img: require("../assets/plate_15.png"), answer: "97" },
+  { id: 16, img: require("../assets/plate_16.png"), answer: "8" },
+  { id: 17, img: require("../assets/plate_17.png"), answer: "42" },
+  { id: 18, img: require("../assets/plate_18.png"), answer: "3" },
+  // ... and so on up to 38
+];
+</file>
+
 <file path="hooks/use-color-scheme.ts">
 export { useColorScheme } from 'react-native';
 </file>
@@ -629,66 +689,6 @@ export const useIshihara = (testType, navigation) => {
     handleBackspace,
   };
 };
-</file>
-
-<file path="constants/theme.ts">
-const tintColorLight = "#6C63FF"; // Updated to ReColor Purple
-const tintColorDark = "#fff";
-
-export const Colors = {
-  light: {
-    text: "#11181C",
-    background: "#F8F9FA", // Updated to your app background
-    tint: tintColorLight,
-    icon: "#687076",
-    tabIconDefault: "#A4B0BE",
-    tabIconSelected: tintColorLight,
-    // --- ReColor Custom Palette ---
-    primary: "#6C63FF",
-    secondary: "#FF4081",
-    accent: "#00D2D3",
-    card: "#FFFFFF",
-    success: "#2ECC71",
-    warning: "#FF9F43",
-    danger: "#FF6B6B",
-    darkOverlay: "rgba(0,0,0,0.6)",
-  },
-  dark: {
-    // Keep your existing dark mode or map ReColor colors to darker variants
-    text: "#ECEDEE",
-    background: "#151718",
-    tint: tintColorDark,
-    icon: "#9BA1A6",
-    tabIconDefault: "#9BA1A6",
-    tabIconSelected: tintColorDark,
-    card: "#1E1E1E",
-  },
-};
-
-// ... keep your existing Fonts object ...
-
-// --- The Brain: Ishihara Plate Data ---
-export const RAW_PLATES = [
-  { id: 1, img: require("../assets/plate_1.png"), answer: "9" },
-  { id: 2, img: require("../assets/plate_2.png"), answer: "8" },
-  { id: 3, img: require("../assets/plate_3.png"), answer: "12" },
-  { id: 4, img: require("../assets/plate_4.png"), answer: "42" },
-  { id: 5, img: require("../assets/plate_5.png"), answer: "6" },
-  { id: 6, img: require("../assets/plate_6.png"), answer: "2" },
-  { id: 7, img: require("../assets/plate_7.png"), answer: "74" },
-  { id: 8, img: require("../assets/plate_8.png"), answer: "6" },
-  { id: 9, img: require("../assets/plate_9.png"), answer: "16" },
-  { id: 10, img: require("../assets/plate_10.png"), answer: "2" },
-  { id: 11, img: require("../assets/plate_11.png"), answer: "29" },
-  { id: 12, img: require("../assets/plate_12.png"), answer: "7" },
-  { id: 13, img: require("../assets/plate_13.png"), answer: "45" },
-  { id: 14, img: require("../assets/plate_14.png"), answer: "5" },
-  { id: 15, img: require("../assets/plate_15.png"), answer: "97" },
-  { id: 16, img: require("../assets/plate_16.png"), answer: "8" },
-  { id: 17, img: require("../assets/plate_17.png"), answer: "42" },
-  { id: 18, img: require("../assets/plate_18.png"), answer: "3" },
-  // ... and so on up to 38
-];
 </file>
 
 <file path="src/components/Card.js">
@@ -1599,219 +1599,6 @@ export default function SurveySuccessScreen({ navigation }) {
       </TouchableOpacity>
     </View>
   );
-}
-</file>
-
-<file path="src/utils/cameraCalibration.js">
-/**
- * cameraCalibration.js
- *
- * Cross-device color consistency for the three cameras (Color Identifier,
- * CVD Simulation, Camera Enhancement).
- *
- * Two layers:
- *   1. Manual calibration (preferred when available) — user shows the camera
- *      a white reference once via Settings → Camera Calibration. We compute
- *      per-channel scalars (rScale, gScale, bScale) that make the captured
- *      "white" actually neutral. Stored in Firestore and AsyncStorage.
- *
- *   2. Auto white-balance fallback (when no manual calibration exists) —
- *      gray-world reflectance assumption (Buchsbaum 1980).
- */
-
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-  deleteDoc,
-  doc,
-  getDoc,
-  serverTimestamp,
-  setDoc,
-} from "firebase/firestore";
-import { auth, db } from "../../firebaseConfig";
-
-const STORAGE_KEY = "@recolor_camera_calibration";
-
-// Sane bounds on the per-channel scalars
-const SCALE_MIN = 0.5;
-const SCALE_MAX = 2.0;
-
-const IDENTITY = { rScale: 1, gScale: 1, bScale: 1 };
-
-// ─────────────────────────────────────────────────────────────
-// Storage
-// ─────────────────────────────────────────────────────────────
-
-/**
- * @returns {Promise<{rScale, gScale, bScale, calibratedAt} | null>}
- */
-export async function loadCalibration() {
-  try {
-    const user = auth.currentUser;
-    if (user) {
-      const docRef = doc(db, "users", user.uid, "settings", "calibration");
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        const data = snap.data();
-        if (typeof data.rScale === "number") {
-          // Cache locally for offline/fast access
-          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-          return data;
-        }
-      }
-    }
-    // Fallback to local storage
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (typeof parsed.rScale !== "number") return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-export async function saveCalibration(rScale, gScale, bScale) {
-  const payload = {
-    rScale: clampScale(rScale),
-    gScale: clampScale(gScale),
-    bScale: clampScale(bScale),
-  };
-
-  try {
-    const user = auth.currentUser;
-    if (user) {
-      const docRef = doc(db, "users", user.uid, "settings", "calibration");
-      await setDoc(
-        docRef,
-        {
-          ...payload,
-          calibratedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
-    }
-    // Save locally as well
-    await AsyncStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        ...payload,
-        calibratedAt: new Date().toISOString(),
-      }),
-    );
-  } catch (e) {
-    console.warn("Failed to save calibration to cloud", e);
-  }
-  return payload;
-}
-
-export async function clearCalibration() {
-  try {
-    const user = auth.currentUser;
-    if (user) {
-      const docRef = doc(db, "users", user.uid, "settings", "calibration");
-      await deleteDoc(docRef);
-    }
-    await AsyncStorage.removeItem(STORAGE_KEY);
-  } catch (e) {
-    console.warn("Failed to clear calibration", e);
-  }
-}
-
-function clampScale(s) {
-  if (!Number.isFinite(s) || s <= 0) return 1;
-  return Math.max(SCALE_MIN, Math.min(SCALE_MAX, s));
-}
-
-// ─────────────────────────────────────────────────────────────
-// Manual calibration: derive scalars from a white reference patch
-// ─────────────────────────────────────────────────────────────
-
-export function deriveScalarsFromWhitePatch(avgR, avgG, avgB) {
-  const target = Math.max(avgR, avgG, avgB, 240);
-  return {
-    rScale: clampScale(target / Math.max(avgR, 1)),
-    gScale: clampScale(target / Math.max(avgG, 1)),
-    bScale: clampScale(target / Math.max(avgB, 1)),
-  };
-}
-
-// ─────────────────────────────────────────────────────────────
-// Auto white-balance fallback: gray-world from a pixel buffer
-// ─────────────────────────────────────────────────────────────
-
-export function grayWorldScalars(rgba, stride = 16) {
-  let sumR = 0,
-    sumG = 0,
-    sumB = 0,
-    count = 0;
-  for (let i = 0; i < rgba.length; i += 4 * stride) {
-    sumR += rgba[i];
-    sumG += rgba[i + 1];
-    sumB += rgba[i + 2];
-    count++;
-  }
-  if (count === 0) return IDENTITY;
-  const meanR = sumR / count;
-  const meanG = sumG / count;
-  const meanB = sumB / count;
-  const target = (meanR + meanG + meanB) / 3;
-  if (target <= 0) return IDENTITY;
-  return {
-    rScale: clampScale(target / Math.max(meanR, 1)),
-    gScale: clampScale(target / Math.max(meanG, 1)),
-    bScale: clampScale(target / Math.max(meanB, 1)),
-  };
-}
-
-// ─────────────────────────────────────────────────────────────
-// Apply calibration
-// ─────────────────────────────────────────────────────────────
-
-export function applyCalibrationToRGB(r, g, b, calib) {
-  if (!calib) return [r, g, b];
-  return [
-    clamp255(Math.round(r * calib.rScale)),
-    clamp255(Math.round(g * calib.gScale)),
-    clamp255(Math.round(b * calib.bScale)),
-  ];
-}
-
-export function applyCalibrationToBuffer(rgba, calib) {
-  if (!calib) return rgba;
-  const r = calib.rScale,
-    g = calib.gScale,
-    b = calib.bScale;
-  if (r === 1 && g === 1 && b === 1) return rgba;
-  for (let i = 0; i < rgba.length; i += 4) {
-    rgba[i] = clamp255(Math.round(rgba[i] * r));
-    rgba[i + 1] = clamp255(Math.round(rgba[i + 1] * g));
-    rgba[i + 2] = clamp255(Math.round(rgba[i + 2] * b));
-  }
-  return rgba;
-}
-
-function clamp255(v) {
-  return v < 0 ? 0 : v > 255 ? 255 : v;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Public resolver
-// ─────────────────────────────────────────────────────────────
-
-export async function resolveCalibration(rgba = null) {
-  const manual = await loadCalibration();
-  if (manual) {
-    return {
-      rScale: manual.rScale,
-      gScale: manual.gScale,
-      bScale: manual.bScale,
-      source: "manual",
-    };
-  }
-  if (rgba && rgba.length > 0) {
-    return { ...grayWorldScalars(rgba), source: "auto" };
-  }
-  return { ...IDENTITY, source: "identity" };
 }
 </file>
 
@@ -2735,6 +2522,219 @@ export const SHADOW = {
     elevation: 12,
   },
 };
+</file>
+
+<file path="src/utils/cameraCalibration.js">
+/**
+ * cameraCalibration.js
+ *
+ * Cross-device color consistency for the three cameras (Color Identifier,
+ * CVD Simulation, Camera Enhancement).
+ *
+ * Two layers:
+ *   1. Manual calibration (preferred when available) — user shows the camera
+ *      a white reference once via Settings → Camera Calibration. We compute
+ *      per-channel scalars (rScale, gScale, bScale) that make the captured
+ *      "white" actually neutral. Stored in Firestore and AsyncStorage.
+ *
+ *   2. Auto white-balance fallback (when no manual calibration exists) —
+ *      gray-world reflectance assumption (Buchsbaum 1980).
+ */
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  deleteDoc,
+  doc,
+  getDoc,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
+import { auth, db } from "../../firebaseConfig";
+
+const STORAGE_KEY = "@recolor_camera_calibration";
+
+// Sane bounds on the per-channel scalars
+const SCALE_MIN = 0.5;
+const SCALE_MAX = 2.0;
+
+const IDENTITY = { rScale: 1, gScale: 1, bScale: 1 };
+
+// ─────────────────────────────────────────────────────────────
+// Storage
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * @returns {Promise<{rScale, gScale, bScale, calibratedAt} | null>}
+ */
+export async function loadCalibration() {
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      const docRef = doc(db, "users", user.uid, "settings", "calibration");
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        if (typeof data.rScale === "number") {
+          // Cache locally for offline/fast access
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          return data;
+        }
+      }
+    }
+    // Fallback to local storage
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed.rScale !== "number") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveCalibration(rScale, gScale, bScale) {
+  const payload = {
+    rScale: clampScale(rScale),
+    gScale: clampScale(gScale),
+    bScale: clampScale(bScale),
+  };
+
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      const docRef = doc(db, "users", user.uid, "settings", "calibration");
+      await setDoc(
+        docRef,
+        {
+          ...payload,
+          calibratedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
+    // Save locally as well
+    await AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        ...payload,
+        calibratedAt: new Date().toISOString(),
+      }),
+    );
+  } catch (e) {
+    console.warn("Failed to save calibration to cloud", e);
+  }
+  return payload;
+}
+
+export async function clearCalibration() {
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      const docRef = doc(db, "users", user.uid, "settings", "calibration");
+      await deleteDoc(docRef);
+    }
+    await AsyncStorage.removeItem(STORAGE_KEY);
+  } catch (e) {
+    console.warn("Failed to clear calibration", e);
+  }
+}
+
+function clampScale(s) {
+  if (!Number.isFinite(s) || s <= 0) return 1;
+  return Math.max(SCALE_MIN, Math.min(SCALE_MAX, s));
+}
+
+// ─────────────────────────────────────────────────────────────
+// Manual calibration: derive scalars from a white reference patch
+// ─────────────────────────────────────────────────────────────
+
+export function deriveScalarsFromWhitePatch(avgR, avgG, avgB) {
+  const target = Math.max(avgR, avgG, avgB, 240);
+  return {
+    rScale: clampScale(target / Math.max(avgR, 1)),
+    gScale: clampScale(target / Math.max(avgG, 1)),
+    bScale: clampScale(target / Math.max(avgB, 1)),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Auto white-balance fallback: gray-world from a pixel buffer
+// ─────────────────────────────────────────────────────────────
+
+export function grayWorldScalars(rgba, stride = 16) {
+  let sumR = 0,
+    sumG = 0,
+    sumB = 0,
+    count = 0;
+  for (let i = 0; i < rgba.length; i += 4 * stride) {
+    sumR += rgba[i];
+    sumG += rgba[i + 1];
+    sumB += rgba[i + 2];
+    count++;
+  }
+  if (count === 0) return IDENTITY;
+  const meanR = sumR / count;
+  const meanG = sumG / count;
+  const meanB = sumB / count;
+  const target = (meanR + meanG + meanB) / 3;
+  if (target <= 0) return IDENTITY;
+  return {
+    rScale: clampScale(target / Math.max(meanR, 1)),
+    gScale: clampScale(target / Math.max(meanG, 1)),
+    bScale: clampScale(target / Math.max(meanB, 1)),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Apply calibration
+// ─────────────────────────────────────────────────────────────
+
+export function applyCalibrationToRGB(r, g, b, calib) {
+  if (!calib) return [r, g, b];
+  return [
+    clamp255(Math.round(r * calib.rScale)),
+    clamp255(Math.round(g * calib.gScale)),
+    clamp255(Math.round(b * calib.bScale)),
+  ];
+}
+
+export function applyCalibrationToBuffer(rgba, calib) {
+  if (!calib) return rgba;
+  const r = calib.rScale,
+    g = calib.gScale,
+    b = calib.bScale;
+  if (r === 1 && g === 1 && b === 1) return rgba;
+  for (let i = 0; i < rgba.length; i += 4) {
+    rgba[i] = clamp255(Math.round(rgba[i] * r));
+    rgba[i + 1] = clamp255(Math.round(rgba[i + 1] * g));
+    rgba[i + 2] = clamp255(Math.round(rgba[i + 2] * b));
+  }
+  return rgba;
+}
+
+function clamp255(v) {
+  return v < 0 ? 0 : v > 255 ? 255 : v;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Public resolver
+// ─────────────────────────────────────────────────────────────
+
+export async function resolveCalibration(rgba = null) {
+  const manual = await loadCalibration();
+  if (manual) {
+    return {
+      rScale: manual.rScale,
+      gScale: manual.gScale,
+      bScale: manual.bScale,
+      source: "manual",
+    };
+  }
+  if (rgba && rgba.length > 0) {
+    return { ...grayWorldScalars(rgba), source: "auto" };
+  }
+  return { ...IDENTITY, source: "identity" };
+}
 </file>
 
 <file path="src/utils/constants.js">
@@ -4543,291 +4543,6 @@ export default function EducationListScreen({ navigation }) {
 }
 </file>
 
-<file path="src/screens/EnhanceGalleryScreen.js">
-import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import Slider from "@react-native-community/slider";
-import * as FileSystem from "expo-file-system/legacy";
-import * as ImageManipulator from "expo-image-manipulator";
-import * as ImagePicker from "expo-image-picker";
-import * as MediaLibrary from "expo-media-library";
-import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Image,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { auth } from "../../firebaseConfig";
-import {
-  applyDaltonization,
-  applyHueRotation,
-  decodeJpegBase64,
-  encodeToDataUri,
-} from "../../tensorHelper";
-import { COLORS } from "../theme/colors";
-import { styles } from "../theme/styles";
-
-const { width } = Dimensions.get("window");
-
-export default function EnhanceGalleryScreen({ navigation }) {
-  const [originalUri, setOriginalUri] = useState(null);
-  const [displayUri, setDisplayUri] = useState(null);
-  const [mode, setMode] = useState("Off");
-  const [algo, setAlgo] = useState("daltonization");
-  const [intensity, setIntensity] = useState(100);
-  const [processing, setProcessing] = useState(false);
-
-  useEffect(() => {
-    AsyncStorage.getItem("@recolor_intensity").then(
-      (val) => val && setIntensity(Number(val)),
-    );
-  }, []);
-
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      quality: 1,
-    });
-    if (!result.canceled) {
-      setOriginalUri(result.assets[0].uri);
-      setDisplayUri(result.assets[0].uri);
-      setMode("Off");
-    }
-  };
-
-  const processFilter = async (cvdMode, currentAlgo, currentInt) => {
-    if (cvdMode === "Off" || !originalUri) {
-      setDisplayUri(originalUri);
-      return;
-    }
-    setProcessing(true);
-    try {
-      const resized = await ImageManipulator.manipulateAsync(
-        originalUri,
-        [{ resize: { width: 1040 } }],
-        { base64: true },
-      );
-      const decoded = decodeJpegBase64(resized.base64);
-      const src = {
-        data: decoded.data,
-        width: decoded.width,
-        height: decoded.height,
-      };
-
-      const enhanced =
-        currentAlgo === "hue_rotation"
-          ? applyHueRotation(src, cvdMode)
-          : applyDaltonization(src, null, cvdMode);
-
-      const blend = currentInt / 100;
-      const blended = new Uint8Array(decoded.data.length);
-      for (let i = 0; i < decoded.data.length; i += 4) {
-        blended[i] = Math.round(
-          decoded.data[i] * (1 - blend) + enhanced[i] * blend,
-        );
-        blended[i + 1] = Math.round(
-          decoded.data[i + 1] * (1 - blend) + enhanced[i + 1] * blend,
-        );
-        blended[i + 2] = Math.round(
-          decoded.data[i + 2] * (1 - blend) + enhanced[i + 2] * blend,
-        );
-        blended[i + 3] = decoded.data[i + 3];
-      }
-      setDisplayUri(encodeToDataUri(blended, decoded.width, decoded.height));
-    } catch (e) {
-      console.warn(e);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!displayUri) return;
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== "granted") return Alert.alert("Permission needed");
-
-      let b64;
-      if (displayUri.startsWith("data:")) {
-        b64 = displayUri.split(",")[1];
-      } else {
-        b64 = await FileSystem.readAsStringAsync(displayUri, {
-          encoding: "base64",
-        });
-      }
-
-      const savePath = `${FileSystem.documentDirectory}enhanced_save_${Date.now()}.jpg`;
-      await FileSystem.writeAsStringAsync(savePath, b64, {
-        encoding: "base64",
-      });
-
-      const asset = await MediaLibrary.createAssetAsync(savePath);
-      const albumName = `ReColor_${auth.currentUser?.email.split("@")[0] || "Guest"}`;
-      const album = await MediaLibrary.getAlbumAsync(albumName);
-
-      if (!album) await MediaLibrary.createAlbumAsync(albumName, asset, false);
-      else await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
-
-      await FileSystem.deleteAsync(savePath, { idempotent: true });
-
-      Alert.alert("Saved", "Successfully added to your ReColor album.");
-    } catch (e) {
-      Alert.alert("Error", "Save failed");
-    }
-  };
-
-  const showInfo = () => {
-    Alert.alert(
-      "How to use Gallery Enhancement",
-      "Select an image from your gallery, then apply Daltonization or Hue Rotation filters to enhance color distinguishability. Adjust the intensity slider to your preference.",
-    );
-  };
-
-  return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
-      <SafeAreaView style={{ flex: 1 }}>
-        <View style={styles.camTopBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
-          </TouchableOpacity>
-          <Text style={{ color: "#FFF", fontWeight: "bold" }}>
-            Enhance Gallery
-          </Text>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <TouchableOpacity onPress={showInfo} style={{ marginRight: 15 }}>
-              <Ionicons
-                name="information-circle-outline"
-                size={26}
-                color="#FFF"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={pickImage}>
-              <Ionicons name="add-circle" size={28} color="#FFF" />
-            </TouchableOpacity>
-          </View>
-        </View>
-        <View style={{ flex: 1, justifyContent: "center" }}>
-          {displayUri ? (
-            <Image
-              source={{ uri: displayUri }}
-              style={{ width, height: width * 1.3, resizeMode: "contain" }}
-            />
-          ) : (
-            <TouchableOpacity
-              onPress={pickImage}
-              style={{ alignSelf: "center", alignItems: "center" }}
-            >
-              <Ionicons name="images-outline" size={60} color="#555" />
-              <Text style={{ color: "#777", marginTop: 10 }}>
-                Tap to pick an image
-              </Text>
-            </TouchableOpacity>
-          )}
-          {processing && (
-            <ActivityIndicator
-              size="large"
-              color="#FFF"
-              style={StyleSheet.absoluteFill}
-            />
-          )}
-        </View>
-
-        {originalUri && (
-          <View style={{ paddingBottom: 20 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "center",
-                gap: 10,
-                marginBottom: 15,
-              }}
-            >
-              {["daltonization", "hue_rotation"].map((a) => (
-                <TouchableOpacity
-                  key={a}
-                  onPress={() => {
-                    setAlgo(a);
-                    processFilter(mode, a, intensity);
-                  }}
-                  style={{
-                    backgroundColor: algo === a ? COLORS.secondary : "#222",
-                    padding: 8,
-                    borderRadius: 10,
-                  }}
-                >
-                  <Text
-                    style={{ color: "#FFF", fontSize: 10, fontWeight: "bold" }}
-                  >
-                    {a === "daltonization" ? "DALTO" : "HUE"}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "center",
-                gap: 8,
-                marginBottom: 15,
-              }}
-            >
-              {["Off", "Protan", "Deutan", "Tritan"].map((m) => (
-                <TouchableOpacity
-                  key={m}
-                  onPress={() => {
-                    setMode(m);
-                    processFilter(m, algo, intensity);
-                  }}
-                  style={{
-                    backgroundColor: mode === m ? COLORS.primary : "#333",
-                    padding: 10,
-                    borderRadius: 20,
-                  }}
-                >
-                  <Text style={{ color: "#FFF", fontSize: 11 }}>{m}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Slider
-              style={{ width: "80%", alignSelf: "center", height: 40 }}
-              minimumValue={0}
-              maximumValue={100}
-              value={intensity}
-              onSlidingComplete={(v) => {
-                setIntensity(v);
-                processFilter(mode, algo, v);
-              }}
-              minimumTrackTintColor={COLORS.primary}
-              thumbTintColor="#FFF"
-            />
-            <TouchableOpacity
-              onPress={handleSave}
-              style={{
-                alignSelf: "center",
-                backgroundColor: COLORS.primary,
-                padding: 12,
-                borderRadius: 24,
-                marginTop: 10,
-              }}
-            >
-              <Text style={{ color: "#FFF", fontWeight: "700" }}>
-                Save Enhanced Image
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </SafeAreaView>
-    </View>
-  );
-}
-</file>
-
 <file path="src/screens/IshiharaIntroScreen.js">
 import { Ionicons } from "@expo/vector-icons";
 import { ScrollView, Text, View } from "react-native";
@@ -4952,611 +4667,6 @@ export default function IshiharaIntroScreen({ navigation }) {
     </View>
   );
 }
-</file>
-
-<file path="src/screens/IshiharaOnboarding.js">
-import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { MotiView } from "moti";
-import { useEffect, useRef, useState } from "react";
-import {
-  Alert,
-  Dimensions,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
-
-const { width } = Dimensions.get("window");
-
-const INSTRUCTIONS = [
-  {
-    id: "1",
-    step: 1,
-    icon: "sunny-outline",
-    iconBg: "#FFF3E0",
-    iconColor: "#FF9F43",
-    label: "SCREEN LUMINOSITY",
-    infoTitle: "Screen Luminosity",
-    infoText:
-      "Low brightness reduces contrast, making it harder to distinguish subtle color differences in the Ishihara plates.",
-    title: "Min. 80% Brightness",
-    points: [
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Set screen brightness to at least 80%",
-      },
-      {
-        icon: "ellipse",
-        color: "#CCC",
-        text: "App will automatically verify your brightness level",
-      },
-      {
-        icon: "close-circle",
-        color: COLORS.danger,
-        text: "Dim screens distort colour perception",
-      },
-    ],
-    tip: "Like pre-flight checks: Just as pilots verify all instruments before takeoff, ensure your screen brightness is optimal.",
-    cta: "Next: Lighting Conditions",
-  },
-  {
-    id: "2",
-    step: 2,
-    icon: "bulb-outline",
-    iconBg: "#E8F5E9",
-    iconColor: "#2ECC71",
-    label: "LIGHTING CONDITIONS",
-    infoTitle: "Lighting Conditions",
-    infoText:
-      "Colored ambient light shifts your perception of hues and can produce false results. Natural or pure white light is required.",
-    title: "Natural or White Light",
-    points: [
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Sit in a well-lit room with white light",
-      },
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Avoid direct sunlight on screen (glare)",
-      },
-      {
-        icon: "close-circle",
-        color: COLORS.danger,
-        text: "Avoid yellow incandescent lighting",
-      },
-    ],
-    tip: "Coloured ambient light shifts your perception of hues and can produce false results.",
-    cta: "Next: Viewing Distance",
-  },
-  {
-    id: "3",
-    step: 3,
-    icon: "expand-outline",
-    iconBg: "#E3F2FD",
-    iconColor: "#2196F3",
-    label: "VIEWING DISTANCE",
-    infoTitle: "Viewing Distance",
-    infoText:
-      "The Ishihara test is calibrated for a specific viewing angle. Distance consistency ensures the color patches fall on the correct part of your retina.",
-    title: "35–75 cm Distance",
-    points: [
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Hold device 35–75 cm (arm's length) away",
-      },
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Plates fill your central vision field",
-      },
-      {
-        icon: "close-circle",
-        color: COLORS.danger,
-        text: "Too close or too far skews the test",
-      },
-    ],
-    tip: "The Ishihara test is calibrated for a specific viewing angle. Distance consistency matters.",
-    cta: "Next: Time Limit",
-  },
-  {
-    id: "4",
-    step: 4,
-    icon: "timer-outline",
-    iconBg: "#FCE4EC",
-    iconColor: "#FF4081",
-    label: "TIME LIMIT",
-    infoTitle: "Time Limit",
-    infoText:
-      "Prolonged viewing allows non-color cues (like dot size or density) to bias the result. Your first impression is the most clinically valid.",
-    title: "3-Second Rule",
-    points: [
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Each plate is visible for 3 seconds",
-      },
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Enter your answer using the numpad",
-      },
-      {
-        icon: "close-circle",
-        color: COLORS.danger,
-        text: "Do not guess — trust your first impression",
-      },
-    ],
-    tip: "Prolonged viewing allows non-colour cues (size, density) to bias the result. Your first impression is the most clinically valid.",
-    cta: "Next: Corrective Lenses",
-  },
-  {
-    id: "5",
-    step: 5,
-    icon: "glasses-outline",
-    iconBg: "#EDE7F6",
-    iconColor: "#6C63FF",
-    label: "CORRECTIVE LENSES",
-    infoTitle: "Corrective Lenses",
-    infoText:
-      "Tinted lenses alter color perception. Clear prescription lenses do not affect Ishihara results.",
-    title: "Glasses & Contact Lenses",
-    points: [
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Wear your usual prescription lenses",
-      },
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Standard clear lenses are fine",
-      },
-      {
-        icon: "close-circle",
-        color: COLORS.danger,
-        text: "Remove tinted or coloured contact lenses",
-      },
-    ],
-    tip: "Tinted lenses alter colour perception. Clear prescription lenses do not affect Ishihara results.",
-    cta: "Next: Environment",
-  },
-  {
-    id: "6",
-    step: 6,
-    icon: "home-outline",
-    iconBg: "#E8F5E9",
-    iconColor: "#2ECC71",
-    label: "ENVIRONMENT",
-    infoTitle: "Environment",
-    infoText:
-      "Visual fatigue affects color discrimination. Best results are obtained when well-rested in a distraction-free environment.",
-    title: "Quiet, Distraction-Free",
-    points: [
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Find a calm, quiet environment",
-      },
-      {
-        icon: "checkmark-circle",
-        color: COLORS.success,
-        text: "Do not rush — take each plate seriously",
-      },
-      {
-        icon: "close-circle",
-        color: COLORS.danger,
-        text: "Avoid testing when fatigued or stressed",
-      },
-    ],
-    tip: "Visual fatigue affects colour discrimination. Best results are obtained when well-rested.",
-    cta: "I'm Ready",
-    isFinal: true,
-  },
-];
-
-function InstructionSlide({ item, onNext, isFinal, onBegin }) {
-  return (
-    <View style={[styles.slide, { width }]}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Header card */}
-        <MotiView
-          from={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", damping: 18 }}
-          style={styles.headerCard}
-        >
-          <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
-            <Ionicons name={item.icon} size={28} color={item.iconColor} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Text style={styles.label}>{item.label}</Text>
-              {item.infoText && (
-                <TouchableOpacity
-                  onPress={() =>
-                    Alert.alert(item.infoTitle || "Info", item.infoText)
-                  }
-                  style={{ marginLeft: 6, padding: 2 }}
-                >
-                  <Ionicons
-                    name="information-circle-outline"
-                    size={14}
-                    color="rgba(255,255,255,0.8)"
-                  />
-                </TouchableOpacity>
-              )}
-            </View>
-            <Text style={styles.cardTitle}>{item.title}</Text>
-          </View>
-        </MotiView>
-
-        {/* Visual Distance Diagram (Only shows on Step 3) */}
-        {item.id === "3" && (
-          <MotiView
-            from={{ opacity: 0, translateY: 10 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ type: "spring", damping: 18, delay: 100 }}
-            style={styles.distanceDiagram}
-          >
-            <View style={styles.diagramContent}>
-              {/* Person Icon */}
-              <Ionicons
-                name="person"
-                size={54}
-                color={COLORS.primary}
-                style={{ zIndex: 2 }}
-              />
-
-              {/* Extended Arm Graphic */}
-              <View style={styles.armContainer}>
-                <Text style={styles.armLabel}>Arm's Length</Text>
-                <Text style={styles.armMeasurement}>35 - 75 cm</Text>
-                <View style={styles.armBar} />
-              </View>
-
-              {/* Phone Icon */}
-              <View style={styles.deviceContainer}>
-                <Ionicons name="phone-portrait" size={44} color={COLORS.text} />
-              </View>
-            </View>
-          </MotiView>
-        )}
-
-        {/* Checklist */}
-        <MotiView
-          from={{ opacity: 0, translateY: 16 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: "spring", damping: 18, delay: 150 }}
-          style={styles.checklistCard}
-        >
-          <View style={styles.checklistHeader}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.checklistLabel}>
-              PREPARATION CHECKLIST · {INSTRUCTIONS.length} REQUIREMENTS
-            </Text>
-            <View style={styles.dividerLine} />
-          </View>
-          {item.points.map((pt, i) => (
-            <View key={i} style={styles.pointRow}>
-              <Ionicons name={pt.icon} size={20} color={pt.color} />
-              <Text style={styles.pointText}>{pt.text}</Text>
-            </View>
-          ))}
-        </MotiView>
-
-        {/* Tip */}
-        {item.tip && (
-          <MotiView
-            from={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 300 }}
-            style={styles.tipCard}
-          >
-            <Text style={styles.tipText}>
-              <Text style={{ fontWeight: "700", color: COLORS.primary }}>
-                Tip:{" "}
-              </Text>
-              {item.tip}
-            </Text>
-          </MotiView>
-        )}
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
-
-      {/* CTA */}
-      <View style={styles.ctaContainer}>
-        <TouchableOpacity
-          style={styles.ctaBtn}
-          onPress={isFinal ? onBegin : onNext}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.ctaText}>{item.cta}</Text>
-        </TouchableOpacity>
-        <Text style={styles.ctaHint}>
-          The test takes approximately 3–5 minutes
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-export default function IshiharaOnboarding({ navigation, route }) {
-  const { testType = "comprehensive" } = route?.params || {};
-  const scrollRef = useRef(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [hasSeen, setHasSeen] = useState(false);
-
-  useEffect(() => {
-    AsyncStorage.getItem("@seen_ishihara_onboard").then((val) => {
-      if (val === "1") setHasSeen(true);
-    });
-  }, []);
-
-  const goNext = () => {
-    if (currentIndex < INSTRUCTIONS.length - 1) {
-      const next = currentIndex + 1;
-      scrollRef.current?.scrollTo({ x: next * width, animated: true });
-      setCurrentIndex(next);
-    }
-  };
-
-  const begin = () => {
-    AsyncStorage.setItem("@seen_ishihara_onboard", "1");
-    navigation.replace("IshiharaTest", { testType });
-  };
-
-  return (
-    <View style={styles.container}>
-      {/* Top bar */}
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-        >
-          <Ionicons name="arrow-back" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.topTitle}>Before You Begin</Text>
-        {hasSeen ? (
-          <TouchableOpacity onPress={begin}>
-            <Text style={{ color: COLORS.primary, fontWeight: "700" }}>
-              Skip
-            </Text>
-          </TouchableOpacity>
-        ) : (
-          <Image
-            source={require("../../assets/icon.png")}
-            style={{ width: 36, height: 36, resizeMode: "contain" }}
-          />
-        )}
-      </View>
-
-      {/* Progress dots */}
-      <View style={styles.dotsRow}>
-        {INSTRUCTIONS.map((_, i) => (
-          <MotiView
-            key={i}
-            animate={{
-              width: i === currentIndex ? 20 : 6,
-              opacity: i === currentIndex ? 1 : 0.3,
-            }}
-            transition={{ type: "spring", damping: 18 }}
-            style={[styles.dot, { backgroundColor: COLORS.primary }]}
-          />
-        ))}
-      </View>
-
-      {/* Sticky disclaimer */}
-      <View style={styles.disclaimerBanner}>
-        <Ionicons name="warning-outline" size={13} color="#F59E0B" />
-        <Text style={styles.disclaimerText}>
-          NOT A MEDICAL DIAGNOSIS — SCREENING PURPOSE ONLY
-        </Text>
-      </View>
-
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEnabled={false}
-      >
-        {INSTRUCTIONS.map((item, index) => (
-          <InstructionSlide
-            key={item.id}
-            item={item}
-            onNext={goNext}
-            isFinal={index === INSTRUCTIONS.length - 1}
-            onBegin={begin}
-          />
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: SPACING.md,
-    paddingTop: 52,
-    paddingBottom: SPACING.sm,
-    backgroundColor: COLORS.card,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  backBtn: { padding: 4 },
-  topTitle: { fontSize: 16, fontWeight: "700", color: COLORS.text },
-  eyeCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dotsRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: SPACING.sm,
-    backgroundColor: COLORS.card,
-  },
-  dot: { height: 6, borderRadius: 3 },
-  disclaimerBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: "#FFF8E1",
-    paddingVertical: 6,
-  },
-  disclaimerText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#F59E0B",
-    letterSpacing: 0.5,
-  },
-  slide: { flex: 1 },
-  scrollContent: { padding: SPACING.md, gap: SPACING.md },
-  headerCard: {
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.md,
-    ...SHADOW.md,
-  },
-  iconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  label: {
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.5,
-    color: "rgba(255,255,255,0.7)",
-  },
-  cardTitle: { fontSize: 18, fontWeight: "800", color: "#FFF", marginTop: 2 },
-
-  // --- New Native Arm's Length Diagram Styles ---
-  distanceDiagram: {
-    backgroundColor: COLORS.surfaceAlt,
-    padding: SPACING.lg,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.primary + "20",
-    ...SHADOW.sm,
-  },
-  diagramContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  armContainer: {
-    flex: 1,
-    alignItems: "center",
-    marginHorizontal: -12, // Pulls the arm slightly under the person and phone
-    zIndex: 1,
-  },
-  armLabel: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: COLORS.primary,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  armMeasurement: {
-    fontSize: 11,
-    color: COLORS.textLight,
-    marginBottom: 8,
-    fontWeight: "600",
-  },
-  armBar: {
-    width: "100%",
-    height: 14,
-    backgroundColor: COLORS.primary + "40", // Soft primary color for the arm
-    borderRadius: 7,
-  },
-  deviceContainer: {
-    zIndex: 2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  // ----------------------------------------------
-
-  checklistCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    gap: SPACING.md,
-    ...SHADOW.sm,
-  },
-  checklistHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.sm,
-  },
-  dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
-  checklistLabel: {
-    fontSize: 9,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    color: COLORS.textLight,
-  },
-  pointRow: { flexDirection: "row", alignItems: "flex-start", gap: SPACING.sm },
-  pointText: { flex: 1, fontSize: 14, color: COLORS.text, lineHeight: 20 },
-  tipCard: {
-    backgroundColor: COLORS.surfaceAlt,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.primary,
-  },
-  tipText: { fontSize: 13, color: COLORS.text, lineHeight: 20 },
-  ctaContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.card,
-    padding: SPACING.md,
-    paddingBottom: SPACING.xl,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    gap: SPACING.sm,
-  },
-  ctaBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.lg,
-    paddingVertical: 16,
-    alignItems: "center",
-    ...SHADOW.md,
-  },
-  ctaText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
-  ctaHint: { fontSize: 12, color: COLORS.textLight, textAlign: "center" },
-});
 </file>
 
 <file path="src/theme/styles.js">
@@ -6426,238 +5536,894 @@ const styles = StyleSheet.create({
 });
 </file>
 
-<file path="src/screens/HistoryScreen.js">
+<file path="src/screens/EnhanceGalleryScreen.js">
 import { Ionicons } from "@expo/vector-icons";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Slider from "@react-native-community/slider";
+import * as FileSystem from "expo-file-system/legacy";
+import * as ImageManipulator from "expo-image-manipulator";
+import * as ImagePicker from "expo-image-picker";
+import * as MediaLibrary from "expo-media-library";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  ScrollView,
+  Alert,
+  Dimensions,
+  Image,
+  SafeAreaView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { auth, db, onAuthStateChanged } from "../../firebaseConfig";
-import BackgroundBubbles from "../components/BackgroundBubbles";
-import Card from "../components/Card";
-import Header from "../components/Header";
+import { auth } from "../../firebaseConfig";
+import {
+  applyDaltonization,
+  applyHueRotation,
+  decodeJpegBase64,
+  encodeToDataUri,
+} from "../../tensorHelper";
 import { COLORS } from "../theme/colors";
 import { styles } from "../theme/styles";
 
-export default function HistoryScreen({ navigation }) {
-  const [historyData, setHistoryData] = useState([]);
-  const [loading, setLoading] = useState(true);
+const { width } = Dimensions.get("window");
+
+export default function EnhanceGalleryScreen({ navigation }) {
+  const [originalUri, setOriginalUri] = useState(null);
+  const [displayUri, setDisplayUri] = useState(null);
+  const [mode, setMode] = useState("Off");
+  const [algo, setAlgo] = useState("daltonization");
+  const [intensity, setIntensity] = useState(100);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
-    let unsubFirestore = null;
-
-    const unsubAuth = onAuthStateChanged(auth, (user) => {
-      if (unsubFirestore) {
-        unsubFirestore();
-        unsubFirestore = null;
-      }
-      if (!user) {
-        setHistoryData([]);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      const q = query(
-        collection(db, "users", user.uid, "history"),
-        orderBy("date", "desc"),
-      );
-      unsubFirestore = onSnapshot(
-        q,
-        (snap) => {
-          setHistoryData(
-            snap.docs.map((doc) => {
-              const d = doc.data();
-              return {
-                id: doc.id,
-                type: d.diagnosis || "Unknown",
-                score: d.score !== undefined ? d.score : "?",
-                total: d.total || 14,
-                severity: d.severity || "N/A",
-                date: d.date?.toDate
-                  ? d.date.toDate().toLocaleDateString()
-                  : "Just now",
-              };
-            }),
-          );
-          setLoading(false);
-        },
-        (err) => {
-          console.error("History fetch error:", err);
-          setLoading(false);
-        },
-      );
-    });
-
-    return () => {
-      unsubAuth();
-      if (unsubFirestore) unsubFirestore();
-    };
+    AsyncStorage.getItem("@recolor_intensity").then(
+      (val) => val && setIntensity(Number(val)),
+    );
   }, []);
 
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      quality: 1,
+    });
+    if (!result.canceled) {
+      setOriginalUri(result.assets[0].uri);
+      setDisplayUri(result.assets[0].uri);
+      setMode("Off");
+    }
+  };
+
+  const processFilter = async (cvdMode, currentAlgo, currentInt) => {
+    if (cvdMode === "Off" || !originalUri) {
+      setDisplayUri(originalUri);
+      return;
+    }
+    setProcessing(true);
+    try {
+      const resized = await ImageManipulator.manipulateAsync(
+        originalUri,
+        [{ resize: { width: 1040 } }],
+        { base64: true },
+      );
+      const decoded = decodeJpegBase64(resized.base64);
+      const src = {
+        data: decoded.data,
+        width: decoded.width,
+        height: decoded.height,
+      };
+
+      const enhanced =
+        currentAlgo === "hue_rotation"
+          ? applyHueRotation(src, cvdMode)
+          : applyDaltonization(src, null, cvdMode);
+
+      const blend = currentInt / 100;
+      const blended = new Uint8Array(decoded.data.length);
+      for (let i = 0; i < decoded.data.length; i += 4) {
+        blended[i] = Math.round(
+          decoded.data[i] * (1 - blend) + enhanced[i] * blend,
+        );
+        blended[i + 1] = Math.round(
+          decoded.data[i + 1] * (1 - blend) + enhanced[i + 1] * blend,
+        );
+        blended[i + 2] = Math.round(
+          decoded.data[i + 2] * (1 - blend) + enhanced[i + 2] * blend,
+        );
+        blended[i + 3] = decoded.data[i + 3];
+      }
+      setDisplayUri(encodeToDataUri(blended, decoded.width, decoded.height));
+    } catch (e) {
+      console.warn(e);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!displayUri) return;
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== "granted") return Alert.alert("Permission needed");
+
+      let b64;
+      if (displayUri.startsWith("data:")) {
+        b64 = displayUri.split(",")[1];
+      } else {
+        b64 = await FileSystem.readAsStringAsync(displayUri, {
+          encoding: "base64",
+        });
+      }
+
+      const savePath = `${FileSystem.documentDirectory}enhanced_save_${Date.now()}.jpg`;
+      await FileSystem.writeAsStringAsync(savePath, b64, {
+        encoding: "base64",
+      });
+
+      const asset = await MediaLibrary.createAssetAsync(savePath);
+      const albumName = `ReColor_${auth.currentUser?.email.split("@")[0] || "Guest"}`;
+      const album = await MediaLibrary.getAlbumAsync(albumName);
+
+      if (!album) await MediaLibrary.createAlbumAsync(albumName, asset, false);
+      else await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+
+      await FileSystem.deleteAsync(savePath, { idempotent: true });
+
+      Alert.alert("Saved", "Successfully added to your ReColor album.");
+    } catch (e) {
+      Alert.alert("Error", "Save failed");
+    }
+  };
+
+  const showInfo = () => {
+    Alert.alert(
+      "How to use Gallery Enhancement",
+      "Select an image from your gallery, then apply Daltonization or Hue Rotation filters to enhance color distinguishability. Adjust the intensity slider to your preference.",
+    );
+  };
+
   return (
-    <View style={styles.container}>
-      <BackgroundBubbles />
-      <Header title="Your History" back />
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 3,
-          backgroundColor: "#FFF8E1",
-          paddingVertical: 10,
-          paddingHorizontal: 8,
-          borderBottomWidth: 1,
-          borderBottomColor: "#FFE082",
-        }}
-      >
-        <Ionicons name="warning-outline" size={12} color="#F59E0B" />
-        <Text style={{ fontSize: 10, fontWeight: "700", color: "#F59E0B" }}>
-          NOT A MEDICAL DIAGNOSIS — SCREENING PURPOSE ONLY
-        </Text>
-      </View>
-      {loading ? (
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      ) : historyData.length === 0 ? (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            padding: 30,
-          }}
-        >
-          {/* Approachable Illustration  */}
-          <View
-            style={{
-              backgroundColor: "#F0F2FF",
-              padding: 25,
-              borderRadius: 100,
-              marginBottom: 20,
-            }}
-          >
-            <Ionicons name="stats-chart" size={60} color={COLORS.primary} />
-          </View>
-
-          {/* Human Labels & Conversational Copy  */}
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "800",
-              color: "#1A1A2E",
-              textAlign: "center",
-            }}
-          >
-            Ready for your first screening?
-          </Text>
-
-          <Text
-            style={{
-              fontSize: 14,
-              color: "#4A4A4A",
-              textAlign: "center",
-              marginTop: 10,
-              lineHeight: 20,
-            }}
-          >
-            Take a 5-minute test to start tracking your color perception
-            journey. Your history will appear here after your first screening.
-          </Text>
-
-          {/* Call to Action Button  */}
-          <TouchableOpacity
-            style={[
-              styles.btnPrimary,
-              { marginTop: 30, width: "100%", paddingVertical: 16 },
-            ]}
-            onPress={() => navigation.navigate("IshiharaIntro")}
-          >
-            <Text style={[styles.btnText, { fontSize: 16 }]}>
-              Take the test{" "}
-            </Text>
+    <View style={{ flex: 1, backgroundColor: "#000" }}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <View style={styles.camTopBar}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
+          <Text style={{ color: "#FFF", fontWeight: "bold" }}>
+            Enhance Gallery
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity onPress={showInfo} style={{ marginRight: 15 }}>
+              <Ionicons
+                name="information-circle-outline"
+                size={26}
+                color="#FFF"
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={pickImage}>
+              <Ionicons name="add-circle" size={28} color="#FFF" />
+            </TouchableOpacity>
+          </View>
         </View>
-      ) : (
-        <ScrollView contentContainerStyle={{ padding: 20 }}>
-          {historyData.map((item, index) => (
-            <Card key={index} style={{ marginBottom: 15, paddingVertical: 18 }}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <View style={{ flex: 1 }}>
-                  {/* Improved Color Contrast for Accessibility  */}
-                  <Text
-                    style={{
-                      fontSize: 17,
-                      fontWeight: "bold",
-                      color: "#1A1A2E",
-                    }}
-                  >
-                    {item.type}
-                  </Text>
-                  <Text
-                    style={{ fontSize: 13, color: "#4A4A4A", marginTop: 2 }}
-                  >
-                    Completed on {item.date}
-                  </Text>
-                </View>
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          {displayUri ? (
+            <Image
+              source={{ uri: displayUri }}
+              style={{ width, height: width * 1.3, resizeMode: "contain" }}
+            />
+          ) : (
+            <TouchableOpacity
+              onPress={pickImage}
+              style={{ alignSelf: "center", alignItems: "center" }}
+            >
+              <Ionicons name="images-outline" size={60} color="#555" />
+              <Text style={{ color: "#777", marginTop: 10 }}>
+                Tap to pick an image
+              </Text>
+            </TouchableOpacity>
+          )}
+          {processing && (
+            <ActivityIndicator
+              size="large"
+              color="#FFF"
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+        </View>
 
-                <View style={{ alignItems: "flex-end", marginLeft: 10 }}>
+        {originalUri && (
+          <View style={{ paddingBottom: 20 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                gap: 10,
+                marginBottom: 15,
+              }}
+            >
+              {["daltonization", "hue_rotation"].map((a) => (
+                <TouchableOpacity
+                  key={a}
+                  onPress={() => {
+                    setAlgo(a);
+                    processFilter(mode, a, intensity);
+                  }}
+                  style={{
+                    backgroundColor: algo === a ? COLORS.secondary : "#222",
+                    padding: 8,
+                    borderRadius: 10,
+                  }}
+                >
                   <Text
-                    style={{
-                      fontSize: 22,
-                      fontWeight: "800",
-                      color: COLORS.primary,
-                    }}
+                    style={{ color: "#FFF", fontSize: 10, fontWeight: "bold" }}
                   >
-                    {item.score}/{item.total}
+                    {a === "daltonization" ? "DALTO" : "HUE"}
                   </Text>
-                  <View
-                    style={{
-                      backgroundColor:
-                        item.severity === "Severe" ? "#FFEBEE" : "#FFF3E0",
-                      paddingHorizontal: 8,
-                      paddingVertical: 2,
-                      borderRadius: 6,
-                      marginTop: 4,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        fontWeight: "800",
-                        color:
-                          item.severity === "Severe"
-                            ? COLORS.danger
-                            : "#E65100",
-                      }}
-                    >
-                      {item.severity.toUpperCase()}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </Card>
-          ))}
-        </ScrollView>
-      )}
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                gap: 8,
+                marginBottom: 15,
+              }}
+            >
+              {["Off", "Protan", "Deutan", "Tritan"].map((m) => (
+                <TouchableOpacity
+                  key={m}
+                  onPress={() => {
+                    setMode(m);
+                    processFilter(m, algo, intensity);
+                  }}
+                  style={{
+                    backgroundColor: mode === m ? COLORS.primary : "#333",
+                    padding: 10,
+                    borderRadius: 20,
+                  }}
+                >
+                  <Text style={{ color: "#FFF", fontSize: 11 }}>{m}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Slider
+              style={{ width: "80%", alignSelf: "center", height: 40 }}
+              minimumValue={0}
+              maximumValue={100}
+              value={intensity}
+              onSlidingComplete={(v) => {
+                setIntensity(v);
+                processFilter(mode, algo, v);
+              }}
+              minimumTrackTintColor={COLORS.primary}
+              thumbTintColor="#FFF"
+            />
+            <TouchableOpacity
+              onPress={handleSave}
+              style={{
+                alignSelf: "center",
+                backgroundColor: COLORS.primary,
+                padding: 12,
+                borderRadius: 24,
+                marginTop: 10,
+              }}
+            >
+              <Text style={{ color: "#FFF", fontWeight: "700" }}>
+                Save Enhanced Image
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </SafeAreaView>
     </View>
   );
 }
+</file>
+
+<file path="src/screens/IshiharaOnboarding.js">
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MotiView } from "moti";
+import { useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
+
+const { width } = Dimensions.get("window");
+
+const INSTRUCTIONS = [
+  {
+    id: "1",
+    step: 1,
+    icon: "sunny-outline",
+    iconBg: "#FFF3E0",
+    iconColor: "#FF9F43",
+    label: "SCREEN LUMINOSITY",
+    infoTitle: "Screen Luminosity",
+    infoText:
+      "Low brightness reduces contrast, making it harder to distinguish subtle color differences in the Ishihara plates.",
+    title: "Min. 80% Brightness",
+    points: [
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Set screen brightness to at least 80%",
+      },
+      {
+        icon: "ellipse",
+        color: "#CCC",
+        text: "App will automatically verify your brightness level",
+      },
+      {
+        icon: "close-circle",
+        color: COLORS.danger,
+        text: "Dim screens distort colour perception",
+      },
+    ],
+    tip: "Like pre-flight checks: Just as pilots verify all instruments before takeoff, ensure your screen brightness is optimal.",
+    cta: "Next: Lighting Conditions",
+  },
+  {
+    id: "2",
+    step: 2,
+    icon: "bulb-outline",
+    iconBg: "#E8F5E9",
+    iconColor: "#2ECC71",
+    label: "LIGHTING CONDITIONS",
+    infoTitle: "Lighting Conditions",
+    infoText:
+      "Colored ambient light shifts your perception of hues and can produce false results. Natural or pure white light is required.",
+    title: "Natural or White Light",
+    points: [
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Sit in a well-lit room with white light",
+      },
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Avoid direct sunlight on screen (glare)",
+      },
+      {
+        icon: "close-circle",
+        color: COLORS.danger,
+        text: "Avoid yellow incandescent lighting",
+      },
+    ],
+    tip: "Coloured ambient light shifts your perception of hues and can produce false results.",
+    cta: "Next: Viewing Distance",
+  },
+  {
+    id: "3",
+    step: 3,
+    icon: "expand-outline",
+    iconBg: "#E3F2FD",
+    iconColor: "#2196F3",
+    label: "VIEWING DISTANCE",
+    infoTitle: "Viewing Distance",
+    infoText:
+      "The Ishihara test is calibrated for a specific viewing angle. Distance consistency ensures the color patches fall on the correct part of your retina.",
+    title: "35–75 cm Distance",
+    points: [
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Hold device 35–75 cm (arm's length) away",
+      },
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Plates fill your central vision field",
+      },
+      {
+        icon: "close-circle",
+        color: COLORS.danger,
+        text: "Too close or too far skews the test",
+      },
+    ],
+    tip: "The Ishihara test is calibrated for a specific viewing angle. Distance consistency matters.",
+    cta: "Next: Time Limit",
+  },
+  {
+    id: "4",
+    step: 4,
+    icon: "timer-outline",
+    iconBg: "#FCE4EC",
+    iconColor: "#FF4081",
+    label: "TIME LIMIT",
+    infoTitle: "Time Limit",
+    infoText:
+      "Prolonged viewing allows non-color cues (like dot size or density) to bias the result. Your first impression is the most clinically valid.",
+    title: "3-Second Rule",
+    points: [
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Each plate is visible for 3 seconds",
+      },
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Enter your answer using the numpad",
+      },
+      {
+        icon: "close-circle",
+        color: COLORS.danger,
+        text: "Do not guess — trust your first impression",
+      },
+    ],
+    tip: "Prolonged viewing allows non-colour cues (size, density) to bias the result. Your first impression is the most clinically valid.",
+    cta: "Next: Corrective Lenses",
+  },
+  {
+    id: "5",
+    step: 5,
+    icon: "glasses-outline",
+    iconBg: "#EDE7F6",
+    iconColor: "#6C63FF",
+    label: "CORRECTIVE LENSES",
+    infoTitle: "Corrective Lenses",
+    infoText:
+      "Tinted lenses alter color perception. Clear prescription lenses do not affect Ishihara results.",
+    title: "Glasses & Contact Lenses",
+    points: [
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Wear your usual prescription lenses",
+      },
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Standard clear lenses are fine",
+      },
+      {
+        icon: "close-circle",
+        color: COLORS.danger,
+        text: "Remove tinted or coloured contact lenses",
+      },
+    ],
+    tip: "Tinted lenses alter colour perception. Clear prescription lenses do not affect Ishihara results.",
+    cta: "Next: Environment",
+  },
+  {
+    id: "6",
+    step: 6,
+    icon: "home-outline",
+    iconBg: "#E8F5E9",
+    iconColor: "#2ECC71",
+    label: "ENVIRONMENT",
+    infoTitle: "Environment",
+    infoText:
+      "Visual fatigue affects color discrimination. Best results are obtained when well-rested in a distraction-free environment.",
+    title: "Quiet, Distraction-Free",
+    points: [
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Find a calm, quiet environment",
+      },
+      {
+        icon: "checkmark-circle",
+        color: COLORS.success,
+        text: "Do not rush — take each plate seriously",
+      },
+      {
+        icon: "close-circle",
+        color: COLORS.danger,
+        text: "Avoid testing when fatigued or stressed",
+      },
+    ],
+    tip: "Visual fatigue affects colour discrimination. Best results are obtained when well-rested.",
+    cta: "I'm Ready",
+    isFinal: true,
+  },
+];
+
+function InstructionSlide({ item, onNext, isFinal, onBegin }) {
+  return (
+    <View style={[styles.slide, { width }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Header card */}
+        <MotiView
+          from={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", damping: 18 }}
+          style={styles.headerCard}
+        >
+          <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
+            <Ionicons name={item.icon} size={28} color={item.iconColor} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Text style={styles.label}>{item.label}</Text>
+              {item.infoText && (
+                <TouchableOpacity
+                  onPress={() =>
+                    Alert.alert(item.infoTitle || "Info", item.infoText)
+                  }
+                  style={{ marginLeft: 6, padding: 2 }}
+                >
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={14}
+                    color="rgba(255,255,255,0.8)"
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+            <Text style={styles.cardTitle}>{item.title}</Text>
+          </View>
+        </MotiView>
+
+        {/* Visual Distance Diagram (Only shows on Step 3) */}
+        {item.id === "3" && (
+          <MotiView
+            from={{ opacity: 0, translateY: 10 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: "spring", damping: 18, delay: 100 }}
+            style={styles.distanceDiagram}
+          >
+            <View style={styles.diagramContent}>
+              {/* Person Icon */}
+              <Ionicons
+                name="person"
+                size={54}
+                color={COLORS.primary}
+                style={{ zIndex: 2 }}
+              />
+
+              {/* Extended Arm Graphic */}
+              <View style={styles.armContainer}>
+                <Text style={styles.armLabel}>Arm's Length</Text>
+                <Text style={styles.armMeasurement}>35 - 75 cm</Text>
+                <View style={styles.armBar} />
+              </View>
+
+              {/* Phone Icon */}
+              <View style={styles.deviceContainer}>
+                <Ionicons name="phone-portrait" size={44} color={COLORS.text} />
+              </View>
+            </View>
+          </MotiView>
+        )}
+
+        {/* Checklist */}
+        <MotiView
+          from={{ opacity: 0, translateY: 16 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "spring", damping: 18, delay: 150 }}
+          style={styles.checklistCard}
+        >
+          <View style={styles.checklistHeader}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.checklistLabel}>
+              PREPARATION CHECKLIST · {INSTRUCTIONS.length} REQUIREMENTS
+            </Text>
+            <View style={styles.dividerLine} />
+          </View>
+          {item.points.map((pt, i) => (
+            <View key={i} style={styles.pointRow}>
+              <Ionicons name={pt.icon} size={20} color={pt.color} />
+              <Text style={styles.pointText}>{pt.text}</Text>
+            </View>
+          ))}
+        </MotiView>
+
+        {/* Tip */}
+        {item.tip && (
+          <MotiView
+            from={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 300 }}
+            style={styles.tipCard}
+          >
+            <Text style={styles.tipText}>
+              <Text style={{ fontWeight: "700", color: COLORS.primary }}>
+                Tip:{" "}
+              </Text>
+              {item.tip}
+            </Text>
+          </MotiView>
+        )}
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
+
+      {/* CTA */}
+      <View style={styles.ctaContainer}>
+        <TouchableOpacity
+          style={styles.ctaBtn}
+          onPress={isFinal ? onBegin : onNext}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.ctaText}>{item.cta}</Text>
+        </TouchableOpacity>
+        <Text style={styles.ctaHint}>
+          The test takes approximately 3–5 minutes
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+export default function IshiharaOnboarding({ navigation, route }) {
+  const { testType = "comprehensive" } = route?.params || {};
+  const scrollRef = useRef(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [hasSeen, setHasSeen] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem("@seen_ishihara_onboard").then((val) => {
+      if (val === "1") setHasSeen(true);
+    });
+  }, []);
+
+  const goNext = () => {
+    if (currentIndex < INSTRUCTIONS.length - 1) {
+      const next = currentIndex + 1;
+      scrollRef.current?.scrollTo({ x: next * width, animated: true });
+      setCurrentIndex(next);
+    }
+  };
+
+  const begin = () => {
+    AsyncStorage.setItem("@seen_ishihara_onboard", "1");
+    navigation.replace("IshiharaTest", { testType });
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Top bar */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+        >
+          <Ionicons name="arrow-back" size={22} color={COLORS.text} />
+        </TouchableOpacity>
+        <Text style={styles.topTitle}>Before You Begin</Text>
+        {hasSeen ? (
+          <TouchableOpacity onPress={begin}>
+            <Text style={{ color: COLORS.primary, fontWeight: "700" }}>
+              Skip
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <Image
+            source={require("../../assets/icon.png")}
+            style={{ width: 36, height: 36, resizeMode: "contain" }}
+          />
+        )}
+      </View>
+
+      {/* Progress dots */}
+      <View style={styles.dotsRow}>
+        {INSTRUCTIONS.map((_, i) => (
+          <MotiView
+            key={i}
+            animate={{
+              width: i === currentIndex ? 20 : 6,
+              opacity: i === currentIndex ? 1 : 0.3,
+            }}
+            transition={{ type: "spring", damping: 18 }}
+            style={[styles.dot, { backgroundColor: COLORS.primary }]}
+          />
+        ))}
+      </View>
+
+      {/* Sticky disclaimer */}
+      <View style={styles.disclaimerBanner}>
+        <Ionicons name="warning-outline" size={13} color="#F59E0B" />
+        <Text style={styles.disclaimerText}>
+          NOT A MEDICAL DIAGNOSIS — SCREENING PURPOSE ONLY
+        </Text>
+      </View>
+
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEnabled={false}
+      >
+        {INSTRUCTIONS.map((item, index) => (
+          <InstructionSlide
+            key={item.id}
+            item={item}
+            onNext={goNext}
+            isFinal={index === INSTRUCTIONS.length - 1}
+            onBegin={begin}
+          />
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.background },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: SPACING.md,
+    paddingTop: 52,
+    paddingBottom: SPACING.sm,
+    backgroundColor: COLORS.card,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  backBtn: { padding: 4 },
+  topTitle: { fontSize: 16, fontWeight: "700", color: COLORS.text },
+  eyeCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: SPACING.sm,
+    backgroundColor: COLORS.card,
+  },
+  dot: { height: 6, borderRadius: 3 },
+  disclaimerBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#FFF8E1",
+    paddingVertical: 6,
+  },
+  disclaimerText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#F59E0B",
+    letterSpacing: 0.5,
+  },
+  slide: { flex: 1 },
+  scrollContent: { padding: SPACING.md, gap: SPACING.md },
+  headerCard: {
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.md,
+    ...SHADOW.md,
+  },
+  iconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  label: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+    color: "rgba(255,255,255,0.7)",
+  },
+  cardTitle: { fontSize: 18, fontWeight: "800", color: "#FFF", marginTop: 2 },
+
+  // --- New Native Arm's Length Diagram Styles ---
+  distanceDiagram: {
+    backgroundColor: COLORS.surfaceAlt,
+    padding: SPACING.lg,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.primary + "20",
+    ...SHADOW.sm,
+  },
+  diagramContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  armContainer: {
+    flex: 1,
+    alignItems: "center",
+    marginHorizontal: -12, // Pulls the arm slightly under the person and phone
+    zIndex: 1,
+  },
+  armLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: COLORS.primary,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  armMeasurement: {
+    fontSize: 11,
+    color: COLORS.textLight,
+    marginBottom: 8,
+    fontWeight: "600",
+  },
+  armBar: {
+    width: "100%",
+    height: 14,
+    backgroundColor: COLORS.primary + "40", // Soft primary color for the arm
+    borderRadius: 7,
+  },
+  deviceContainer: {
+    zIndex: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // ----------------------------------------------
+
+  checklistCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    gap: SPACING.md,
+    ...SHADOW.sm,
+  },
+  checklistHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
+  checklistLabel: {
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+    color: COLORS.textLight,
+  },
+  pointRow: { flexDirection: "row", alignItems: "flex-start", gap: SPACING.sm },
+  pointText: { flex: 1, fontSize: 14, color: COLORS.text, lineHeight: 20 },
+  tipCard: {
+    backgroundColor: COLORS.surfaceAlt,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primary,
+  },
+  tipText: { fontSize: 13, color: COLORS.text, lineHeight: 20 },
+  ctaContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.card,
+    padding: SPACING.md,
+    paddingBottom: SPACING.xl,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    gap: SPACING.sm,
+  },
+  ctaBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.lg,
+    paddingVertical: 16,
+    alignItems: "center",
+    ...SHADOW.md,
+  },
+  ctaText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  ctaHint: { fontSize: 12, color: COLORS.textLight, textAlign: "center" },
+});
 </file>
 
 <file path="src/screens/SignUp.js">
@@ -7213,6 +6979,240 @@ export default function SurveyScreen({ navigation }) {
 }
 </file>
 
+<file path="src/screens/HistoryScreen.js">
+import { Ionicons } from "@expo/vector-icons";
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { auth, db, onAuthStateChanged } from "../../firebaseConfig";
+import BackgroundBubbles from "../components/BackgroundBubbles";
+import Card from "../components/Card";
+import Header from "../components/Header";
+import { COLORS } from "../theme/colors";
+import { styles } from "../theme/styles";
+
+export default function HistoryScreen({ navigation }) {
+  const [historyData, setHistoryData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let unsubFirestore = null;
+
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (unsubFirestore) {
+        unsubFirestore();
+        unsubFirestore = null;
+      }
+      if (!user) {
+        setHistoryData([]);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      const q = query(
+        collection(db, "users", user.uid, "history"),
+        orderBy("date", "desc"),
+      );
+      unsubFirestore = onSnapshot(
+        q,
+        (snap) => {
+          setHistoryData(
+            snap.docs.map((doc) => {
+              const d = doc.data();
+              return {
+                id: doc.id,
+                type: d.diagnosis || "Unknown",
+                score: d.score !== undefined ? d.score : "?",
+                total: d.total || 14,
+                severity: d.severity || "N/A",
+                date: d.date?.toDate
+                  ? d.date.toDate().toLocaleDateString()
+                  : "Just now",
+              };
+            }),
+          );
+          setLoading(false);
+        },
+        (err) => {
+          console.error("History fetch error:", err);
+          setLoading(false);
+        },
+      );
+    });
+
+    return () => {
+      unsubAuth();
+      if (unsubFirestore) unsubFirestore();
+    };
+  }, []);
+
+  return (
+    <View style={styles.container}>
+      <BackgroundBubbles />
+      <Header title="Your History" back />
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 3,
+          backgroundColor: "#FFF8E1",
+          paddingVertical: 10,
+          paddingHorizontal: 8,
+          borderBottomWidth: 1,
+          borderBottomColor: "#FFE082",
+        }}
+      >
+        <Ionicons name="warning-outline" size={12} color="#F59E0B" />
+        <Text style={{ fontSize: 10, fontWeight: "700", color: "#F59E0B" }}>
+          NOT A MEDICAL DIAGNOSIS — SCREENING PURPOSE ONLY
+        </Text>
+      </View>
+      {loading ? (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : historyData.length === 0 ? (
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 30,
+          }}
+        >
+          {/* Approachable Illustration  */}
+          <View
+            style={{
+              backgroundColor: "#F0F2FF",
+              padding: 25,
+              borderRadius: 100,
+              marginBottom: 20,
+            }}
+          >
+            <Ionicons name="stats-chart" size={60} color={COLORS.primary} />
+          </View>
+
+          {/* Human Labels & Conversational Copy  */}
+          <Text
+            style={{
+              fontSize: 20,
+              fontWeight: "800",
+              color: "#1A1A2E",
+              textAlign: "center",
+            }}
+          >
+            Ready for your first screening?
+          </Text>
+
+          <Text
+            style={{
+              fontSize: 14,
+              color: "#4A4A4A",
+              textAlign: "center",
+              marginTop: 10,
+              lineHeight: 20,
+            }}
+          >
+            Take a 5-minute test to start tracking your color perception
+            journey. Your history will appear here after your first screening.
+          </Text>
+
+          {/* Call to Action Button  */}
+          <TouchableOpacity
+            style={[
+              styles.btnPrimary,
+              { marginTop: 30, width: "100%", paddingVertical: 16 },
+            ]}
+            onPress={() => navigation.navigate("IshiharaIntro")}
+          >
+            <Text style={[styles.btnText, { fontSize: 16 }]}>
+              Take the test{" "}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={{ padding: 20 }}>
+          {historyData.map((item, index) => (
+            <Card key={index} style={{ marginBottom: 15, paddingVertical: 18 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  {/* Improved Color Contrast for Accessibility  */}
+                  <Text
+                    style={{
+                      fontSize: 17,
+                      fontWeight: "bold",
+                      color: "#1A1A2E",
+                    }}
+                  >
+                    {item.type}
+                  </Text>
+                  <Text
+                    style={{ fontSize: 13, color: "#4A4A4A", marginTop: 2 }}
+                  >
+                    Completed on {item.date}
+                  </Text>
+                </View>
+
+                <View style={{ alignItems: "flex-end", marginLeft: 10 }}>
+                  <Text
+                    style={{
+                      fontSize: 22,
+                      fontWeight: "800",
+                      color: COLORS.primary,
+                    }}
+                  >
+                    {item.score}/{item.total}
+                  </Text>
+                  <View
+                    style={{
+                      backgroundColor:
+                        item.severity === "Severe" ? "#FFEBEE" : "#FFF3E0",
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
+                      borderRadius: 6,
+                      marginTop: 4,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: "800",
+                        color:
+                          item.severity === "Severe"
+                            ? COLORS.danger
+                            : "#E65100",
+                      }}
+                    >
+                      {item.severity.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </Card>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+</file>
+
 <file path="src/screens/CVDGalleryScreen.js">
 import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system/legacy";
@@ -7478,6 +7478,309 @@ export default function CVDGalleryScreen({ navigation }) {
     </View>
   );
 }
+</file>
+
+<file path="src/utils/colorLogic.js">
+import { ISHIHARA_PLATES } from "../data/ishiharaData";
+import { QUICK_ISHIHARA_PLATES } from "../data/quickIshiharaData";
+
+// ─────────────────────────────────────────────────────────────
+// Shared utilities
+// ─────────────────────────────────────────────────────────────
+
+// Fisher-Yates shuffle — O(n), unbiased
+export function fisherYatesShuffle(arr) {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// Mode-specific constants.
+// Comprehensive: 25 plates, Stage 1 = 21, Stage 2 = 4 diagnostic, ≥3/4 classification.
+// Quick:         14 plates, Stage 1 = 11, Stage 2 = 3 diagnostic, ≥2/3 classification.
+const MODE_CONFIG = {
+  comprehensive: {
+    totalPlates: 25,
+    stage1Length: 21, // demo + plates 2-21
+    stage2Length: 4,  // plates 22-25
+    normalThreshold: 17,       // ≥17 → Normal
+    indeterminateThreshold: 14, // 14-16 → Indeterminate, <14 → Stage 2
+    classificationHits: 3,      // ≥3 of 4 diagnostic matches
+  },
+  quick: {
+    totalPlates: 14,
+    stage1Length: 11, // demo + plates 2-11
+    stage2Length: 3,  // plates 12-14
+    normalThreshold: 10,       // ≥10 → Normal (perfect)
+    indeterminateThreshold: 8,  // 8-9 → Borderline, <8 → Stage 2
+    classificationHits: 2,      // ≥2 of 3 diagnostic matches
+  },
+};
+
+function getConfig(testType) {
+  return MODE_CONFIG[testType] ?? MODE_CONFIG.comprehensive;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Queue construction
+// ─────────────────────────────────────────────────────────────
+
+// Build test queue: Plate #1 (demo) always first; Stage 1 plates randomised;
+// Stage 2 (diagnostic) plates kept in clinical order at the tail.
+export function buildTestQueue(testType = "comprehensive") {
+  if (testType === "quick") return buildQuickQueue();
+  return buildComprehensiveQueue();
+}
+
+function buildComprehensiveQueue() {
+  const plate1 = ISHIHARA_PLATES.find((p) => p.id === 1);
+  const stage1Plates = ISHIHARA_PLATES.filter((p) => p.id >= 2 && p.id <= 21);
+  const diagnosticPlates = ISHIHARA_PLATES.filter(
+    (p) => p.id >= 22 && p.id <= 25,
+  );
+  const shuffledStage1 = fisherYatesShuffle(stage1Plates);
+  return [plate1, ...shuffledStage1, ...diagnosticPlates];
+}
+
+function buildQuickQueue() {
+  const plate1 = QUICK_ISHIHARA_PLATES.find((p) => p.id === 1);
+  const stage1Plates = QUICK_ISHIHARA_PLATES.filter(
+    (p) => p.id >= 2 && p.id <= 11,
+  );
+  const diagnosticPlates = QUICK_ISHIHARA_PLATES.filter(
+    (p) => p.id >= 12 && p.id <= 14,
+  );
+  const shuffledStage1 = fisherYatesShuffle(stage1Plates);
+  return [plate1, ...shuffledStage1, ...diagnosticPlates];
+}
+
+// ─────────────────────────────────────────────────────────────
+// Stage 1 evaluation
+// ─────────────────────────────────────────────────────────────
+
+// Counts correct answers in the Stage-1 slice for the given mode and
+// decides whether Stage 2 should run.
+//
+// Quick mode excludes the demo plate from scoring per the clinical spec
+// ("Plate 1 is excluded from scoring", Ishihara Concise Edition 1960).
+// Comprehensive mode counts all 21 Stage-1 answers (demo included) per
+// the ≥17/21 rule the user verified earlier.
+export function evaluateStage1(answers, testType = "comprehensive") {
+  const { stage1Length, indeterminateThreshold } = getConfig(testType);
+  const stage1Answers = answers.slice(0, stage1Length);
+
+  const scoredAnswers =
+    testType === "quick"
+      ? stage1Answers.filter(({ plate }) => plate.category !== "demo")
+      : stage1Answers;
+
+  let correctCount = 0;
+  scoredAnswers.forEach(({ isCorrect }) => {
+    if (isCorrect) correctCount++;
+  });
+
+  return {
+    correctCount,
+    totalStage1: scoredAnswers.length, // 10 for quick, 21 for comprehensive
+    shouldProceedToStage2: correctCount < indeterminateThreshold,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Stage 2 classification (Protan vs Deutan)
+// ─────────────────────────────────────────────────────────────
+
+// Checks if ≥ minHits of the diagnostic plates match the protan or deutan pattern.
+// Returns 'Protan', 'Deutan', or null if inconclusive.
+function detectProtanDeutan(diagnosticAnswers, minHits) {
+  const diagnostic = diagnosticAnswers.filter(
+    ({ plate }) => plate.category === "diagnostic",
+  );
+
+  if (diagnostic.length === 0) return null;
+
+  let protanHits = 0;
+  let deutanHits = 0;
+
+  diagnostic.forEach(({ plate, userAnswer }) => {
+    if (plate.protanAnswer && userAnswer === plate.protanAnswer) protanHits++;
+    if (plate.deutanAnswer && userAnswer === plate.deutanAnswer) deutanHits++;
+  });
+
+  if (protanHits >= minHits) return "Protan";
+  if (deutanHits >= minHits) return "Deutan";
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Full diagnosis (Stage 1 + optional Stage 2)
+// ─────────────────────────────────────────────────────────────
+
+export function computeDiagnosis(answers, testType = "comprehensive") {
+  const config = getConfig(testType);
+  const stage1 = evaluateStage1(answers, testType);
+
+  if (stage1.correctCount >= config.normalThreshold) {
+    return {
+      diagnosis: "Normal Vision",
+      severity: "None",
+      diagnosisCode: "N",
+      score: stage1.correctCount,
+      maxScore: stage1.totalStage1,
+      percentage: Math.round((stage1.correctCount / stage1.totalStage1) * 100),
+      stage: 1,
+    };
+  }
+
+  if (stage1.correctCount >= config.indeterminateThreshold) {
+    return {
+      diagnosis: "Indeterminate Result",
+      severity: "Borderline",
+      diagnosisCode: "I",
+      score: stage1.correctCount,
+      maxScore: stage1.totalStage1,
+      percentage: Math.round((stage1.correctCount / stage1.totalStage1) * 100),
+      stage: 1,
+    };
+  }
+
+  // Stage 2: diagnostic plates begin at position stage1Length
+  const stage2Answers = answers.slice(config.stage1Length);
+
+  let totalCorrect = stage1.correctCount;
+  stage2Answers.forEach(({ isCorrect }) => {
+    if (isCorrect) totalCorrect++;
+  });
+  const totalAnswered = stage1.totalStage1 + stage2Answers.length;
+
+  if (stage2Answers.length === 0) {
+    return {
+      diagnosis: "Incomplete",
+      severity: "N/A",
+      diagnosisCode: "X",
+      score: stage1.correctCount,
+      maxScore: stage1.totalStage1,
+      percentage: Math.round((stage1.correctCount / stage1.totalStage1) * 100),
+      stage: 1,
+    };
+  }
+
+  const subtype = detectProtanDeutan(stage2Answers, config.classificationHits);
+  const base = {
+    score: totalCorrect,
+    maxScore: totalAnswered,
+    percentage: Math.round((totalCorrect / totalAnswered) * 100),
+    stage: 2,
+  };
+
+  if (subtype === "Protan") {
+    return { ...base, diagnosis: "Protanomaly", severity: "Mild", diagnosisCode: "P" };
+  }
+  if (subtype === "Deutan") {
+    return { ...base, diagnosis: "Deuteranomaly", severity: "Mild", diagnosisCode: "D" };
+  }
+  return { ...base, diagnosis: "Indeterminate Result", severity: "Borderline", diagnosisCode: "I" };
+}
+</file>
+
+<file path="firebaseConfig.js">
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { initializeApp } from "firebase/app";
+import {
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  getReactNativePersistence,
+  initializeAuth,
+  onAuthStateChanged,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
+import {
+  addDoc,
+  collection,
+  initializeFirestore,
+  persistentLocalCache,
+  serverTimestamp,
+} from "firebase/firestore";
+
+// --- 1. NEW RECOLOR-DEV KEYS ---
+const firebaseConfig = {
+  apiKey: "AIzaSyCc_EYXVkqwSLYm67K5x-JGazLxxa-Vi7M",
+  authDomain: "recolor-dev.firebaseapp.com",
+  projectId: "recolor-dev",
+  storageBucket: "recolor-dev.firebasestorage.app",
+  messagingSenderId: "1047364142133",
+  appId: "1:1047364142133:web:a0b3deb67836acf727dd7c",
+  measurementId: "G-VEPWR9T85C",
+};
+
+// --- 2. INITIALIZE APP ---
+const app = initializeApp(firebaseConfig);
+
+// --- 3. AUTHENTICATION (With Persistence) ---
+// This keeps you logged in even if you close the app—crucial for the "User Profiling" requirement.
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage),
+});
+
+// --- 4. DATABASE (OFFLINE FIRST) ---
+// This allows the app to work without Wi-Fi and sync later—a major requirement for your thesis.
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache(),
+});
+
+// --- 5. HELPER: DUAL WRITE FOR PRIVACY ---
+// This anonymizes data for PERI Researchers (Slide 56).
+export const saveExamResult = async (
+  userId,
+  score,
+  diagnosis,
+  severity,
+  total = 14,
+) => {
+  try {
+    await addDoc(collection(db, "users", userId, "history"), {
+      score,
+      total,
+      diagnosis,
+      severity,
+      date: serverTimestamp(),
+    });
+
+    await addDoc(collection(db, "research_data_anonymized"), {
+      diagnosis,
+      severity,
+      score,
+      total,
+      device: "Mobile_Client_Node", // General identifier only
+      timestamp: serverTimestamp(),
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Save failed", error);
+    return false;
+  }
+};
+
+export {
+  GoogleAuthProvider,
+  auth,
+  createUserWithEmailAndPassword,
+  db,
+  onAuthStateChanged,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+  signOut
+};
 </file>
 
 <file path="src/screens/ResultsScreen.js">
@@ -7865,309 +8168,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 });
-</file>
-
-<file path="src/utils/colorLogic.js">
-import { ISHIHARA_PLATES } from "../data/ishiharaData";
-import { QUICK_ISHIHARA_PLATES } from "../data/quickIshiharaData";
-
-// ─────────────────────────────────────────────────────────────
-// Shared utilities
-// ─────────────────────────────────────────────────────────────
-
-// Fisher-Yates shuffle — O(n), unbiased
-export function fisherYatesShuffle(arr) {
-  const shuffled = [...arr];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-}
-
-// Mode-specific constants.
-// Comprehensive: 25 plates, Stage 1 = 21, Stage 2 = 4 diagnostic, ≥3/4 classification.
-// Quick:         14 plates, Stage 1 = 11, Stage 2 = 3 diagnostic, ≥2/3 classification.
-const MODE_CONFIG = {
-  comprehensive: {
-    totalPlates: 25,
-    stage1Length: 21, // demo + plates 2-21
-    stage2Length: 4,  // plates 22-25
-    normalThreshold: 17,       // ≥17 → Normal
-    indeterminateThreshold: 14, // 14-16 → Indeterminate, <14 → Stage 2
-    classificationHits: 3,      // ≥3 of 4 diagnostic matches
-  },
-  quick: {
-    totalPlates: 14,
-    stage1Length: 11, // demo + plates 2-11
-    stage2Length: 3,  // plates 12-14
-    normalThreshold: 10,       // ≥10 → Normal (perfect)
-    indeterminateThreshold: 8,  // 8-9 → Borderline, <8 → Stage 2
-    classificationHits: 2,      // ≥2 of 3 diagnostic matches
-  },
-};
-
-function getConfig(testType) {
-  return MODE_CONFIG[testType] ?? MODE_CONFIG.comprehensive;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Queue construction
-// ─────────────────────────────────────────────────────────────
-
-// Build test queue: Plate #1 (demo) always first; Stage 1 plates randomised;
-// Stage 2 (diagnostic) plates kept in clinical order at the tail.
-export function buildTestQueue(testType = "comprehensive") {
-  if (testType === "quick") return buildQuickQueue();
-  return buildComprehensiveQueue();
-}
-
-function buildComprehensiveQueue() {
-  const plate1 = ISHIHARA_PLATES.find((p) => p.id === 1);
-  const stage1Plates = ISHIHARA_PLATES.filter((p) => p.id >= 2 && p.id <= 21);
-  const diagnosticPlates = ISHIHARA_PLATES.filter(
-    (p) => p.id >= 22 && p.id <= 25,
-  );
-  const shuffledStage1 = fisherYatesShuffle(stage1Plates);
-  return [plate1, ...shuffledStage1, ...diagnosticPlates];
-}
-
-function buildQuickQueue() {
-  const plate1 = QUICK_ISHIHARA_PLATES.find((p) => p.id === 1);
-  const stage1Plates = QUICK_ISHIHARA_PLATES.filter(
-    (p) => p.id >= 2 && p.id <= 11,
-  );
-  const diagnosticPlates = QUICK_ISHIHARA_PLATES.filter(
-    (p) => p.id >= 12 && p.id <= 14,
-  );
-  const shuffledStage1 = fisherYatesShuffle(stage1Plates);
-  return [plate1, ...shuffledStage1, ...diagnosticPlates];
-}
-
-// ─────────────────────────────────────────────────────────────
-// Stage 1 evaluation
-// ─────────────────────────────────────────────────────────────
-
-// Counts correct answers in the Stage-1 slice for the given mode and
-// decides whether Stage 2 should run.
-//
-// Quick mode excludes the demo plate from scoring per the clinical spec
-// ("Plate 1 is excluded from scoring", Ishihara Concise Edition 1960).
-// Comprehensive mode counts all 21 Stage-1 answers (demo included) per
-// the ≥17/21 rule the user verified earlier.
-export function evaluateStage1(answers, testType = "comprehensive") {
-  const { stage1Length, indeterminateThreshold } = getConfig(testType);
-  const stage1Answers = answers.slice(0, stage1Length);
-
-  const scoredAnswers =
-    testType === "quick"
-      ? stage1Answers.filter(({ plate }) => plate.category !== "demo")
-      : stage1Answers;
-
-  let correctCount = 0;
-  scoredAnswers.forEach(({ isCorrect }) => {
-    if (isCorrect) correctCount++;
-  });
-
-  return {
-    correctCount,
-    totalStage1: scoredAnswers.length, // 10 for quick, 21 for comprehensive
-    shouldProceedToStage2: correctCount < indeterminateThreshold,
-  };
-}
-
-// ─────────────────────────────────────────────────────────────
-// Stage 2 classification (Protan vs Deutan)
-// ─────────────────────────────────────────────────────────────
-
-// Checks if ≥ minHits of the diagnostic plates match the protan or deutan pattern.
-// Returns 'Protan', 'Deutan', or null if inconclusive.
-function detectProtanDeutan(diagnosticAnswers, minHits) {
-  const diagnostic = diagnosticAnswers.filter(
-    ({ plate }) => plate.category === "diagnostic",
-  );
-
-  if (diagnostic.length === 0) return null;
-
-  let protanHits = 0;
-  let deutanHits = 0;
-
-  diagnostic.forEach(({ plate, userAnswer }) => {
-    if (plate.protanAnswer && userAnswer === plate.protanAnswer) protanHits++;
-    if (plate.deutanAnswer && userAnswer === plate.deutanAnswer) deutanHits++;
-  });
-
-  if (protanHits >= minHits) return "Protan";
-  if (deutanHits >= minHits) return "Deutan";
-  return null;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Full diagnosis (Stage 1 + optional Stage 2)
-// ─────────────────────────────────────────────────────────────
-
-export function computeDiagnosis(answers, testType = "comprehensive") {
-  const config = getConfig(testType);
-  const stage1 = evaluateStage1(answers, testType);
-
-  if (stage1.correctCount >= config.normalThreshold) {
-    return {
-      diagnosis: "Normal Vision",
-      severity: "None",
-      diagnosisCode: "N",
-      score: stage1.correctCount,
-      maxScore: stage1.totalStage1,
-      percentage: Math.round((stage1.correctCount / stage1.totalStage1) * 100),
-      stage: 1,
-    };
-  }
-
-  if (stage1.correctCount >= config.indeterminateThreshold) {
-    return {
-      diagnosis: "Indeterminate Result",
-      severity: "Borderline",
-      diagnosisCode: "I",
-      score: stage1.correctCount,
-      maxScore: stage1.totalStage1,
-      percentage: Math.round((stage1.correctCount / stage1.totalStage1) * 100),
-      stage: 1,
-    };
-  }
-
-  // Stage 2: diagnostic plates begin at position stage1Length
-  const stage2Answers = answers.slice(config.stage1Length);
-
-  let totalCorrect = stage1.correctCount;
-  stage2Answers.forEach(({ isCorrect }) => {
-    if (isCorrect) totalCorrect++;
-  });
-  const totalAnswered = stage1.totalStage1 + stage2Answers.length;
-
-  if (stage2Answers.length === 0) {
-    return {
-      diagnosis: "Incomplete",
-      severity: "N/A",
-      diagnosisCode: "X",
-      score: stage1.correctCount,
-      maxScore: stage1.totalStage1,
-      percentage: Math.round((stage1.correctCount / stage1.totalStage1) * 100),
-      stage: 1,
-    };
-  }
-
-  const subtype = detectProtanDeutan(stage2Answers, config.classificationHits);
-  const base = {
-    score: totalCorrect,
-    maxScore: totalAnswered,
-    percentage: Math.round((totalCorrect / totalAnswered) * 100),
-    stage: 2,
-  };
-
-  if (subtype === "Protan") {
-    return { ...base, diagnosis: "Protanomaly", severity: "Mild", diagnosisCode: "P" };
-  }
-  if (subtype === "Deutan") {
-    return { ...base, diagnosis: "Deuteranomaly", severity: "Mild", diagnosisCode: "D" };
-  }
-  return { ...base, diagnosis: "Indeterminate Result", severity: "Borderline", diagnosisCode: "I" };
-}
-</file>
-
-<file path="firebaseConfig.js">
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { initializeApp } from "firebase/app";
-import {
-  GoogleAuthProvider,
-  createUserWithEmailAndPassword,
-  getReactNativePersistence,
-  initializeAuth,
-  onAuthStateChanged,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  signInWithCredential,
-  signInWithEmailAndPassword,
-  signOut,
-} from "firebase/auth";
-import {
-  addDoc,
-  collection,
-  initializeFirestore,
-  persistentLocalCache,
-  serverTimestamp,
-} from "firebase/firestore";
-
-// --- 1. NEW RECOLOR-DEV KEYS ---
-const firebaseConfig = {
-  apiKey: "AIzaSyCc_EYXVkqwSLYm67K5x-JGazLxxa-Vi7M",
-  authDomain: "recolor-dev.firebaseapp.com",
-  projectId: "recolor-dev",
-  storageBucket: "recolor-dev.firebasestorage.app",
-  messagingSenderId: "1047364142133",
-  appId: "1:1047364142133:web:a0b3deb67836acf727dd7c",
-  measurementId: "G-VEPWR9T85C",
-};
-
-// --- 2. INITIALIZE APP ---
-const app = initializeApp(firebaseConfig);
-
-// --- 3. AUTHENTICATION (With Persistence) ---
-// This keeps you logged in even if you close the app—crucial for the "User Profiling" requirement.
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage),
-});
-
-// --- 4. DATABASE (OFFLINE FIRST) ---
-// This allows the app to work without Wi-Fi and sync later—a major requirement for your thesis.
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache(),
-});
-
-// --- 5. HELPER: DUAL WRITE FOR PRIVACY ---
-// This anonymizes data for PERI Researchers (Slide 56).
-export const saveExamResult = async (
-  userId,
-  score,
-  diagnosis,
-  severity,
-  total = 14,
-) => {
-  try {
-    await addDoc(collection(db, "users", userId, "history"), {
-      score,
-      total,
-      diagnosis,
-      severity,
-      date: serverTimestamp(),
-    });
-
-    await addDoc(collection(db, "research_data_anonymized"), {
-      diagnosis,
-      severity,
-      score,
-      total,
-      device: "Mobile_Client_Node", // General identifier only
-      timestamp: serverTimestamp(),
-    });
-
-    return true;
-  } catch (error) {
-    console.error("Save failed", error);
-    return false;
-  }
-};
-
-export {
-  GoogleAuthProvider,
-  auth,
-  createUserWithEmailAndPassword,
-  db,
-  onAuthStateChanged,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  signInWithCredential,
-  signInWithEmailAndPassword,
-  signOut
-};
 </file>
 
 <file path="src/screens/CVDSimulationScreen.js">
@@ -8916,6 +8916,374 @@ export default function HomeScreen({ navigation }) {
             delay={700}
           />
         </View>
+      </ScrollView>
+    </View>
+  );
+}
+</file>
+
+<file path="src/screens/ResearchDashboardScreen.js">
+import { Ionicons } from "@expo/vector-icons";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { db } from "../../firebaseConfig";
+import BackgroundBubbles from "../components/BackgroundBubbles";
+import Card from "../components/Card";
+import Header from "../components/Header";
+import { COLORS } from "../theme/colors";
+import { styles } from "../theme/styles";
+
+function StatBar({ label, count, total, color, badge }) {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+  return (
+    <View style={{ marginBottom: 15 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          marginBottom: 5,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Text style={{ fontSize: 13, color: "#333" }}>{label}</Text>
+          {badge && (
+            <View
+              style={{
+                marginLeft: 8,
+                borderWidth: 1,
+                borderColor: "#EEE",
+                paddingHorizontal: 6,
+                borderRadius: 4,
+              }}
+            >
+              <Text style={{ fontSize: 10, color: "#555" }}>{badge}</Text>
+            </View>
+          )}
+        </View>
+        <Text style={{ fontWeight: "bold", fontSize: 13 }}>
+          {count}{" "}
+          <Text style={{ color: "#999", fontWeight: "normal" }}>({pct}%)</Text>
+        </Text>
+      </View>
+      <View style={{ height: 8, backgroundColor: "#F0F0F0", borderRadius: 4 }}>
+        <View
+          style={{
+            width: `${pct}%`,
+            height: "100%",
+            backgroundColor: color,
+            borderRadius: 4,
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+function StatTile({ bg, icon, iconColor, val, label, valColor }) {
+  return (
+    <View
+      style={{
+        width: "48%",
+        backgroundColor: bg,
+        padding: 15,
+        borderRadius: 12,
+        marginBottom: 10,
+      }}
+    >
+      <Ionicons name={icon} size={20} color={iconColor} />
+      <Text
+        style={{
+          fontSize: 24,
+          fontWeight: "bold",
+          color: valColor,
+          marginTop: 10,
+        }}
+      >
+        {val}
+      </Text>
+      <Text style={{ fontSize: 11, color: iconColor }}>{label}</Text>
+    </View>
+  );
+}
+
+function countBy(docs, field) {
+  const counts = {};
+  docs.forEach((d) => {
+    const key = d[field] || "Unknown";
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  return counts;
+}
+
+function toCSV(rows) {
+  if (!rows.length) return "";
+  const keys = Object.keys(rows[0]);
+  const header = keys.join(",");
+  const body = rows.map((r) =>
+    keys
+      .map((k) => {
+        const v = r[k] == null ? "" : String(r[k]);
+        return v.includes(",") || v.includes('"')
+          ? `"${v.replace(/"/g, '""')}"`
+          : v;
+      })
+      .join(","),
+  );
+  return [header, ...body].join("\n");
+}
+
+export default function ResearchDashboardScreen({ navigation }) {
+  const [activeTab, setActiveTab] = useState("View Data");
+  const [testDocs, setTestDocs] = useState([]);
+  const [surveyDocs, setSurveyDocs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    let done = 0;
+    const finish = () => {
+      done++;
+      if (done === 2) setLoading(false);
+    };
+
+    const unsubTests = onSnapshot(
+      query(
+        collection(db, "research_data_anonymized"),
+        orderBy("timestamp", "desc"),
+      ),
+      (snap) => {
+        setTestDocs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        finish();
+      },
+      () => finish(),
+    );
+    const unsubSurveys = onSnapshot(
+      query(collection(db, "surveys"), orderBy("timestamp", "desc")),
+      (snap) => {
+        setSurveyDocs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        finish();
+      },
+      () => finish(),
+    );
+
+    return () => {
+      unsubTests();
+      unsubSurveys();
+    };
+  }, []);
+
+  const diagCounts = countBy(testDocs, "diagnosis");
+  const total = testDocs.length;
+
+  const handleExport = async () => {
+    if (!total) {
+      Alert.alert("No Data", "No test results to export yet.");
+      return;
+    }
+    setExporting(true);
+    try {
+      const rows = testDocs.map(({ id, timestamp, ...rest }) => ({
+        ...rest,
+        timestamp: timestamp?.toDate ? timestamp.toDate().toISOString() : "",
+      }));
+      const csv = toCSV(rows);
+      const path = `${FileSystem.documentDirectory}recolor_research_${Date.now()}.csv`;
+
+      // Fix for Screenshot 2: Use EncodingType explicitly
+      await FileSystem.writeAsStringAsync(path, csv, {
+        encoding: "utf8",
+      });
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(path);
+      } else {
+        Alert.alert(
+          "Not Available",
+          "Sharing is not supported on this device.",
+        );
+      }
+    } catch (e) {
+      Alert.alert("Export Failed", e?.message || "Unknown error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <BackgroundBubbles />
+      <Header
+        title="Research Dashboard"
+        subtitle="PERI Researcher Portal"
+        back
+      />
+
+      <View style={{ flexDirection: "row", padding: 20, paddingBottom: 0 }}>
+        {["View Data", "Guidelines"].map((tab, i) => (
+          <TouchableOpacity
+            key={tab}
+            style={{
+              flex: 1,
+              paddingVertical: 10,
+              backgroundColor: activeTab === tab ? "#FFF" : "#F5F5F5",
+              alignItems: "center",
+              borderTopLeftRadius: i === 0 ? 20 : 0,
+              borderBottomLeftRadius: i === 0 ? 20 : 0,
+              borderTopRightRadius: i === 1 ? 20 : 0,
+              borderBottomRightRadius: i === 1 ? 20 : 0,
+              borderWidth: 1,
+              borderColor: "#E0E0E0",
+            }}
+            onPress={() => setActiveTab(tab)}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Ionicons
+                name={i === 0 ? "stats-chart" : "document-text"}
+                size={18}
+                color={activeTab === tab ? "#333" : "#999"}
+              />
+              <Text
+                style={{
+                  marginLeft: 8,
+                  fontWeight: "bold",
+                  color: activeTab === tab ? "#333" : "#999",
+                }}
+              >
+                {tab}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <ScrollView
+        contentContainerStyle={{ padding: 20 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {activeTab === "View Data" ? (
+          <>
+            <View
+              style={{
+                backgroundColor: "#E1F5FE",
+                padding: 15,
+                borderRadius: 8,
+                marginBottom: 20,
+                borderWidth: 1,
+                borderColor: "#B3E5FC",
+              }}
+            >
+              <Text style={{ color: "#0277BD", fontSize: 12, lineHeight: 18 }}>
+                <Text style={{ fontWeight: "bold" }}>Privacy Protected: </Text>
+                All data is anonymized. No personally identifiable information
+                (PII) is visible.
+              </Text>
+            </View>
+
+            {loading ? (
+              <ActivityIndicator
+                size="large"
+                color={COLORS.primary}
+                style={{ marginTop: 40 }}
+              />
+            ) : (
+              <>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    justifyContent: "space-between",
+                    marginBottom: 20,
+                  }}
+                >
+                  <StatTile
+                    bg="#E3F2FD"
+                    icon="trending-up"
+                    iconColor="#1E88E5"
+                    val={total}
+                    label="Total Tests"
+                    valColor="#1565C0"
+                  />
+                  <StatTile
+                    bg="#F3E5F5"
+                    icon="people"
+                    iconColor="#8E24AA"
+                    val={surveyDocs.length}
+                    label="Surveys"
+                    valColor="#6A1B9A"
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: "#FFF",
+                    borderWidth: 1,
+                    borderColor: "#DDD",
+                    padding: 15,
+                    borderRadius: 12,
+                    alignItems: "center",
+                    marginBottom: 25,
+                    flexDirection: "row",
+                    justifyContent: "center",
+                  }}
+                  onPress={handleExport}
+                >
+                  <Ionicons
+                    name="download-outline"
+                    size={20}
+                    color="#333"
+                    style={{ marginRight: 10 }}
+                  />
+                  <Text style={{ fontWeight: "bold" }}>
+                    {exporting ? "Preparing..." : "Export Full Report (CSV)"}
+                  </Text>
+                </TouchableOpacity>
+
+                <Card style={{ marginBottom: 20 }}>
+                  <Text style={{ fontWeight: "bold", marginBottom: 15 }}>
+                    Screening Statistics
+                  </Text>
+                  <StatBar
+                    label="Normal Vision"
+                    count={diagCounts["Normal Vision"] || 0}
+                    total={total}
+                    color={COLORS.success}
+                    badge="N"
+                  />
+                  <StatBar
+                    label="CVD Indicated"
+                    count={total - (diagCounts["Normal Vision"] || 0)}
+                    total={total}
+                    color={COLORS.danger}
+                    badge="CVD"
+                  />
+                </Card>
+              </>
+            )}
+          </>
+        ) : (
+          <Card>
+            <Text style={{ fontWeight: "bold", marginBottom: 10 }}>
+              Active Protocols
+            </Text>
+            <Text style={{ fontSize: 12, color: "#555", lineHeight: 20 }}>
+              • Ishihara Test — 25 plates (comprehensive){"\n"}• Stage 1:
+              Screening via plates 1–21{"\n"}• Stage 2: Differentiation via
+              plates 22–25{"\n"}• Thresholds: ≥17 Normal · 14–16 Indeterminate
+              {"\n"}• Offline-first: Firestore persistentLocalCache
+            </Text>
+          </Card>
+        )}
       </ScrollView>
     </View>
   );
@@ -10158,374 +10526,6 @@ export default function ColorIdentifierScreen(props) {
     <ScreenErrorBoundary navigation={props.navigation}>
       <ColorIdentifierScreenInner {...props} />
     </ScreenErrorBoundary>
-  );
-}
-</file>
-
-<file path="src/screens/ResearchDashboardScreen.js">
-import { Ionicons } from "@expo/vector-icons";
-import * as FileSystem from "expo-file-system/legacy";
-import * as Sharing from "expo-sharing";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
-import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { db } from "../../firebaseConfig";
-import BackgroundBubbles from "../components/BackgroundBubbles";
-import Card from "../components/Card";
-import Header from "../components/Header";
-import { COLORS } from "../theme/colors";
-import { styles } from "../theme/styles";
-
-function StatBar({ label, count, total, color, badge }) {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-  return (
-    <View style={{ marginBottom: 15 }}>
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          marginBottom: 5,
-        }}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Text style={{ fontSize: 13, color: "#333" }}>{label}</Text>
-          {badge && (
-            <View
-              style={{
-                marginLeft: 8,
-                borderWidth: 1,
-                borderColor: "#EEE",
-                paddingHorizontal: 6,
-                borderRadius: 4,
-              }}
-            >
-              <Text style={{ fontSize: 10, color: "#555" }}>{badge}</Text>
-            </View>
-          )}
-        </View>
-        <Text style={{ fontWeight: "bold", fontSize: 13 }}>
-          {count}{" "}
-          <Text style={{ color: "#999", fontWeight: "normal" }}>({pct}%)</Text>
-        </Text>
-      </View>
-      <View style={{ height: 8, backgroundColor: "#F0F0F0", borderRadius: 4 }}>
-        <View
-          style={{
-            width: `${pct}%`,
-            height: "100%",
-            backgroundColor: color,
-            borderRadius: 4,
-          }}
-        />
-      </View>
-    </View>
-  );
-}
-
-function StatTile({ bg, icon, iconColor, val, label, valColor }) {
-  return (
-    <View
-      style={{
-        width: "48%",
-        backgroundColor: bg,
-        padding: 15,
-        borderRadius: 12,
-        marginBottom: 10,
-      }}
-    >
-      <Ionicons name={icon} size={20} color={iconColor} />
-      <Text
-        style={{
-          fontSize: 24,
-          fontWeight: "bold",
-          color: valColor,
-          marginTop: 10,
-        }}
-      >
-        {val}
-      </Text>
-      <Text style={{ fontSize: 11, color: iconColor }}>{label}</Text>
-    </View>
-  );
-}
-
-function countBy(docs, field) {
-  const counts = {};
-  docs.forEach((d) => {
-    const key = d[field] || "Unknown";
-    counts[key] = (counts[key] || 0) + 1;
-  });
-  return counts;
-}
-
-function toCSV(rows) {
-  if (!rows.length) return "";
-  const keys = Object.keys(rows[0]);
-  const header = keys.join(",");
-  const body = rows.map((r) =>
-    keys
-      .map((k) => {
-        const v = r[k] == null ? "" : String(r[k]);
-        return v.includes(",") || v.includes('"')
-          ? `"${v.replace(/"/g, '""')}"`
-          : v;
-      })
-      .join(","),
-  );
-  return [header, ...body].join("\n");
-}
-
-export default function ResearchDashboardScreen({ navigation }) {
-  const [activeTab, setActiveTab] = useState("View Data");
-  const [testDocs, setTestDocs] = useState([]);
-  const [surveyDocs, setSurveyDocs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(false);
-
-  useEffect(() => {
-    setLoading(true);
-    let done = 0;
-    const finish = () => {
-      done++;
-      if (done === 2) setLoading(false);
-    };
-
-    const unsubTests = onSnapshot(
-      query(
-        collection(db, "research_data_anonymized"),
-        orderBy("timestamp", "desc"),
-      ),
-      (snap) => {
-        setTestDocs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        finish();
-      },
-      () => finish(),
-    );
-    const unsubSurveys = onSnapshot(
-      query(collection(db, "surveys"), orderBy("timestamp", "desc")),
-      (snap) => {
-        setSurveyDocs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        finish();
-      },
-      () => finish(),
-    );
-
-    return () => {
-      unsubTests();
-      unsubSurveys();
-    };
-  }, []);
-
-  const diagCounts = countBy(testDocs, "diagnosis");
-  const total = testDocs.length;
-
-  const handleExport = async () => {
-    if (!total) {
-      Alert.alert("No Data", "No test results to export yet.");
-      return;
-    }
-    setExporting(true);
-    try {
-      const rows = testDocs.map(({ id, timestamp, ...rest }) => ({
-        ...rest,
-        timestamp: timestamp?.toDate ? timestamp.toDate().toISOString() : "",
-      }));
-      const csv = toCSV(rows);
-      const path = `${FileSystem.documentDirectory}recolor_research_${Date.now()}.csv`;
-
-      // Fix for Screenshot 2: Use EncodingType explicitly
-      await FileSystem.writeAsStringAsync(path, csv, {
-        encoding: "utf8",
-      });
-
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(path);
-      } else {
-        Alert.alert(
-          "Not Available",
-          "Sharing is not supported on this device.",
-        );
-      }
-    } catch (e) {
-      Alert.alert("Export Failed", e?.message || "Unknown error");
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  return (
-    <View style={styles.container}>
-      <BackgroundBubbles />
-      <Header
-        title="Research Dashboard"
-        subtitle="PERI Researcher Portal"
-        back
-      />
-
-      <View style={{ flexDirection: "row", padding: 20, paddingBottom: 0 }}>
-        {["View Data", "Guidelines"].map((tab, i) => (
-          <TouchableOpacity
-            key={tab}
-            style={{
-              flex: 1,
-              paddingVertical: 10,
-              backgroundColor: activeTab === tab ? "#FFF" : "#F5F5F5",
-              alignItems: "center",
-              borderTopLeftRadius: i === 0 ? 20 : 0,
-              borderBottomLeftRadius: i === 0 ? 20 : 0,
-              borderTopRightRadius: i === 1 ? 20 : 0,
-              borderBottomRightRadius: i === 1 ? 20 : 0,
-              borderWidth: 1,
-              borderColor: "#E0E0E0",
-            }}
-            onPress={() => setActiveTab(tab)}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Ionicons
-                name={i === 0 ? "stats-chart" : "document-text"}
-                size={18}
-                color={activeTab === tab ? "#333" : "#999"}
-              />
-              <Text
-                style={{
-                  marginLeft: 8,
-                  fontWeight: "bold",
-                  color: activeTab === tab ? "#333" : "#999",
-                }}
-              >
-                {tab}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <ScrollView
-        contentContainerStyle={{ padding: 20 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {activeTab === "View Data" ? (
-          <>
-            <View
-              style={{
-                backgroundColor: "#E1F5FE",
-                padding: 15,
-                borderRadius: 8,
-                marginBottom: 20,
-                borderWidth: 1,
-                borderColor: "#B3E5FC",
-              }}
-            >
-              <Text style={{ color: "#0277BD", fontSize: 12, lineHeight: 18 }}>
-                <Text style={{ fontWeight: "bold" }}>Privacy Protected: </Text>
-                All data is anonymized. No personally identifiable information
-                (PII) is visible.
-              </Text>
-            </View>
-
-            {loading ? (
-              <ActivityIndicator
-                size="large"
-                color={COLORS.primary}
-                style={{ marginTop: 40 }}
-              />
-            ) : (
-              <>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    flexWrap: "wrap",
-                    justifyContent: "space-between",
-                    marginBottom: 20,
-                  }}
-                >
-                  <StatTile
-                    bg="#E3F2FD"
-                    icon="trending-up"
-                    iconColor="#1E88E5"
-                    val={total}
-                    label="Total Tests"
-                    valColor="#1565C0"
-                  />
-                  <StatTile
-                    bg="#F3E5F5"
-                    icon="people"
-                    iconColor="#8E24AA"
-                    val={surveyDocs.length}
-                    label="Surveys"
-                    valColor="#6A1B9A"
-                  />
-                </View>
-
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: "#FFF",
-                    borderWidth: 1,
-                    borderColor: "#DDD",
-                    padding: 15,
-                    borderRadius: 12,
-                    alignItems: "center",
-                    marginBottom: 25,
-                    flexDirection: "row",
-                    justifyContent: "center",
-                  }}
-                  onPress={handleExport}
-                >
-                  <Ionicons
-                    name="download-outline"
-                    size={20}
-                    color="#333"
-                    style={{ marginRight: 10 }}
-                  />
-                  <Text style={{ fontWeight: "bold" }}>
-                    {exporting ? "Preparing..." : "Export Full Report (CSV)"}
-                  </Text>
-                </TouchableOpacity>
-
-                <Card style={{ marginBottom: 20 }}>
-                  <Text style={{ fontWeight: "bold", marginBottom: 15 }}>
-                    Screening Statistics
-                  </Text>
-                  <StatBar
-                    label="Normal Vision"
-                    count={diagCounts["Normal Vision"] || 0}
-                    total={total}
-                    color={COLORS.success}
-                    badge="N"
-                  />
-                  <StatBar
-                    label="CVD Indicated"
-                    count={total - (diagCounts["Normal Vision"] || 0)}
-                    total={total}
-                    color={COLORS.danger}
-                    badge="CVD"
-                  />
-                </Card>
-              </>
-            )}
-          </>
-        ) : (
-          <Card>
-            <Text style={{ fontWeight: "bold", marginBottom: 10 }}>
-              Active Protocols
-            </Text>
-            <Text style={{ fontSize: 12, color: "#555", lineHeight: 20 }}>
-              • Ishihara Test — 25 plates (comprehensive){"\n"}• Stage 1:
-              Screening via plates 1–21{"\n"}• Stage 2: Differentiation via
-              plates 22–25{"\n"}• Thresholds: ≥17 Normal · 14–16 Indeterminate
-              {"\n"}• Offline-first: Firestore persistentLocalCache
-            </Text>
-          </Card>
-        )}
-      </ScrollView>
-    </View>
   );
 }
 </file>
