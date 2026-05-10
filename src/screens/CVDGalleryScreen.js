@@ -134,6 +134,13 @@ export default function CVDGalleryScreen({ navigation }) {
     }
   };
 
+  const showInfo = () => {
+    Alert.alert(
+      "How to use Gallery Simulation",
+      "Select an image from your gallery, then choose a color vision deficiency type to simulate how the image appears to someone with that condition.",
+    );
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: "#000" }}>
       <SafeAreaView style={{ flex: 1 }}>
@@ -144,9 +151,18 @@ export default function CVDGalleryScreen({ navigation }) {
           <Text style={{ color: "#FFF", fontWeight: "bold" }}>
             Gallery Analysis
           </Text>
-          <TouchableOpacity onPress={pickImage}>
-            <Ionicons name="add-circle" size={28} color="#FFF" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity onPress={showInfo} style={{ marginRight: 15 }}>
+              <Ionicons
+                name="information-circle-outline"
+                size={26}
+                color="#FFF"
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={pickImage}>
+              <Ionicons name="add-circle" size={28} color="#FFF" />
+            </TouchableOpacity>
+          </View>
         </View>
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}

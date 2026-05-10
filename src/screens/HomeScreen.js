@@ -1,5 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
+import {
+  collection,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+} from "firebase/firestore";
 import { MotiView } from "moti";
+import { useEffect, useState } from "react";
 import {
   Dimensions,
   Image,
@@ -9,7 +17,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { auth } from "../../firebaseConfig";
+import { auth, db } from "../../firebaseConfig";
 import BackgroundBubbles from "../components/BackgroundBubbles";
 import { COLORS, SHADOW } from "../theme/colors";
 import { styles } from "../theme/styles";
@@ -17,7 +25,6 @@ import { styles } from "../theme/styles";
 const { width } = Dimensions.get("window");
 
 // --- DOMINANT CARD COMPONENT ---
-// Uses pulsing shadow and scale to feel "alive"
 const DominantCard = ({
   bg,
   onPress,
@@ -145,12 +152,35 @@ const SecondaryCard = ({ bg, onPress, icon, iconColor, title, delay = 0 }) => (
 export default function HomeScreen({ navigation }) {
   const userName = (auth.currentUser?.email || "Guest").split("@")[0];
   const insets = useSafeAreaInsets();
+  const [visionProfile, setVisionProfile] = useState("Pending");
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+    const q = query(
+      collection(db, "users", user.uid, "history"),
+      orderBy("date", "desc"),
+      limit(1),
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      if (!snap.empty) {
+        const data = snap.docs[0].data();
+        setVisionProfile(data.diagnosis || "Pending");
+      } else {
+        setVisionProfile("Pending");
+      }
+    });
+    return () => unsub();
+  }, []);
 
   return (
     <View style={styles.container}>
       <BackgroundBubbles />
 
       {/* Sticky disclaimer — notch-aware */}
+      <View style={{ height: insets.top, backgroundColor: "transparent" }} />
+
+      {/* 2. Sticky disclaimer — now safely below the notch/status bar */}
       <View
         style={{
           flexDirection: "row",
@@ -158,8 +188,7 @@ export default function HomeScreen({ navigation }) {
           justifyContent: "center",
           gap: 6,
           backgroundColor: "#FFF8E1",
-          paddingTop: insets.top + 4,
-          paddingBottom: 6,
+          paddingVertical: 8,
           borderBottomWidth: 1,
           borderBottomColor: "#FFE082",
         }}
@@ -197,8 +226,38 @@ export default function HomeScreen({ navigation }) {
             <Text
               style={{ fontSize: 32, fontWeight: "900", color: COLORS.text }}
             >
-              ReColor
+              {"Welcome to \n ReColor"}
             </Text>
+            <View
+              style={{
+                marginTop: 8,
+                alignSelf: "flex-start",
+                backgroundColor: COLORS.surfaceAlt,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: COLORS.primary + "40",
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
+              <Ionicons
+                name="eye"
+                size={14}
+                color={COLORS.primary}
+                style={{ marginRight: 4 }}
+              />
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "700",
+                  color: COLORS.primary,
+                }}
+              >
+                Vision Profile: {visionProfile}
+              </Text>
+            </View>
           </View>
           <MotiView
             from={{ rotate: "0deg" }}
@@ -207,7 +266,7 @@ export default function HomeScreen({ navigation }) {
           >
             <Image
               source={require("../../assets/icon.png")}
-              style={{ width: 60, height: 60, resizeMode: "contain" }}
+              style={{ width: 150, height: 150, resizeMode: "contain" }}
             />
           </MotiView>
         </View>

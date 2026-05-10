@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
 import {
   Canvas,
@@ -11,6 +12,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as MediaLibrary from "expo-media-library";
+import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -27,7 +29,7 @@ import {
   useCameraDevice,
   useCameraPermission,
 } from "react-native-vision-camera";
-import { auth } from "../../firebaseConfig";
+import { auth, db } from "../../firebaseConfig";
 import { getCVDRows } from "../../tensorHelper";
 import ModeSelector from "../components/ModeSelector";
 import { COLORS } from "../theme/colors";
@@ -43,15 +45,12 @@ function CVDSimulationScreenInner({ navigation, route }) {
   const isFocused = useIsFocused();
   const [cameraPosition, setCameraPosition] = useState("back");
   const [cvdType, setCvdType] = useState(
-    route?.params?.initialCvdType || "Protan",
+    route?.params?.initialCvdType || "Off",
   );
   const [showModal, setShowModal] = useState(false);
   const [frozen, setFrozen] = useState(false);
   const [frozenUri, setFrozenUri] = useState(null);
   const [processing, setProcessing] = useState(false);
-  // Calibration is loaded once when the screen mounts and on focus.
-  // Used as a per-channel multiplier inside CVD_SHADER_SOURCE so the
-  // simulated CVD perception is computed from calibrated input pixels.
   const [calib, setCalib] = useState({ rScale: 1, gScale: 1, bScale: 1 });
 
   const cameraRef = useRef(null);
@@ -78,8 +77,6 @@ function CVDSimulationScreenInner({ navigation, route }) {
     if (!hasPermission) requestPermission();
   }, [hasPermission]);
 
-  // Refresh manual calibration on focus so the user sees the new value
-  // immediately after returning from Settings → Camera Calibration.
   useEffect(() => {
     const apply = (saved) => {
       if (saved && isMountedRef.current) {
@@ -96,6 +93,37 @@ function CVDSimulationScreenInner({ navigation, route }) {
     );
     return unsub;
   }, [navigation]);
+
+  useEffect(() => {
+    if (!route?.params?.initialCvdType) {
+      const fetchCVDDefault = async () => {
+        try {
+          let diag = await AsyncStorage.getItem("@recolor_latest_diagnosis");
+          if (!diag && auth.currentUser) {
+            const q = query(
+              collection(db, "users", auth.currentUser.uid, "history"),
+              orderBy("date", "desc"),
+              limit(1),
+            );
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+              diag = snap.docs[0].data().diagnosis || "";
+              await AsyncStorage.setItem("@recolor_latest_diagnosis", diag);
+            }
+          }
+          if (diag) {
+            if (diag.includes("Protan")) setCvdType("Protan");
+            else if (diag.includes("Deutan")) setCvdType("Deutan");
+            else if (diag.includes("Tritan")) setCvdType("Tritan");
+            else setCvdType("Off");
+          }
+        } catch (e) {
+          console.warn("Failed to fetch CVD default", e);
+        }
+      };
+      fetchCVDDefault();
+    }
+  }, [route?.params?.initialCvdType]);
 
   const handleFreeze = useCallback(async () => {
     if (!cameraRef.current) return;
@@ -147,14 +175,10 @@ function CVDSimulationScreenInner({ navigation, route }) {
       const snapshot = canvasRef.current?.makeImageSnapshot();
       if (!snapshot) return;
 
-      // Skia snapshots encode to base64 directly[cite: 1]
       const b64 = snapshot.encodeToBase64();
       const tmpPath = `${FileSystem.documentDirectory}recolor_sim_${Date.now()}.png`;
 
-      // Use literal 'base64' to remain consistent with your global fix[cite: 1]
-      await FileSystem.writeAsStringAsync(tmpPath, b64, {
-        encoding: "base64",
-      });
+      await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: "base64" });
 
       const asset = await MediaLibrary.createAssetAsync(tmpPath);
       const userName = auth.currentUser?.email?.split("@")[0] || "Guest";
@@ -167,20 +191,25 @@ function CVDSimulationScreenInner({ navigation, route }) {
         await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
       }
 
-      // Cleanup[cite: 1]
       await FileSystem.deleteAsync(tmpPath, { idempotent: true });
-
       Alert.alert("Saved", `Simulation saved to ${albumName}.`);
     } catch (e) {
       Alert.alert("Error", "Could not save photo.");
     }
-  }, [cvdType]); // Ensure dependencies are correct for useCallback
+  }, [cvdType]);
 
   const handleReset = useCallback(() => {
     setFrozen(false);
     setFrozenUri(null);
     setProcessing(false);
   }, []);
+
+  const showInfo = () => {
+    Alert.alert(
+      "How to use Simulation",
+      "BEFORE CAPTURE:\nFrame your subject and tap the shutter button.\n\nAFTER CAPTURE:\nYour diagnosed condition is simulated automatically. You can select other types to see how different color vision deficiencies perceive the image.",
+    );
+  };
 
   if (!hasPermission) {
     return (
@@ -265,13 +294,23 @@ function CVDSimulationScreenInner({ navigation, route }) {
           <Text style={{ color: "#FFF", fontWeight: "bold" }}>
             {frozen ? `${cvdType} Simulation` : "ColorBlind Simulation"}
           </Text>
-          {!frozen && (
-            <TouchableOpacity onPress={() => setShowModal(true)}>
-              <Ionicons name="menu" size={28} color="#FFF" />
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity onPress={showInfo} style={{ marginRight: 15 }}>
+              <Ionicons
+                name="information-circle-outline"
+                size={26}
+                color="#FFF"
+              />
             </TouchableOpacity>
-          )}
+            {!frozen && (
+              <TouchableOpacity onPress={() => setShowModal(true)}>
+                <Ionicons name="menu" size={28} color="#FFF" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
+        {/* CVD TYPE BUTTONS (Visible ONLY after capture) */}
         {frozen && (
           <View
             style={{

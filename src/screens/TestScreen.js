@@ -24,7 +24,7 @@ import {
 } from "../utils/colorLogic";
 
 const { width } = Dimensions.get("window");
-const DISPLAY_TIME = 3; // seconds each plate is shown
+const DISPLAY_TIME = 3;
 
 export default function TestScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
@@ -73,13 +73,10 @@ export default function TestScreen({ route, navigation }) {
 
   const current = queue[index];
 
-  // Timer — resets on each new plate
   useEffect(() => {
     setTimeLeft(DISPLAY_TIME);
     setShowImage(true);
 
-    // DEMO MOD: Disable the timer and image-hiding for Plate #1 (index 0)
-    // This allows the presenter to explain the test baseline without it timing out.
     if (index === 0) return;
 
     timerRef.current = setInterval(() => {
@@ -142,6 +139,11 @@ export default function TestScreen({ route, navigation }) {
           const result = computeDiagnosis(newAnswers, testType);
           const shuffledOrder = queue.map((p) => p.id);
 
+          await AsyncStorage.setItem(
+            "@recolor_latest_diagnosis",
+            result.diagnosis,
+          );
+
           if (auth.currentUser) {
             await saveExamResult(
               auth.currentUser.uid,
@@ -153,7 +155,6 @@ export default function TestScreen({ route, navigation }) {
           }
 
           setTimeout(() => {
-            // Clear progress upon completion
             AsyncStorage.removeItem(`@recolor_test_progress_${testType}`);
             navigation.replace("IshiharaResult", {
               score: stage1Result.correctCount,
@@ -171,13 +172,12 @@ export default function TestScreen({ route, navigation }) {
         setAnswers(newAnswers);
         setUserInput("");
         setIndex(index + 1);
-        // Save progress mid-test
         AsyncStorage.setItem(
           `@recolor_test_progress_${testType}`,
           JSON.stringify({
             index: index + 1,
             answers: newAnswers,
-            stage: stage, // Make sure to use the current stage variable here
+            stage: stage,
           }),
         );
         const nextNum = index + 2;
@@ -190,6 +190,11 @@ export default function TestScreen({ route, navigation }) {
 
         setCalculating(true);
 
+        await AsyncStorage.setItem(
+          "@recolor_latest_diagnosis",
+          result.diagnosis,
+        );
+
         if (auth.currentUser) {
           await saveExamResult(
             auth.currentUser.uid,
@@ -201,7 +206,6 @@ export default function TestScreen({ route, navigation }) {
         }
 
         setTimeout(() => {
-          // Clear progress upon completion
           AsyncStorage.removeItem(`@recolor_test_progress_${testType}`);
           navigation.replace("IshiharaResult", {
             score: result.score,
@@ -279,28 +283,7 @@ export default function TestScreen({ route, navigation }) {
       </View>
 
       <View style={styles.plateArea}>
-        <MotiView
-          key={index}
-          from={{ opacity: 0, scale: 0.88 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "timing", duration: 250 }} // Changed from spring to timing to remove bounce
-          style={styles.plateCard}
-        >
-          {showImage ? (
-            <Image
-              source={current.img}
-              style={styles.plateImage}
-              resizeMode="contain"
-            />
-          ) : (
-            <View style={styles.hiddenState}>
-              <Ionicons name="eye-off-outline" size={56} color="#CCC" />
-              <Text style={styles.hiddenLabel}>Image Hidden</Text>
-              <Text style={styles.hiddenSub}>Enter what you saw</Text>
-            </View>
-          )}
-        </MotiView>
-
+        {/* Timer moved ABOVE the plate to prevent overlap and match reading order */}
         <View style={styles.timerRow}>
           <MotiView
             animate={{ backgroundColor: timerColor }}
@@ -316,6 +299,22 @@ export default function TestScreen({ route, navigation }) {
                   : "Time's up"}
             </Text>
           </MotiView>
+        </View>
+
+        <View key={index} style={styles.plateCard}>
+          {showImage ? (
+            <Image
+              source={current.img}
+              style={styles.plateImage}
+              resizeMode="contain"
+            />
+          ) : (
+            <View style={styles.hiddenState}>
+              <Ionicons name="eye-off-outline" size={56} color="#CCC" />
+              <Text style={styles.hiddenLabel}>Image Hidden</Text>
+              <Text style={styles.hiddenSub}>Enter what you saw</Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -499,7 +498,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
-    paddingTop: 10, // Reduced padding
+    paddingTop: 10,
     paddingBottom: 5,
   },
   headerLabel: { fontSize: 17, fontWeight: "800", color: COLORS.text },
@@ -515,17 +514,17 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   plateArea: {
-    flex: 1.2,
+    flex: 1, // Allows it to shrink and grow dynamically
     justifyContent: "center",
     alignItems: "center",
-    gap: 10, // Reduced gap
-    paddingVertical: 10, // Added padding
-    gap: SPACING.md,
+    paddingVertical: SPACING.sm,
+    gap: SPACING.sm,
   },
   plateCard: {
-    width: width * 0.75,
-    maxWidth: 350,
-    maxHeight: Dimensions.get("window").height * 0.32,
+    flexShrink: 1, // CRITICAL: Allows the card to shrink on small screens to prevent overlap
+    width: width * 0.95,
+    maxWidth: 380,
+    maxHeight: "88%", // Ensures it leaves room for the timer above it
     aspectRatio: 1,
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.xl,
@@ -534,16 +533,15 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     ...SHADOW.lg,
   },
-  timerRow: {
-    marginTop: 10, // Ensure the timer is pushed away from the plate but above the keypad
-    alignItems: "center",
-    zIndex: 10,
-  },
-  plateImage: { width: "90%", height: "90%" },
+  plateImage: { width: "100%", height: "100%" },
   hiddenState: { alignItems: "center", gap: SPACING.sm },
   hiddenLabel: { fontSize: 16, fontWeight: "700", color: "#AAA" },
   hiddenSub: { fontSize: 12, color: "#CCC" },
-  timerRow: { alignItems: "center" },
+  timerRow: {
+    alignItems: "center",
+    zIndex: 10,
+    marginBottom: 4,
+  },
   timerPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -558,8 +556,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: RADIUS.xl,
     borderTopRightRadius: RADIUS.xl,
     paddingHorizontal: SPACING.md,
-    paddingTop: 10,
-    //paddingBottom: 20,
+    paddingTop: 15,
     ...SHADOW.lg,
   },
   answerDisplay: { alignItems: "center", marginBottom: SPACING.md },
@@ -610,7 +607,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: RADIUS.xl,
     paddingHorizontal: SPACING.md,
     paddingTop: SPACING.lg,
-    //paddingBottom: SPACING.xl,
     ...SHADOW.lg,
   },
   tracingQuestion: {

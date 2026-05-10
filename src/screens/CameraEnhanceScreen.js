@@ -6,6 +6,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as MediaLibrary from "expo-media-library";
+import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -23,7 +24,7 @@ import {
   useCameraDevice,
   useCameraPermission,
 } from "react-native-vision-camera";
-import { auth } from "../../firebaseConfig";
+import { auth, db } from "../../firebaseConfig";
 import {
   applyDaltonization,
   applyHueRotation,
@@ -45,8 +46,8 @@ function CameraEnhanceScreenInner({ navigation }) {
   const { hasPermission, requestPermission } = useCameraPermission();
   const isFocused = useIsFocused();
   const [cameraPosition, setCameraPosition] = useState("back");
-  const [cvdType, setCvdType] = useState("Protan");
-  const [algorithm, setAlgorithm] = useState("daltonization"); // Restored[cite: 3]
+  const [cvdType, setCvdType] = useState("Off");
+  const [algorithm, setAlgorithm] = useState("daltonization");
   const [showModal, setShowModal] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [frozen, setFrozen] = useState(false);
@@ -69,6 +70,43 @@ function CameraEnhanceScreenInner({ navigation }) {
         setIntensity(Number(val));
       }
     });
+
+    const fetchCVDDefault = async () => {
+      try {
+        let diag = await AsyncStorage.getItem("@recolor_latest_diagnosis");
+
+        if (!diag && auth.currentUser) {
+          const q = query(
+            collection(db, "users", auth.currentUser.uid, "history"),
+            orderBy("date", "desc"),
+            limit(1),
+          );
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            diag = snap.docs[0].data().diagnosis || "";
+            await AsyncStorage.setItem("@recolor_latest_diagnosis", diag);
+          }
+        }
+
+        if (diag) {
+          if (diag.includes("Protan")) setCvdType("Protan");
+          else if (diag.includes("Deutan")) setCvdType("Deutan");
+          else if (diag.includes("Tritan")) setCvdType("Tritan");
+          else setCvdType("Off");
+        } else {
+          setCvdType("Off");
+        }
+      } catch (e) {
+        console.warn("Failed to fetch CVD default", e);
+      }
+    };
+
+    const unsubscribe = navigation.addListener("focus", () => {
+      fetchCVDDefault();
+    });
+
+    fetchCVDDefault();
+
     isMountedRef.current = true;
     const timer = setTimeout(() => {
       if (isMountedRef.current) setCameraReady(true);
@@ -76,8 +114,9 @@ function CameraEnhanceScreenInner({ navigation }) {
     return () => {
       isMountedRef.current = false;
       clearTimeout(timer);
+      unsubscribe();
     };
-  }, []);
+  }, [navigation]);
 
   useEffect(() => {
     if (!hasPermission) requestPermission();
@@ -88,7 +127,6 @@ function CameraEnhanceScreenInner({ navigation }) {
     const { data, width: w, height: h } = decodedRef.current;
     const src = { data, width: w, height: h };
 
-    // Restoration of comparative algorithms[cite: 3]
     const enhanced =
       algo === "hue_rotation"
         ? applyHueRotation(src, cvd)
@@ -148,10 +186,6 @@ function CameraEnhanceScreenInner({ navigation }) {
       frozenUriRef.current = resized.uri;
       decodedRef.current = decodeJpegBase64(resized.base64);
 
-      // Apply camera calibration in place once on freeze. All subsequent
-      // re-enhancements (CVD type swap, algorithm swap, intensity change)
-      // operate on the already-calibrated buffer — no need to re-resolve.
-      // Manual calibration from Settings wins; otherwise gray-world auto-WB.
       const calib = await resolveCalibration(decodedRef.current.data);
       applyCalibrationToBuffer(decodedRef.current.data, calib);
 
@@ -165,11 +199,9 @@ function CameraEnhanceScreenInner({ navigation }) {
   };
 
   const handleSave = async () => {
-    // Trigger success haptics for a professional feel
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
       () => {},
     );
-
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== "granted") {
@@ -179,29 +211,20 @@ function CameraEnhanceScreenInner({ navigation }) {
         );
       }
 
-      // Determine which URI to use based on the 'showOriginal' toggle
       const targetUri = showOriginal ? frozenUriRef.current : resultUri;
       if (!targetUri) return;
 
       let b64;
-      // Standardize source: Check if it's a filtered Data URI or a local capture path
       if (targetUri.startsWith("data:")) {
         b64 = targetUri.split(",")[1];
       } else {
-        // For local captured photos, read the file into a base64 string
-        // Using literal 'base64' string to avoid the 'undefined' error
         b64 = await FileSystem.readAsStringAsync(targetUri, {
           encoding: "base64",
         });
       }
 
-      // Create a unique temporary path in the document directory
       const tmpPath = `${FileSystem.documentDirectory}recolor_final_save_${Date.now()}.jpg`;
-
-      // Write the standardized base64 data to our fresh temporary file
-      await FileSystem.writeAsStringAsync(tmpPath, b64, {
-        encoding: "base64",
-      });
+      await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: "base64" });
 
       const asset = await MediaLibrary.createAssetAsync(tmpPath);
       const userName = auth.currentUser?.email?.split("@")[0] || "Guest";
@@ -214,12 +237,9 @@ function CameraEnhanceScreenInner({ navigation }) {
         await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
       }
 
-      // CRITICAL: Clean up the temporary file to save storage space
       await FileSystem.deleteAsync(tmpPath, { idempotent: true });
-
       Alert.alert("Saved", "Photo added to your ReColor album.");
     } catch (e) {
-      console.error("[CameraEnhance] Save error:", e);
       Alert.alert("Error", "Could not save photo.");
     }
   };
@@ -229,6 +249,13 @@ function CameraEnhanceScreenInner({ navigation }) {
     setResultUri(null);
     decodedRef.current = null;
     frozenUriRef.current = null;
+  };
+
+  const showInfo = () => {
+    Alert.alert(
+      "How to use Enhancement",
+      "BEFORE CAPTURE:\nFrame your subject and tap the shutter button.\n\nAFTER CAPTURE:\nYour diagnosed filter is automatically applied. You can change the filter type or adjust the intensity slider to enhance color distinguishability.",
+    );
   };
 
   const displayUri = showOriginal ? frozenUriRef.current : resultUri;
@@ -305,14 +332,23 @@ function CameraEnhanceScreenInner({ navigation }) {
                 : `${cvdType} Enhanced`
               : "Color Enhancement"}
           </Text>
-          {!frozen && (
-            <TouchableOpacity onPress={() => setShowModal(true)}>
-              <Ionicons name="menu" size={28} color="#FFF" />
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity onPress={showInfo} style={{ marginRight: 15 }}>
+              <Ionicons
+                name="information-circle-outline"
+                size={26}
+                color="#FFF"
+              />
             </TouchableOpacity>
-          )}
+            {!frozen && (
+              <TouchableOpacity onPress={() => setShowModal(true)}>
+                <Ionicons name="menu" size={28} color="#FFF" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
-        {/* RESTORED ALGO BUTTONS[cite: 3] */}
+        {/* ALGORITHM BUTTONS (Visible ONLY after capture) */}
         {frozen && (
           <View
             style={{
@@ -348,14 +384,14 @@ function CameraEnhanceScreenInner({ navigation }) {
                 <Text
                   style={{ color: "#FFF", fontSize: 10, fontWeight: "bold" }}
                 >
-                  {a === "daltonization" ? "ADAPT" : "HUE"} //changed dalto to
-                  adapt for less jargon
+                  {a === "daltonization" ? "ADAPT" : "HUE"}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
         )}
 
+        {/* CVD TYPE BUTTONS (Visible ONLY after capture) */}
         {frozen && (
           <View
             style={{
@@ -444,7 +480,6 @@ function CameraEnhanceScreenInner({ navigation }) {
                 >
                   <Ionicons name="snow" size={24} color="#333" />
                 </TouchableOpacity>
-                {/* CORRECTED GALLERY NAV[cite: 3] */}
                 <TouchableOpacity
                   onPress={() => navigation.navigate("EnhanceGallery")}
                 >
