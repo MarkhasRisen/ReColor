@@ -3,351 +3,422 @@ import {
   Image,
   Linking,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BackgroundBubbles from "../components/BackgroundBubbles";
-import Card from "../components/Card";
 import Header from "../components/Header";
 import { ARTICLES } from "../data/articles";
 import { CAREER_ARTICLES } from "../data/careerData";
-import { styles } from "../theme/styles";
+import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
 export default function EducationListScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
+
   return (
     <View style={styles.container}>
       <BackgroundBubbles />
       <Header title="Learn & Understand" back />
 
       <ScrollView
-        contentContainerStyle={{ padding: 20 }}
+        contentContainerStyle={[
+          styles.scrollBody,
+          { paddingBottom: insets.bottom + SPACING.xl },
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        <View
-          style={{
-            backgroundColor: "#F3E5F5",
-            borderRadius: 16,
-            overflow: "hidden",
-            marginBottom: 25,
-            borderWidth: 1,
-            borderColor: "#E1BEE7",
-          }}
+        {/* --- PERI MODULE (RESTORED RIBBON & PARTNER STATUS) --- */}
+        <Animated.View
+          entering={FadeInUp.duration(600)}
+          style={styles.periCard}
         >
           <Image
             source={require("../../assets/peri.png")}
-            style={{ width: "100%", height: 180 }}
+            style={styles.periImage}
             resizeMode="cover"
           />
-          <View style={{ padding: 20 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                marginBottom: 10,
-              }}
-            >
-              <Ionicons name="business" size={20} color="#9C27B0" />
-              <Text
-                style={{
-                  marginLeft: 10,
-                  color: "#4A148C",
-                  fontWeight: "bold",
-                  fontSize: 16,
-                  flex: 1,
-                }}
-              >
-                About Philippine Eye Research Institute
-              </Text>
+          <View style={styles.periContent}>
+            <View style={styles.badgeRow}>
+              <View style={styles.partnerBadge}>
+                <Ionicons name="ribbon" size={14} color="#9C27B0" />
+                <Text style={styles.partnerText}>RESEARCH PARTNER</Text>
+              </View>
             </View>
-            <Text
-              style={{
-                color: "#4A148C",
-                fontSize: 13,
-                lineHeight: 20,
-                marginBottom: 15,
-              }}
-            >
+
+            <Text style={styles.periTitle}>
+              About Philippine Eye Research Institute
+            </Text>
+
+            <Text style={styles.periDesc}>
               The Philippine Eye Research Institute (PERI) is the premier eye
               research institution in the Philippines, dedicated to preventing
               blindness.
             </Text>
-            <Text style={{ fontSize: 13, color: "#333", lineHeight: 20 }}>
-              <Text style={{ fontWeight: "bold" }}>Our Mission:</Text> To
-              improve eye health outcomes through innovative research and
-              evidence-based clinical practices.
+
+            <Text style={styles.periMission}>
+              <Text style={{ fontWeight: "900" }}>Our Mission:</Text> To improve
+              eye health outcomes through innovative research and evidence-based
+              clinical practices.
             </Text>
+
             <TouchableOpacity
-              style={{
-                marginTop: 20,
-                backgroundColor: "#FFF",
-                paddingVertical: 12,
-                borderRadius: 8,
-                alignItems: "center",
-                flexDirection: "row",
-                justifyContent: "center",
-                borderWidth: 1,
-                borderColor: "#D1C4E9",
-              }}
+              style={styles.periButton}
               onPress={() => Linking.openURL("https://peri.ph/")}
+              activeOpacity={0.8}
             >
-              <Text
-                style={{ color: "#4A148C", fontWeight: "bold", marginRight: 8 }}
-              >
-                Visit PERI Website
-              </Text>
-              <Ionicons name="open-outline" size={16} color="#4A148C" />
+              <Text style={styles.periButtonText}>Visit PERI Website</Text>
+              <Ionicons name="open-outline" size={16} color="#9C27B0" />
             </TouchableOpacity>
           </View>
-        </View>
+        </Animated.View>
 
-        {/* ── CVD Simulations — Bento Grid ── */}
-        <View style={{ marginBottom: 25 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginBottom: 12,
-            }}
-          >
-            <Ionicons name="eye-outline" size={22} color="#333" />
-            <Text
-              style={{
-                marginLeft: 8,
-                fontWeight: "bold",
-                fontSize: 16,
-                color: "#333",
-              }}
-            >
-              CVD Simulations
-            </Text>
-          </View>
-          <Text style={{ color: "#666", fontSize: 12, marginBottom: 14 }}>
+        {/* --- INTERACTIVE: CVD SIMULATIONS --- */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>CVD SIMULATIONS</Text>
+          <Text style={styles.sectionSub}>
             Tap a type to experience how colour vision deficiency affects
             perception.
           </Text>
 
-          <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
+          <View style={styles.gridRow}>
             {[
               {
                 label: "Protanomaly",
                 sub: "Red-weak",
-                cvdType: "Protan",
-                bg: "#FFEBEE",
-                border: "#FFCDD2",
-                textColor: "#B71C1C",
-                icon: "radio-button-on",
+                type: "Protan",
+                color: "#EF4444",
               },
               {
                 label: "Deuteranomaly",
                 sub: "Green-weak",
-                cvdType: "Deutan",
-                bg: "#E8F5E9",
-                border: "#C8E6C9",
-                textColor: "#1B5E20",
-                icon: "radio-button-on",
+                type: "Deutan",
+                color: "#22C55E",
               },
-            ].map((item) => (
+            ].map((item, idx) => (
               <TouchableOpacity
-                key={item.label}
-                style={{
-                  flex: 1,
-                  backgroundColor: item.bg,
-                  padding: 16,
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: item.border,
-                  minHeight: 110,
-                }}
+                key={idx}
+                style={styles.simCard}
                 onPress={() =>
                   navigation.navigate("CVDSimulation", {
-                    initialCvdType: item.cvdType,
+                    initialCvdType: item.type,
                   })
                 }
-                activeOpacity={0.82}
               >
                 <View
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    backgroundColor: item.textColor + "22",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 10,
-                  }}
+                  style={[
+                    styles.simIcon,
+                    { backgroundColor: item.color + "15" },
+                  ]}
                 >
-                  <Ionicons
-                    name="eye-outline"
-                    size={18}
-                    color={item.textColor}
-                  />
+                  <Ionicons name="eye-outline" size={20} color={item.color} />
                 </View>
-                <Text
-                  style={{
-                    fontWeight: "800",
-                    color: item.textColor,
-                    fontSize: 14,
-                  }}
-                >
-                  {item.label}
-                </Text>
-                <Text
-                  style={{
-                    color: item.textColor + "AA",
-                    fontSize: 11,
-                    marginTop: 3,
-                  }}
-                >
-                  {item.sub}
-                </Text>
+                <Text style={styles.simTitle}>{item.label}</Text>
+                <Text style={styles.simDesc}>{item.sub}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
           <TouchableOpacity
-            style={{
-              backgroundColor: "#E3F2FD",
-              padding: 16,
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: "#BBDEFB",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 14,
-            }}
+            style={styles.tritanCard}
             onPress={() =>
               navigation.navigate("CVDSimulation", { initialCvdType: "Tritan" })
             }
-            activeOpacity={0.82}
           >
-            <View
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: "#0D47A122",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Ionicons name="eye-outline" size={22} color="#0D47A1" />
+            <View style={styles.tritanIcon}>
+              <Ionicons name="eye-outline" size={24} color="#0D47A1" />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{ fontWeight: "800", color: "#0D47A1", fontSize: 15 }}
-              >
-                Tritanomaly
-              </Text>
-              <Text style={{ color: "#0D47A1AA", fontSize: 12, marginTop: 2 }}>
-                Blue-weak vision · Simulate
-              </Text>
+            <View style={styles.tritanTextGroup}>
+              <Text style={styles.tritanTitle}>Tritanomaly</Text>
+              <Text style={styles.tritanDesc}>Blue-weak vision · Simulate</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#0D47A1" />
+            <Ionicons name="chevron-forward" size={18} color="#0D47A1" />
           </TouchableOpacity>
         </View>
 
-        {/* ── Career Awareness Section ── */}
-        <View style={{ marginBottom: 25 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginBottom: 12,
-            }}
-          >
-            <Ionicons name="briefcase-outline" size={22} color="#333" />
-            <Text
-              style={{
-                marginLeft: 8,
-                fontWeight: "bold",
-                fontSize: 16,
-                color: "#333",
-              }}
-            >
-              Career Awareness
-            </Text>
-          </View>
+        {/* --- CAREER AWARENESS --- */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>CAREER AWARENESS</Text>
           <TouchableOpacity
-            style={{
-              backgroundColor: "#E8EAF6",
-              padding: 20,
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: "#C5CAE9",
-              flexDirection: "row",
-              alignItems: "center",
-            }}
-            activeOpacity={0.85}
+            style={styles.careerModule}
+            activeOpacity={0.9}
             onPress={() =>
               navigation.navigate("CareerDetail", { item: CAREER_ARTICLES[0] })
             }
           >
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 12,
-                backgroundColor: "#3F51B522",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Ionicons name="school-outline" size={26} color="#3F51B5" />
+            <View style={styles.careerIconBox}>
+              <Ionicons name="school-outline" size={24} color="#3F51B5" />
             </View>
-            <View style={{ flex: 1, marginLeft: 15 }}>
-              <Text
-                style={{ fontWeight: "bold", color: "#1A237E", fontSize: 16 }}
-              >
-                Occupations & CVD
-              </Text>
-              <Text style={{ color: "#1A237E99", fontSize: 12, marginTop: 2 }}>
+            <View style={styles.careerText}>
+              <Text style={styles.careerTitle}>Occupations & CVD</Text>
+              <Text style={styles.careerDesc}>
                 Explore 9 critical career paths affected by color vision.
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#3F51B5" />
+            <Ionicons name="chevron-forward" size={18} color="#3F51B5" />
           </TouchableOpacity>
         </View>
 
-        <Text
-          style={{
-            fontWeight: "bold",
-            fontSize: 18,
-            marginBottom: 15,
-            color: "#333",
-          }}
-        >
-          Latest Articles
-        </Text>
-        {ARTICLES.map((article) => (
-          <Card
-            key={article.id}
-            style={{ padding: 0, overflow: "hidden", marginBottom: 20 }}
-            onPress={() => navigation.navigate("Article", { article })}
-          >
-            <Image
-              source={article.coverImage}
-              style={{ width: "100%", height: 140 }}
-              resizeMode="cover"
-            />
-            <View style={{ padding: 20 }}>
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: "bold",
-                  marginBottom: 5,
-                  color: "#333",
-                }}
+        {/* --- LATEST ARTICLES --- */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>LATEST ARTICLES</Text>
+          {ARTICLES.map((article, index) => (
+            <Animated.View
+              key={article.id}
+              entering={FadeInDown.delay(index * 100)}
+            >
+              <TouchableOpacity
+                style={styles.articleItem}
+                onPress={() => navigation.navigate("Article", { article })}
               >
-                {article.title}
-              </Text>
-              <Text style={{ fontSize: 12, color: "#666", lineHeight: 18 }}>
-                {article.summary}
-              </Text>
-            </View>
-          </Card>
-        ))}
+                <Image
+                  source={article.coverImage}
+                  style={styles.articleThumb}
+                />
+                <View style={styles.articleBody}>
+                  <Text style={styles.articleTitle} numberOfLines={1}>
+                    {article.title}
+                  </Text>
+                  <Text style={styles.articleSummary} numberOfLines={2}>
+                    {article.summary}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={COLORS.textLight}
+                />
+              </TouchableOpacity>
+            </Animated.View>
+          ))}
+        </View>
       </ScrollView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+  scrollBody: {
+    padding: SPACING.lg,
+  },
+  section: {
+    marginBottom: 32,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: COLORS.textLight,
+    letterSpacing: 1.5,
+    marginBottom: 12,
+    marginLeft: 4,
+  },
+  sectionSub: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginBottom: 16,
+    marginLeft: 4,
+    lineHeight: 18,
+  },
+  periCard: {
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.xl,
+    overflow: "hidden",
+    ...SHADOW.md,
+    marginBottom: 32,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  periImage: {
+    width: "100%",
+    height: 180,
+  },
+  periContent: {
+    padding: SPACING.lg,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    marginBottom: 12,
+  },
+  partnerBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3E5F5",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    gap: 6,
+  },
+  partnerText: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#9C27B0",
+    letterSpacing: 0.5,
+  },
+  periTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: COLORS.text,
+    marginBottom: 10,
+  },
+  periDesc: {
+    fontSize: 13,
+    color: "#4A148C",
+    lineHeight: 20,
+    marginBottom: 15,
+  },
+  periMission: {
+    fontSize: 13,
+    color: COLORS.text,
+    lineHeight: 20,
+  },
+  periButton: {
+    backgroundColor: "#FFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: RADIUS.lg,
+    marginTop: 20,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#D1C4E9",
+  },
+  periButtonText: {
+    color: "#4A148C",
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  gridRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  simCard: {
+    width: "48%",
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.xl,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    ...SHADOW.sm,
+  },
+  simIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  simTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: COLORS.text,
+  },
+  simDesc: {
+    fontSize: 11,
+    color: COLORS.textLight,
+    marginTop: 2,
+  },
+  tritanCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E3F2FD",
+    borderRadius: RADIUS.xl,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#BBDEFB",
+  },
+  tritanIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(13, 71, 161, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
+  },
+  tritanTextGroup: {
+    flex: 1,
+  },
+  tritanTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#0D47A1",
+  },
+  tritanDesc: {
+    fontSize: 12,
+    color: "rgba(13, 71, 161, 0.7)",
+    marginTop: 2,
+  },
+  careerModule: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E8EAF6",
+    padding: 20,
+    borderRadius: RADIUS.xl,
+    borderWidth: 1,
+    borderColor: "#C5CAE9",
+  },
+  careerIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: "rgba(63, 81, 181, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 15,
+  },
+  careerText: {
+    flex: 1,
+  },
+  careerTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1A237E",
+  },
+  careerDesc: {
+    fontSize: 12,
+    color: "rgba(26, 35, 126, 0.6)",
+    marginTop: 2,
+  },
+  articleItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    padding: 14,
+    borderRadius: RADIUS.xl,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    ...SHADOW.sm,
+  },
+  articleThumb: {
+    width: 60,
+    height: 60,
+    borderRadius: RADIUS.lg,
+    backgroundColor: "#F1F5F9",
+  },
+  articleBody: {
+    flex: 1,
+    paddingHorizontal: 15,
+  },
+  articleTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: COLORS.text,
+  },
+  articleSummary: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+});

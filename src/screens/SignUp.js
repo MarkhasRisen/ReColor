@@ -3,27 +3,27 @@ import { doc, setDoc } from "firebase/firestore"; // ADDED THIS
 import { MotiView } from "moti";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import {
-  auth, // ADDED THIS
-  createUserWithEmailAndPassword,
-  db,
-  sendEmailVerification,
+    auth, // ADDED THIS
+    createUserWithEmailAndPassword,
+    db,
+    sendEmailVerification,
 } from "../../firebaseConfig";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
-const APP_VERSION = "v1.0.5-thesis";
+const APP_VERSION = "v1.0.0-beta";
 
 export default function SignUp({ navigation }) {
   const [email, setEmail] = useState("");

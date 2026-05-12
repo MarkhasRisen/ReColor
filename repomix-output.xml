@@ -2380,89 +2380,246 @@ export async function saveTestSession({
 
 <file path="src/screens/ProfileScreen.js">
 import { Ionicons } from "@expo/vector-icons";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { auth } from "../../firebaseConfig";
-import BackgroundBubbles from "../components/BackgroundBubbles";
-import Card from "../components/Card";
-import { COLORS } from "../theme/colors";
+import * as Haptics from "expo-haptics";
+import { signOut } from "firebase/auth";
+import {
+  collection,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+} from "firebase/firestore";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { auth, db } from "../../firebaseConfig";
+import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
+
+const ActionRow = ({
+  icon,
+  title,
+  value,
+  onPress,
+  color = COLORS.primary,
+  isLast = false,
+}) => (
+  <TouchableOpacity
+    onPress={onPress}
+    style={[styles.actionRow, isLast && { borderBottomWidth: 0 }]}
+    activeOpacity={0.6}
+  >
+    <View style={[styles.rowIcon, { backgroundColor: color + "10" }]}>
+      <Ionicons name={icon} size={20} color={color} />
+    </View>
+    <View style={styles.rowContent}>
+      <Text style={styles.rowTitle}>{title}</Text>
+      {value && <Text style={styles.rowValue}>{value}</Text>}
+    </View>
+    <Ionicons name="chevron-forward" size={16} color={COLORS.textLight} />
+  </TouchableOpacity>
+);
 
 export default function ProfileScreen({ navigation }) {
-  const userEmail = auth.currentUser?.email || "Guest";
-  const userName = userEmail.split("@")[0];
+  const insets = useSafeAreaInsets();
+  const [latestAssessment, setLatestAssessment] = useState(null);
+  const user = auth.currentUser;
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, "users", user.uid, "history"),
+      orderBy("date", "desc"),
+      limit(1),
+    );
+    return onSnapshot(q, (snap) => {
+      if (!snap.empty) setLatestAssessment(snap.docs[0].data());
+    });
+  }, [user]);
+
+  const handleSignOut = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Alert.alert("Sign Out", "Are you sure you want to exit your session?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: () => signOut(auth).then(() => navigation.replace("Login")),
+      },
+    ]);
+  };
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-      <BackgroundBubbles />
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
-        contentContainerStyle={{ padding: 20 }}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View
-          style={{
-            marginTop: 20,
-            marginBottom: 20,
-            flexDirection: "row",
-            alignItems: "center",
-          }}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: "#666", fontSize: 16 }}>
-              Hello, {userName}
-            </Text>
-            <Text style={{ fontSize: 24, fontWeight: "bold", color: "#333" }}>
-              Welcome to ReColor
-            </Text>
+        {/* IDENTITY CARD */}
+        <View style={styles.idSection}>
+          <View style={styles.avatarWrapper}>
+            <Image
+              source={{
+                uri: `https://ui-avatars.com/api/?name=${user?.email}&background=4F46E5&color=fff&size=256`,
+              }}
+              style={styles.mainAvatar}
+            />
+            <View style={styles.onlineIndicator} />
           </View>
-          <Image
-            source={require("../../assets/icon.png")}
-            style={{
-              width: 120,
-              height: 120,
-              resizeMode: "contain",
-              marginRight: 40,
-            }}
+          <Text style={styles.idName}>
+            {(user?.email || "Guest").split("@")[0]}
+          </Text>
+          <Text style={styles.idEmail}>{user?.email}</Text>
+        </View>
+
+        {/* CLINICAL STATUS MODULE */}
+        <View style={styles.moduleCard}>
+          <Text style={styles.moduleHeader}>DIAGNOSTIC SUMMARY</Text>
+          <ActionRow
+            icon="shield-checkmark-outline"
+            title="Vision Profile"
+            value={latestAssessment?.diagnosis || "Not Screened"}
+            color="#10B981"
+            onPress={() => navigation.navigate("History")}
+          />
+          <ActionRow
+            icon="refresh-outline"
+            title="Re-calibrate Vision"
+            value="Start Ishihara Test"
+            color="#6366F1"
+            onPress={() => navigation.navigate("IshiharaOnboarding")}
+            isLast
           />
         </View>
 
-        <Card style={{ alignItems: "center", paddingVertical: 30 }}>
-          <View
-            style={{
-              width: 80,
-              height: 80,
-              borderRadius: 40,
-              backgroundColor: COLORS.primary,
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 15,
-              elevation: 5,
+        {/* SYSTEM CONFIGURATION MODULE */}
+        <View style={styles.moduleCard}>
+          <Text style={styles.moduleHeader}>SYSTEM & PREFERENCES</Text>
+          <ActionRow
+            icon="settings-outline"
+            title="App Settings"
+            value="Accessibility & Haptics"
+            color={COLORS.text}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              navigation.navigate("Settings"); // THIS CONNECTS TO THE NEW SCREEN
             }}
-          >
-            <Ionicons name="person" size={40} color="#FFF" />
-          </View>
-          <Text style={{ fontSize: 20, fontWeight: "bold", color: "#333" }}>
-            {userName}
-          </Text>
-          <Text style={{ color: "#888", marginBottom: 25 }}>{userEmail}</Text>
-          <TouchableOpacity
-            style={{
-              backgroundColor: "#E8EAF6",
-              paddingVertical: 12,
-              paddingHorizontal: 40,
-              borderRadius: 8,
-              width: "100%",
-              alignItems: "center",
-            }}
-            onPress={() => navigation.navigate("Settings")}
-          >
-            <Text style={{ color: "#333", fontWeight: "600" }}>
-              Manage Settings
-            </Text>
-          </TouchableOpacity>
-        </Card>
+          />
+          <ActionRow
+            icon="help-buoy-outline"
+            title="Support Center"
+            color="#F59E0B"
+            onPress={() => Alert.alert("Support", "Documentation coming soon.")}
+            isLast
+          />
+        </View>
+
+        {/* LOGOUT ACTION */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut}>
+          <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+          <Text style={styles.logoutText}>Sign Out of ReColor</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.versionText}>Version 1.0 Beta </Text>
       </ScrollView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  scrollContent: { padding: SPACING.lg, paddingBottom: 120 },
+  idSection: { alignItems: "center", marginBottom: SPACING.xl },
+  avatarWrapper: { position: "relative" },
+  mainAvatar: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: "#E2E8F0",
+  },
+  onlineIndicator: {
+    position: "absolute",
+    bottom: 5,
+    right: 5,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#10B981",
+    borderWidth: 3,
+    borderColor: "#F8FAFC",
+  },
+  idName: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: COLORS.text,
+    marginTop: 12,
+    textTransform: "capitalize",
+  },
+  idEmail: { fontSize: 14, color: COLORS.textLight, marginTop: 2 },
+  moduleCard: {
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.xl,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
+    ...SHADOW.sm,
+  },
+  moduleHeader: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: COLORS.textLight,
+    letterSpacing: 1.5,
+    marginBottom: SPACING.md,
+    marginLeft: 4,
+  },
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  rowIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: RADIUS.md,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: SPACING.md,
+  },
+  rowContent: { flex: 1 },
+  rowTitle: { fontSize: 15, fontWeight: "700", color: COLORS.text },
+  rowValue: { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF",
+    padding: 16,
+    borderRadius: RADIUS.xl,
+    borderWidth: 1,
+    borderColor: "#FEE2E2",
+  },
+  logoutText: {
+    color: "#EF4444",
+    fontWeight: "800",
+    fontSize: 15,
+    marginLeft: 8,
+  },
+  versionText: {
+    textAlign: "center",
+    color: COLORS.textLight,
+    fontSize: 10,
+    marginTop: SPACING.xl,
+    opacity: 0.4,
+  },
+});
 </file>
 
 <file path="src/theme/colors.js">
@@ -2737,79 +2894,133 @@ export async function resolveCalibration(rgba = null) {
 }
 </file>
 
-<file path="src/utils/constants.js">
-import { Dimensions } from 'react-native';
-import { Skia } from '@shopify/react-native-skia';
-
-const { width } = Dimensions.get('window');
-
-export const DISPLAY_SIZE = Math.min(720, width);
-export const CAPTURE_SIZE = Math.min(1024, width);
-
-// Gamma-aware CVD simulation shader (SkSL).
-// Pipeline: per-channel calibration → sRGB → linear → CVD matrix → linear → sRGB.
-// `calib` is the per-channel scalar from Settings → Camera Calibration.
-// Pass (1,1,1) when no manual calibration is set.
-export const CVD_SHADER_SOURCE = `
-uniform shader contents;
-uniform half3 row0;
-uniform half3 row1;
-uniform half3 row2;
-uniform half3 calib;
-
-half4 main(float2 coord) {
-  half4 c = contents.eval(coord);
-  half3 calibrated = clamp(c.rgb * calib, half3(0.0), half3(1.0));
-  half3 lin = pow(calibrated, half3(2.2));
-  half3 sim = half3(dot(row0, lin), dot(row1, lin), dot(row2, lin));
-  sim = clamp(sim, half3(0.0), half3(1.0));
-  return half4(pow(sim, half3(0.4545)), c.a);
-}
-`;
-export const CVD_EFFECT = Skia.RuntimeEffect.Make(CVD_SHADER_SOURCE);
-</file>
-
 <file path="src/navigation/MainTabNavigator.js">
 import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import * as Haptics from "expo-haptics";
+import {
+  Dimensions,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import HistoryScreen from "../screens/HistoryScreen";
 import HomeScreen from "../screens/HomeScreen";
 import ProfileScreen from "../screens/ProfileScreen";
-import { COLORS } from "../theme/colors";
+import { COLORS, SHADOW } from "../theme/colors";
 
 const Tab = createBottomTabNavigator();
+const { width } = Dimensions.get("window");
+
+const CustomTabBar = ({ state, descriptors, navigation }) => {
+  const insets = useSafeAreaInsets();
+  const TAB_COUNT = state.routes.length;
+  const TAB_WIDTH = width / TAB_COUNT;
+
+  // Animation for the active indicator bar at the top of the tab
+  const translateX = useSharedValue(0);
+  const animatedIndicatorStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateX: withSpring(state.index * TAB_WIDTH, {
+          damping: 20,
+          stiffness: 180,
+        }),
+      },
+    ],
+  }));
+
+  return (
+    <View style={[styles.tabBarContainer, { paddingBottom: insets.bottom }]}>
+      {/* Precision Active Indicator - Top Border Style */}
+      <Animated.View
+        style={[
+          styles.activeIndicator,
+          { width: TAB_WIDTH },
+          animatedIndicatorStyle,
+        ]}
+      />
+
+      <View style={styles.tabContent}>
+        {state.routes.map((route, index) => {
+          const { options } = descriptors[route.key];
+          const isFocused = state.index === index;
+
+          const onPress = () => {
+            const event = navigation.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
+
+            if (!isFocused && !event.defaultPrevented) {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              navigation.navigate(route.name);
+            }
+          };
+
+          const iconMapping = {
+            Home: isFocused ? "home" : "home-outline",
+            History: isFocused ? "analytics" : "analytics-outline",
+            Profile: isFocused ? "person" : "person-outline",
+          };
+
+          const labelMapping = {
+            Home: "Home",
+            History: "Records",
+            Profile: "Profile",
+          };
+
+          return (
+            <TouchableOpacity
+              key={route.key}
+              onPress={onPress}
+              style={styles.tabItem}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityState={isFocused ? { selected: true } : {}}
+              accessibilityLabel={labelMapping[route.name]}
+            >
+              <Ionicons
+                name={iconMapping[route.name]}
+                size={24}
+                color={isFocused ? COLORS.primary : COLORS.textLight}
+              />
+              <Text
+                style={[
+                  styles.tabLabel,
+                  {
+                    color: isFocused ? COLORS.primary : COLORS.textLight,
+                    fontWeight: isFocused ? "800" : "500",
+                  },
+                ]}
+              >
+                {labelMapping[route.name]}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
 
 export default function MainTabNavigator() {
-  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textLight,
-        tabBarStyle: {
-          height: 65 + insets.bottom, //add bottom inset to height
-          paddingTop: 5,
-          paddingBottom: 5 + insets.bottom, // Add bottom inset to padding,
-          backgroundColor: "#FFFFFF",
-          borderTopWidth: 1,
-          borderTopColor: "#F0F0F0",
-          elevation: 0,
-        },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: "600",
-          marginBottom: 2,
-        },
-        tabBarIcon: ({ color }) => {
-          let iconName;
-          if (route.name === "Home") iconName = "home";
-          else if (route.name === "History") iconName = "time";
-          else if (route.name === "Profile") iconName = "person";
-          return <Ionicons name={iconName} size={22} color={color} />;
-        },
-      })}
+        lazy: true, // Performance optimization
+      }}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="History" component={HistoryScreen} />
@@ -2817,6 +3028,44 @@ export default function MainTabNavigator() {
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBarContainer: {
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.05)",
+    ...SHADOW.lg, // Stronger shadow for the edge-to-edge look
+  },
+  tabContent: {
+    flexDirection: "row",
+    height: 60,
+    alignItems: "center",
+    justifyContent: "space-around",
+  },
+  tabItem: {
+    flex: 1,
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 8,
+  },
+  tabLabel: {
+    fontSize: 10,
+    marginTop: 4,
+    letterSpacing: 0.3,
+  },
+  activeIndicator: {
+    position: "absolute",
+    top: -1, // Sits exactly on the top border
+    height: 3,
+    backgroundColor: COLORS.primary,
+    borderBottomLeftRadius: 2,
+    borderBottomRightRadius: 2,
+  },
+});
 </file>
 
 <file path="src/screens/AdminHubScreen.js">
@@ -4953,6 +5202,160 @@ export const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
+</file>
+
+<file path="src/utils/constants.js">
+import { Dimensions } from 'react-native';
+import { Skia } from '@shopify/react-native-skia';
+
+const { width } = Dimensions.get('window');
+
+export const DISPLAY_SIZE = Math.min(720, width);
+export const CAPTURE_SIZE = Math.min(1024, width);
+
+// Gamma-aware CVD simulation shader (SkSL).
+// Pipeline: per-channel calibration → sRGB → linear → CVD matrix → linear → sRGB.
+// `calib` is the per-channel scalar from Settings → Camera Calibration.
+// Pass (1,1,1) when no manual calibration is set.
+export const CVD_SHADER_SOURCE = `
+uniform shader contents;
+uniform half3 row0;
+uniform half3 row1;
+uniform half3 row2;
+uniform half3 calib;
+
+half4 main(float2 coord) {
+  half4 c = contents.eval(coord);
+  half3 calibrated = clamp(c.rgb * calib, half3(0.0), half3(1.0));
+  half3 lin = pow(calibrated, half3(2.2));
+  half3 sim = half3(dot(row0, lin), dot(row1, lin), dot(row2, lin));
+  sim = clamp(sim, half3(0.0), half3(1.0));
+  return half4(pow(sim, half3(0.4545)), c.a);
+}
+`;
+export const CVD_EFFECT = Skia.RuntimeEffect.Make(CVD_SHADER_SOURCE);
+
+// ─────────────────────────────────────────────────────────────────────────
+// Daltonization shader (Brettel/Fidaner) — GPU port of applyDaltonization.
+// Pipeline (per pixel):
+//   1. calibrate (per-channel multiply from Settings)
+//   2. sRGB → linear (γ 2.2)
+//   3. simulate CVD perception with sim matrix (sim0, sim1, sim2)
+//   4. error = original_linear − simulated
+//   5. redistribute error into surviving channels via err matrix
+//   6. linear → sRGB
+//   7. blend with calibrated original by `intensity` (0..1)
+//
+// Uniforms must be supplied by `getDaltonizationUniforms(cvdType, calib, intensity)`.
+// ─────────────────────────────────────────────────────────────────────────
+export const DALTONIZATION_SHADER_SOURCE = `
+uniform shader contents;
+uniform half3 sim0;
+uniform half3 sim1;
+uniform half3 sim2;
+uniform half3 err0;
+uniform half3 err1;
+uniform half3 err2;
+uniform half3 calib;
+uniform half intensity;
+
+half4 main(float2 coord) {
+  half4 c = contents.eval(coord);
+  half3 calibrated = clamp(c.rgb * calib, half3(0.0), half3(1.0));
+  half3 lin = pow(calibrated, half3(2.2));
+
+  half3 sim = half3(dot(sim0, lin), dot(sim1, lin), dot(sim2, lin));
+  half3 err = lin - sim;
+  half3 outLin = lin + half3(dot(err0, err), dot(err1, err), dot(err2, err));
+  outLin = clamp(outLin, half3(0.0), half3(1.0));
+
+  half3 enhanced = pow(outLin, half3(0.4545));
+  half3 blended = mix(calibrated, enhanced, intensity);
+  return half4(blended, c.a);
+}
+`;
+export const DALTONIZATION_EFFECT = Skia.RuntimeEffect.Make(
+  DALTONIZATION_SHADER_SOURCE,
+);
+
+// ─────────────────────────────────────────────────────────────────────────
+// Hue Rotation shader — GPU port of applyHueRotation.
+// HSV-band rotation with saturation gate and linear taper.
+//
+// Uniforms must be supplied by `getHueRotationUniforms(cvdType, calib, intensity)`.
+// ─────────────────────────────────────────────────────────────────────────
+export const HUE_ROTATION_SHADER_SOURCE = `
+uniform shader contents;
+uniform half3 calib;
+uniform half center;
+uniform half range;
+uniform half shift;
+uniform half satMin;
+uniform half intensity;
+
+half3 rgb2hsv(half3 c) {
+  half cmax = max(c.r, max(c.g, c.b));
+  half cmin = min(c.r, min(c.g, c.b));
+  half d = cmax - cmin;
+  half h = 0.0;
+  if (d > 0.0) {
+    if (cmax == c.r) {
+      h = mod((c.g - c.b) / d, 6.0);
+    } else if (cmax == c.g) {
+      h = (c.b - c.r) / d + 2.0;
+    } else {
+      h = (c.r - c.g) / d + 4.0;
+    }
+    h = h * 60.0;
+    if (h < 0.0) h += 360.0;
+  }
+  half s = cmax == 0.0 ? 0.0 : d / cmax;
+  return half3(h, s, cmax);
+}
+
+half3 hsv2rgb(half3 hsv) {
+  half h = hsv.x;
+  half s = hsv.y;
+  half v = hsv.z;
+  half c = v * s;
+  half hp = h / 60.0;
+  half x = c * (1.0 - abs(mod(hp, 2.0) - 1.0));
+  half3 rgb;
+  if (hp < 1.0) rgb = half3(c, x, 0.0);
+  else if (hp < 2.0) rgb = half3(x, c, 0.0);
+  else if (hp < 3.0) rgb = half3(0.0, c, x);
+  else if (hp < 4.0) rgb = half3(0.0, x, c);
+  else if (hp < 5.0) rgb = half3(x, 0.0, c);
+  else rgb = half3(c, 0.0, x);
+  return rgb + half3(v - c);
+}
+
+half4 main(float2 coord) {
+  half4 c = contents.eval(coord);
+  half3 calibrated = clamp(c.rgb * calib, half3(0.0), half3(1.0));
+  half3 hsv = rgb2hsv(calibrated);
+  half h = hsv.x;
+  half s = hsv.y;
+  half v = hsv.z;
+
+  half3 result = calibrated;
+  if (s >= satMin) {
+    half diff = abs(h - center);
+    half dist = diff > 180.0 ? 360.0 - diff : diff;
+    if (dist <= range) {
+      half weight = 1.0 - dist / range;
+      half newH = mod(h + shift * weight + 360.0, 360.0);
+      result = hsv2rgb(half3(newH, s, v));
+    }
+  }
+
+  half3 blended = mix(calibrated, result, intensity);
+  return half4(blended, c.a);
+}
+`;
+export const HUE_ROTATION_EFFECT = Skia.RuntimeEffect.Make(
+  HUE_ROTATION_SHADER_SOURCE,
+);
 </file>
 
 <file path="src/components/Header.js">
@@ -8599,327 +9002,366 @@ import {
   orderBy,
   query,
 } from "firebase/firestore";
-import { MotiView } from "moti";
 import { useEffect, useState } from "react";
 import {
   Dimensions,
-  Image,
   ScrollView,
+  StatusBar,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  FadeInRight,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { auth, db } from "../../firebaseConfig";
 import BackgroundBubbles from "../components/BackgroundBubbles";
-import { COLORS, SHADOW } from "../theme/colors";
-import { styles } from "../theme/styles";
+import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
 const { width } = Dimensions.get("window");
 
-// --- DOMINANT CARD COMPONENT ---
-const DominantCard = ({
-  bg,
-  onPress,
-  icon,
-  iconColor,
+// --- REUSABLE PREMIUM COMPONENTS ---
+
+const ActionCard = ({
   title,
   desc,
-  delay = 0,
-}) => (
-  <MotiView
-    from={{ opacity: 0, scale: 0.9 }}
-    animate={{ opacity: 1, scale: 1 }}
-    transition={{ type: "timing", duration: 800, delay }}
-  >
-    <TouchableOpacity activeOpacity={0.9} onPress={onPress}>
-      <MotiView
-        animate={{
-          scale: [1, 1.02, 1],
-          shadowOpacity: [0.1, 0.3, 0.1],
-        }}
-        transition={{
-          loop: true,
-          duration: 3000,
-          type: "timing",
-        }}
-        style={{
-          backgroundColor: bg,
-          borderRadius: 28,
-          padding: 24,
-          marginBottom: 16,
-          flexDirection: "row",
-          alignItems: "center",
-          borderWidth: 1,
-          borderColor: "rgba(255,255,255,0.6)",
-          ...SHADOW.lg,
-        }}
-      >
-        <View style={{ flex: 1 }}>
-          <Text
-            style={{
-              fontSize: 11,
-              fontWeight: "800",
-              color: iconColor,
-              letterSpacing: 1.5,
-              marginBottom: 4,
-            }}
-          >
-            RECOMMENDED
-          </Text>
-          <Text
-            style={{
-              fontSize: 24,
-              fontWeight: "900",
-              color: "#1A1A2E",
-              marginBottom: 6,
-            }}
-          >
-            {title}
-          </Text>
-          <Text
-            style={{
-              fontSize: 13,
-              color: "#4A4A4A",
-              lineHeight: 18,
-              paddingRight: 20,
-            }}
-          >
-            {desc}
-          </Text>
-        </View>
+  icon,
+  color,
+  onPress,
+  isDominant = false,
+  badge = null,
+}) => {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
 
-        <MotiView
-          animate={{ translateY: [-5, 5, -5] }}
-          transition={{ loop: true, duration: 2500, type: "timing" }}
-          style={{
-            width: 70,
-            height: 70,
-            borderRadius: 35,
-            backgroundColor: "rgba(255,255,255,0.5)",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Ionicons name={icon} size={36} color={iconColor} />
-        </MotiView>
-      </MotiView>
-    </TouchableOpacity>
-  </MotiView>
-);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
 
-// --- SECONDARY SMALL CARD ---
-const SecondaryCard = ({ bg, onPress, icon, iconColor, title, delay = 0 }) => (
-  <MotiView
-    from={{ opacity: 0, scale: 0.5 }}
-    animate={{ opacity: 1, scale: 1 }}
-    transition={{ type: "spring", delay }}
-    style={{ flex: 1 }}
-  >
-    <TouchableOpacity
-      onPress={onPress}
-      style={{
-        backgroundColor: bg,
-        borderRadius: 20,
-        padding: 16,
-        alignItems: "center",
-        justifyContent: "center",
-        height: 100,
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.3)",
-      }}
+  const handlePressIn = () => {
+    scale.value = withSpring(0.97, { damping: 15, stiffness: 200 });
+    opacity.value = withTiming(0.9);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 200 });
+    opacity.value = withTiming(1);
+  };
+
+  return (
+    <Animated.View
+      style={[animatedStyle, { width: isDominant ? "100%" : "48%" }]}
     >
-      <Ionicons
-        name={icon}
-        size={24}
-        color={iconColor}
-        style={{ marginBottom: 8 }}
-      />
-      <Text style={{ fontSize: 12, fontWeight: "700", color: "#1A1A2E" }}>
-        {title}
-      </Text>
-    </TouchableOpacity>
-  </MotiView>
-);
+      <TouchableOpacity
+        activeOpacity={1}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={onPress}
+        style={[
+          styles.baseCard,
+          isDominant ? styles.dominantCard : styles.secondaryCard,
+          { borderColor: color + "30" },
+        ]}
+      >
+        <View
+          style={isDominant ? styles.dominantContent : styles.secondaryContent}
+        >
+          <View style={[styles.iconBox, { backgroundColor: color + "15" }]}>
+            <Ionicons name={icon} size={isDominant ? 32 : 24} color={color} />
+          </View>
+
+          <View
+            style={isDominant ? styles.textGroup : styles.secondaryTextGroup}
+          >
+            {badge && (
+              <Text style={[styles.cardBadge, { color }]}>{badge}</Text>
+            )}
+            <Text style={styles.cardTitle}>{title}</Text>
+            {isDominant && <Text style={styles.cardDesc}>{desc}</Text>}
+          </View>
+
+          {isDominant && (
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={COLORS.textLight}
+            />
+          )}
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
 
 export default function HomeScreen({ navigation }) {
-  const userName = (auth.currentUser?.email || "Guest").split("@")[0];
   const insets = useSafeAreaInsets();
-  const [visionProfile, setVisionProfile] = useState("Pending");
+  const [visionProfile, setVisionProfile] = useState("Unscreened");
+  const userName = (auth.currentUser?.email || "Guest").split("@")[0];
 
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) return;
+
     const q = query(
       collection(db, "users", user.uid, "history"),
       orderBy("date", "desc"),
       limit(1),
     );
-    const unsub = onSnapshot(q, (snap) => {
+
+    return onSnapshot(q, (snap) => {
       if (!snap.empty) {
-        const data = snap.docs[0].data();
-        setVisionProfile(data.diagnosis || "Pending");
-      } else {
-        setVisionProfile("Pending");
+        setVisionProfile(snap.docs[0].data().diagnosis || "Normal Vision");
       }
     });
-    return () => unsub();
   }, []);
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" />
       <BackgroundBubbles />
 
-      {/* Sticky disclaimer — notch-aware */}
-      <View style={{ height: insets.top, backgroundColor: "transparent" }} />
-
-      {/* 2. Sticky disclaimer — now safely below the notch/status bar */}
+      {/* FIXED: Disclaimer is now an integrated, non-intrusive utility banner */}
       <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 6,
-          backgroundColor: "#FFF8E1",
-          paddingVertical: 8,
-          borderBottomWidth: 1,
-          borderBottomColor: "#FFE082",
-        }}
+        style={[styles.disclaimer, { paddingTop: insets.top + SPACING.xs }]}
       >
-        <Ionicons name="warning-outline" size={12} color="#F59E0B" />
-        <Text style={{ fontSize: 10, fontWeight: "700", color: "#F59E0B" }}>
-          NOT A MEDICAL DIAGNOSIS — SCREENING ONLY
+        <Ionicons name="shield-checkmark" size={12} color={COLORS.warning} />
+        <Text style={styles.disclaimerText}>
+          SCREENING PURPOSE ONLY • NOT A MEDICAL DIAGNOSIS
         </Text>
       </View>
 
       <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+        contentContainerStyle={[
+          styles.scrollBody,
+          { paddingBottom: insets.bottom + SPACING.xl },
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Welcome Section */}
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 30,
-            marginTop: 10,
-          }}
+        {/* WELCOME SECTION: Improved hierarchy and spatial balance */}
+        <Animated.View
+          entering={FadeInDown.duration(800)}
+          style={styles.header}
         >
-          <View>
-            <Text
-              style={{
-                color: COLORS.textLight,
-                fontSize: 14,
-                fontWeight: "600",
-              }}
-            >
-              Hello, {userName}
-            </Text>
-            <Text
-              style={{ fontSize: 32, fontWeight: "900", color: COLORS.text }}
-            >
-              {"Welcome to \n ReColor"}
-            </Text>
-            <View
-              style={{
-                marginTop: 8,
-                alignSelf: "flex-start",
-                backgroundColor: COLORS.surfaceAlt,
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: COLORS.primary + "40",
-                flexDirection: "row",
-                alignItems: "center",
-              }}
-            >
-              <Ionicons
-                name="eye"
-                size={14}
-                color={COLORS.primary}
-                style={{ marginRight: 4 }}
-              />
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: "700",
-                  color: COLORS.primary,
-                }}
-              >
-                Vision Profile: {visionProfile}
-              </Text>
+          <View style={styles.headerText}>
+            <Text style={styles.greeting}>Good day, {userName}</Text>
+            <Text style={styles.mainTitle}>Welcome to{"\n"}ReColor</Text>
+
+            <View style={styles.profileBadge}>
+              <View style={styles.pulseDot} />
+              <Text style={styles.profileText}>Status: {visionProfile}</Text>
             </View>
           </View>
-          <MotiView
-            from={{ rotate: "0deg" }}
-            animate={{ rotate: "10deg" }}
-            transition={{ loop: true, repeatReverse: true, duration: 2000 }}
-          >
-            <Image
-              source={require("../../assets/icon.png")}
-              style={{ width: 150, height: 150, resizeMode: "contain" }}
-            />
-          </MotiView>
+
+          <Animated.Image
+            entering={FadeInRight.delay(300).springify()}
+            source={require("../../assets/icon.png")}
+            style={styles.heroLogo}
+          />
+        </Animated.View>
+
+        {/* PRIMARY ACTIONS: Choreographed entry */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>CLINICAL TOOLS</Text>
+
+          <ActionCard
+            isDominant
+            title="Vision Assessment"
+            desc="Standardized Ishihara screening to identify specific color sensitivities with clinical accuracy."
+            icon="eye-outline"
+            color={COLORS.primary}
+            badge="RECOMMENDED"
+            onPress={() => navigation.navigate("IshiharaIntro")}
+          />
+
+          <ActionCard
+            isDominant
+            title="Cameras and ColorBlind Simulation"
+            desc="Apply adaptive enhancement filters and identify colors via live camera processing."
+            icon="camera-outline"
+            color="#9C27B0"
+            onPress={() => navigation.navigate("CameraEnhance")}
+          />
         </View>
 
-        {/* DOMINANT CARD 1: VISION ASSESSMENT */}
-        <DominantCard
-          bg="#E3F2FD" // Light Blue
-          icon="eye"
-          iconColor="#2196F3"
-          title="Vision Assessment"
-          desc="Standardized Ishihara screening to identify your specific color sensitivity."
-          onPress={() => navigation.navigate("IshiharaIntro")}
-          delay={200}
-        />
-
-        {/* DOMINANT CARD 2: VISION ASSISTANT */}
-        <DominantCard
-          bg="#F3E5F5" // Light Purple
-          icon="camera"
-          iconColor="#9C27B0"
-          title="Camera and ColorBlind Simulation"
-          desc="Point your camera to apply adaptive correction and identify colors in real-time."
-          onPress={() => navigation.navigate("CameraEnhance")}
-          delay={400}
-        />
-
-        {/* SECONDARY ROW */}
-        <Text
-          style={{
-            fontSize: 12,
-            fontWeight: "800",
-            color: "#999",
-            marginBottom: 12,
-            letterSpacing: 1,
-          }}
-        >
-          TOOLS & RESEARCH
-        </Text>
-        <View style={{ flexDirection: "row", gap: 12 }}>
-          <SecondaryCard
-            bg="#FCE4EC"
-            title="Education"
-            icon="book"
-            iconColor="#E91E63"
-            onPress={() => navigation.navigate("EducationList")}
-            delay={600}
-          />
-          <SecondaryCard
-            bg="#E8F5E9"
-            title="Survey"
-            icon="clipboard"
-            iconColor="#4CAF50"
-            onPress={() => navigation.navigate("Survey")}
-            delay={700}
-          />
+        {/* SECONDARY ACTIONS: Clean grid alignment */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>KNOWLEDGE BASE</Text>
+          <View style={styles.gridRow}>
+            <ActionCard
+              title="Education"
+              icon="book-outline"
+              color="#E91E63"
+              onPress={() => navigation.navigate("EducationList")}
+            />
+            <ActionCard
+              title="Survey"
+              icon="stats-chart-outline"
+              color="#4CAF50"
+              onPress={() => navigation.navigate("Survey")}
+            />
+          </View>
         </View>
       </ScrollView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  scrollBody: {
+    paddingHorizontal: SPACING.lg,
+  },
+  disclaimer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#FFF8E1",
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#FFE082",
+    zIndex: 10,
+  },
+  disclaimerText: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#B45309",
+    letterSpacing: 0.5,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.xl,
+  },
+  headerText: {
+    flex: 1,
+  },
+  greeting: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.textLight,
+    marginBottom: 4,
+  },
+  mainTitle: {
+    fontSize: 34,
+    fontWeight: "900",
+    color: COLORS.text,
+    lineHeight: 40,
+    letterSpacing: -0.5,
+  },
+  profileBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.card,
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: RADIUS.md,
+    marginTop: SPACING.md,
+    ...SHADOW.sm,
+  },
+  pulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.success,
+    marginRight: 8,
+  },
+  profileText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: COLORS.text,
+  },
+  heroLogo: {
+    width: 100,
+    height: 100,
+    resizeMode: "contain",
+  },
+  section: {
+    marginBottom: SPACING.xl,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: COLORS.textLight,
+    letterSpacing: 1.5,
+    marginBottom: SPACING.md,
+    opacity: 0.6,
+  },
+  baseCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.xl,
+    borderWidth: 1,
+    ...SHADOW.md,
+  },
+  dominantCard: {
+    padding: SPACING.lg,
+    marginBottom: SPACING.md,
+  },
+  secondaryCard: {
+    padding: SPACING.md,
+    height: 120,
+    justifyContent: "center",
+  },
+  dominantContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  secondaryContent: {
+    alignItems: "center",
+  },
+  iconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: RADIUS.lg,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  textGroup: {
+    flex: 1,
+    marginLeft: SPACING.md,
+    marginRight: SPACING.sm,
+  },
+  secondaryTextGroup: {
+    marginTop: SPACING.sm,
+    alignItems: "center",
+  },
+  cardBadge: {
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: COLORS.text,
+  },
+  cardDesc: {
+    fontSize: 13,
+    color: COLORS.textLight,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  gridRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+});
 </file>
 
 <file path="src/screens/ResearchDashboardScreen.js">
@@ -9294,10 +9736,18 @@ export default function ResearchDashboardScreen({ navigation }) {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Slider from "@react-native-community/slider";
-import { collection, doc, getDoc, getDocs } from "firebase/firestore";
+import * as Haptics from "expo-haptics";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+} from "firebase/firestore";
 import { useEffect, useState } from "react";
 import {
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -9305,13 +9755,16 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { auth, db, signOut } from "../../firebaseConfig";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BackgroundBubbles from "../components/BackgroundBubbles";
-import Header from "../components/Header";
+
+import { auth, db } from "../../firebaseConfig";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 import { loadCalibration } from "../utils/cameraCalibration";
 
 export default function SettingsScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [intensity, setIntensity] = useState(100);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [expertRole, setExpertRole] = useState(null);
@@ -9328,63 +9781,80 @@ export default function SettingsScreen({ navigation }) {
     return unsub;
   }, [navigation]);
 
-  const refreshCalibration = () => {
-    loadCalibration().then(setCalibration);
-  };
-
   const loadSettings = async () => {
-    const savedIntensity = await AsyncStorage.getItem("@recolor_intensity");
+    const savedIntensity = await AsyncStorage.getItem("filterIntensity");
     const savedAudio = await AsyncStorage.getItem("audio_feedback_enabled");
-    if (savedIntensity) setIntensity(Number(savedIntensity));
+    if (savedIntensity) setIntensity(parseFloat(savedIntensity));
     if (savedAudio) setAudioEnabled(savedAudio === "true");
   };
 
+  const saveIntensity = async (val) => {
+    setIntensity(val);
+    await AsyncStorage.setItem("filterIntensity", val.toString());
+  };
+
   const checkExpertStatus = async () => {
-    if (user) {
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      if (
-        userDoc.exists() &&
-        (userDoc.data().role === "admin" ||
-          userDoc.data().role === "researcher")
-      ) {
-        setExpertRole(userDoc.data().role);
-      }
-    }
+    if (!user) return;
+    const docRef = doc(db, "users", user.uid);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) setExpertRole(docSnap.data().role);
   };
 
   const fetchTestCount = async () => {
-    if (user) {
-      try {
-        const snap = await getDocs(
-          collection(db, "users", user.uid, "history"),
-        );
-        setTestCount(snap.size);
-      } catch (error) {
-        console.error("Could not fetch test count:", error);
-      }
-    }
+    if (!user) return;
+    const q = collection(db, "users", user.uid, "history");
+    const snap = await getDocs(q);
+    setTestCount(snap.size);
   };
 
-  const showInfo = (title, message) => {
-    Alert.alert(title, message);
+  const refreshCalibration = async () => {
+    const cal = await loadCalibration();
+    setCalibration(cal);
   };
-
   const handleResetOnboarding = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
-      "Reset Experience",
-      "This will log you out and restart the app from the welcome tour. Continue?",
+      "Reset Tutorial",
+      "This will clear your onboarding status. You will be redirected to the initial vision screening and app walkthrough.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Reset",
+          text: "Reset & Restart",
+          style: "default",
+          onPress: async () => {
+            try {
+              // Clear the local flag that bypasses onboarding
+              await AsyncStorage.removeItem("hasSeenOnboarding");
+              // Force navigation back to the start of the clinical flow
+              navigation.replace("IshiharaOnboarding");
+            } catch (error) {
+              console.error("Failed to reset onboarding:", error);
+            }
+          },
+        },
+      ],
+    );
+  };
+  const handleDeleteAccount = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    Alert.alert(
+      "Delete Account",
+      "This action is irreversible. All clinical history and calibration data will be permanently erased.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Everything",
           style: "destructive",
           onPress: async () => {
             try {
-              await AsyncStorage.removeItem("@recolor_onboarded");
-              await signOut(auth);
-              navigation.replace("Splash");
-            } catch (e) {
-              Alert.alert("Error", "Could not reset the application state.");
+              await deleteDoc(doc(db, "users", user.uid));
+              await auth.currentUser.delete();
+              navigation.replace("Login");
+            } catch (error) {
+              Alert.alert(
+                "Error",
+                "Please re-authenticate to perform this action.",
+              );
             }
           },
         },
@@ -9394,761 +9864,308 @@ export default function SettingsScreen({ navigation }) {
 
   return (
     <View style={styles.root}>
-      <Header title="Settings" back />
       <BackgroundBubbles />
-      <ScrollView contentContainerStyle={styles.scroll}>
-        {/* PROFILE CARD */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>PROFILE</Text>
-          <View style={styles.card}>
-            <Text style={styles.subtext}>Name</Text>
-            <Text style={styles.label}>
-              {user?.email?.split("@")[0] || "User"}
-            </Text>
-            <View style={{ height: 10 }} />
-            <Text style={styles.subtext}>Email</Text>
-            <Text style={styles.label}>{user?.email}</Text>
-          </View>
-        </View>
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <Ionicons name="chevron-back" size={24} color={COLORS.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>System Settings</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
-        {/* PREFERENCES CARD */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>PREFERENCES</Text>
-          <View style={styles.card}>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                marginBottom: 8,
-              }}
-            >
-              <Text style={styles.label}>
-                Color Enhancement Intensity: {Math.round(intensity)}%
-              </Text>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingBottom: insets.bottom + 20 },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View entering={FadeInDown.duration(400)}>
+          {/* VISION ENGINE SETTINGS */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>VISION ENGINE</Text>
+            <View style={styles.card}>
+              <View style={styles.rowBetween}>
+                <View style={styles.rowLabelGroup}>
+                  <Ionicons
+                    name="color-filter-outline"
+                    size={20}
+                    color={COLORS.primary}
+                  />
+                  <Text style={styles.label}>Filter Intensity</Text>
+                </View>
+                <Text style={styles.valueText}>
+                  {Math.round(intensity * 100)}%
+                </Text>
+              </View>
+              <Slider
+                style={styles.slider}
+                minimumValue={0}
+                maximumValue={1}
+                value={intensity}
+                onSlidingComplete={saveIntensity}
+                minimumTrackTintColor={COLORS.primary}
+                maximumTrackTintColor="#CBD5E1"
+                thumbTintColor={Platform.OS === "ios" ? "#FFF" : COLORS.primary}
+              />
+
+              <View style={[styles.rowBetween, { marginTop: 24 }]}>
+                <View style={styles.rowLabelGroup}>
+                  <Ionicons
+                    name="volume-medium-outline"
+                    size={20}
+                    color={COLORS.primary}
+                  />
+                  <Text style={styles.label}>Audio Guidance</Text>
+                </View>
+                <Switch
+                  value={audioEnabled}
+                  onValueChange={(val) => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setAudioEnabled(val);
+                    AsyncStorage.setItem(
+                      "audio_feedback_enabled",
+                      val.toString(),
+                    );
+                  }}
+                  trackColor={{ false: "#CBD5E1", true: COLORS.primary }}
+                />
+              </View>
+
+              {/* RESTORED: CAMERA CALIBRATION TRIGGER */}
               <TouchableOpacity
-                onPress={() =>
-                  showInfo(
-                    "Enhancement Intensity",
-                    "Adjusts the strength of the color enhancement filter applied to the camera feed.",
-                  )
-                }
-                style={{ marginLeft: 8 }}
+                style={styles.calibrationRow}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  navigation.navigate("CameraCalibration");
+                }}
               >
+                <View style={styles.rowLabelGroup}>
+                  <Ionicons
+                    name="aperture-outline"
+                    size={20}
+                    color={COLORS.primary}
+                  />
+                  <View>
+                    <Text style={styles.label}>Camera Calibration</Text>
+                    <Text
+                      style={[
+                        styles.statusValue,
+                        {
+                          color: calibration ? COLORS.success : COLORS.warning,
+                        },
+                      ]}
+                    >
+                      {calibration
+                        ? "Manual Balance Active"
+                        : "Using Auto-Balance (Uncalibrated)"}
+                    </Text>
+                  </View>
+                </View>
                 <Ionicons
-                  name="information-circle-outline"
+                  name="chevron-forward"
                   size={18}
                   color={COLORS.textLight}
                 />
               </TouchableOpacity>
             </View>
-            <Slider
-              style={styles.slider}
-              minimumValue={0}
-              maximumValue={100}
-              value={intensity}
-              onSlidingComplete={(v) => {
-                setIntensity(v);
-                AsyncStorage.setItem("@recolor_intensity", v.toString());
-              }}
-              minimumTrackTintColor={COLORS.primary}
-            />
-            <View style={[styles.row, { marginTop: 20 }]}>
-              <View
-                style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
-              >
-                <Text style={styles.label}>Audio Feedback</Text>
-                <TouchableOpacity
-                  onPress={() =>
-                    showInfo(
-                      "Audio Feedback",
-                      "Enables spoken color names in the Color Identifier mode.",
-                    )
-                  }
-                  style={{ marginLeft: 8 }}
-                >
-                  <Ionicons
-                    name="information-circle-outline"
-                    size={18}
-                    color={COLORS.textLight}
-                  />
-                </TouchableOpacity>
-              </View>
-              <Switch
-                value={audioEnabled}
-                onValueChange={(v) => {
-                  setAudioEnabled(v);
-                  AsyncStorage.setItem("audio_feedback_enabled", v.toString());
-                }}
-                trackColor={{ true: COLORS.primary }}
-              />
-            </View>
-
-            <TouchableOpacity
-              style={[styles.row, { marginTop: 20 }]}
-              onPress={() => navigation.navigate("CameraCalibration")}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name="color-wand-outline"
-                size={22}
-                color={COLORS.primary}
-              />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Text style={styles.label}>Camera Calibration</Text>
-                  <TouchableOpacity
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      showInfo(
-                        "Camera Calibration",
-                        "Corrects cross-device color drift by setting a manual white-balance reference.",
-                      );
-                    }}
-                    style={{ marginLeft: 8, padding: 4 }}
-                  >
-                    <Ionicons
-                      name="information-circle-outline"
-                      size={18}
-                      color={COLORS.textLight}
-                    />
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.subtextCount}>
-                  {calibration
-                    ? `Calibrated · R${calibration.rScale.toFixed(2)} G${calibration.gScale.toFixed(2)} B${calibration.bScale.toFixed(2)}`
-                    : "Not calibrated · using auto white-balance"}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#CCC" />
-            </TouchableOpacity>
           </View>
-        </View>
 
-        {/* DATA CARD */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>DATA</Text>
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() =>
-              navigation.navigate("MainTabs", { screen: "History" })
-            }
-          >
-            <View style={styles.row}>
-              <Ionicons name="time-outline" size={24} color="#333" />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.label}>View Test History</Text>
-                <Text style={styles.subtextCount}>
-                  {testCount} {testCount === 1 ? "test" : "tests"} completed
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#CCC" />
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* EXPERT UTILITIES */}
-        {expertRole && (
+          {/* CLINICAL DATA */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>EXPERT UTILITIES</Text>
+            <Text style={styles.sectionTitle}>DIAGNOSTIC STATUS</Text>
+            <View style={styles.card}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Total Assessments</Text>
+                <Text style={styles.infoValue}>{testCount}</Text>
+              </View>
+              <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+                <Text style={styles.infoLabel}>Cloud Sync Status</Text>
+                <Text style={[styles.infoValue, { color: COLORS.success }]}>
+                  ENCRYPTED
+                </Text>
+              </View>
 
-            <TouchableOpacity
-              style={styles.expertBtn}
-              onPress={() =>
-                navigation.navigate("AdminHub", { role: expertRole })
-              }
-            >
-              <Ionicons
-                name="shield-checkmark"
-                size={20}
-                color="#FFF"
-                style={{ marginRight: 10 }}
-              />
-              <Text style={styles.expertBtnText}>Launch Expert Portal</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.expertBtn, styles.resetBtn]}
-              onPress={handleResetOnboarding}
-            >
-              <Ionicons
-                name="refresh"
-                size={20}
-                color={COLORS.primary}
-                style={{ marginRight: 10 }}
-              />
-              <Text style={[styles.expertBtnText, { color: COLORS.primary }]}>
-                Reset Onboarding Flow
-              </Text>
-            </TouchableOpacity>
+              {expertRole && (
+                <TouchableOpacity
+                  style={styles.expertBtn}
+                  onPress={() =>
+                    navigation.navigate("AdminHub", { role: expertRole })
+                  }
+                >
+                  <Ionicons name="ribbon-outline" size={18} color="#FFF" />
+                  <Text style={styles.expertBtnText}>
+                    View {expertRole.toUpperCase()} Dashboard
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-        )}
+          {/* SUPPORT & UTILITIES */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>SUPPORT & UTILITIES</Text>
+            <View style={styles.card}>
+              <TouchableOpacity
+                style={[styles.infoRow, { borderBottomWidth: 0 }]}
+                onPress={handleResetOnboarding}
+              >
+                <View style={styles.rowLabelGroup}>
+                  <Ionicons
+                    name="refresh-circle-outline"
+                    size={20}
+                    color={COLORS.primary}
+                  />
+                  <Text style={styles.label}>Reset Onboarding</Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={COLORS.textLight}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+          {/* ACCOUNT DESTRUCTION */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>ACCOUNT MANAGEMENT</Text>
+            <View
+              style={[styles.card, { borderColor: "#FEE2E2", borderWidth: 1 }]}
+            >
+              <Text style={styles.dangerTitle}>Danger Zone</Text>
+              <Text style={styles.subtext}>
+                Deleting your account will purge all Ishihara results and custom
+                color calibration parameters.
+              </Text>
+              <TouchableOpacity
+                style={styles.deleteBtn}
+                onPress={handleDeleteAccount}
+              >
+                <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                <Text style={styles.deleteBtnText}>
+                  Delete Account Permanently
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
-        {/* ACCOUNT CARD */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ACCOUNT</Text>
-          <TouchableOpacity
-            style={[styles.expertBtn, { backgroundColor: COLORS.danger }]}
-            onPress={() => auth.signOut()}
-          >
-            <Text style={styles.expertBtnText}>Log Out</Text>
-          </TouchableOpacity>
-        </View>
+          <Text style={styles.footerVersion}>ReColor Clinical • v1.0.4</Text>
+        </Animated.View>
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.background },
-  scroll: { padding: SPACING.md },
+  root: { flex: 1, backgroundColor: "#F8FAFC" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: SPACING.md,
+    paddingBottom: 15,
+    backgroundColor: "#FFF",
+    ...SHADOW.sm,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F1F5F9",
+  },
+  headerTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text },
+  scroll: { padding: SPACING.lg },
   section: { marginBottom: 30 },
   sectionTitle: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#AAA",
+    color: COLORS.textLight,
     letterSpacing: 1.5,
     marginBottom: 12,
+    marginLeft: 4,
   },
   card: {
     backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
     ...SHADOW.sm,
   },
-  row: { flexDirection: "row", alignItems: "center", gap: 10 },
-  label: { fontSize: 16, fontWeight: "600", color: COLORS.text },
-  slider: { width: "100%", height: 40 },
-  subtext: { fontSize: 11, color: "#888", marginTop: 8 },
-  subtextCount: { fontSize: 12, color: "#999", marginTop: 2 },
+  rowBetween: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  rowLabelGroup: { flexDirection: "row", alignItems: "center", gap: 12 },
+  label: { fontSize: 16, fontWeight: "700", color: COLORS.text },
+  valueText: { fontSize: 14, fontWeight: "800", color: COLORS.primary },
+  slider: { width: "100%", height: 40, marginTop: 12 },
+  statusValue: { fontSize: 11, fontWeight: "700", marginTop: 2 },
+  calibrationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 24,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+  },
+  subtext: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginTop: 8,
+    lineHeight: 18,
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  infoLabel: { fontSize: 14, color: COLORS.text, fontWeight: "600" },
+  infoValue: { fontSize: 14, color: COLORS.textLight, fontWeight: "800" },
   expertBtn: {
     backgroundColor: COLORS.primary,
-    padding: 16,
-    borderRadius: RADIUS.md,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
-    ...SHADOW.sm,
+    padding: 14,
+    borderRadius: RADIUS.lg,
+    marginTop: 16,
+    gap: 8,
   },
-  resetBtn: {
-    backgroundColor: "#c8ff00",
-    borderWidth: 0,
-    borderColor: COLORS.primary,
+  expertBtnText: { color: "#FFF", fontWeight: "800", fontSize: 14 },
+  dangerTitle: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#EF4444",
+    marginBottom: 4,
   },
-  expertBtnText: { color: "#FFF", fontWeight: "bold" },
+  deleteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 14,
+    borderRadius: RADIUS.lg,
+    marginTop: 16,
+    gap: 8,
+    backgroundColor: "#FFF",
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+  },
+  deleteBtnText: { color: "#EF4444", fontWeight: "800", fontSize: 14 },
+  footerVersion: {
+    textAlign: "center",
+    fontSize: 10,
+    color: COLORS.textLight,
+    marginTop: 10,
+    opacity: 0.5,
+  },
 });
-</file>
-
-<file path="src/screens/CameraEnhanceScreen.js">
-import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import Slider from "@react-native-community/slider";
-import { useIsFocused } from "@react-navigation/native";
-import * as FileSystem from "expo-file-system/legacy";
-import * as Haptics from "expo-haptics";
-import * as ImageManipulator from "expo-image-manipulator";
-import * as MediaLibrary from "expo-media-library";
-import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Image,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import {
-  Camera,
-  useCameraDevice,
-  useCameraPermission,
-} from "react-native-vision-camera";
-import { auth, db } from "../../firebaseConfig";
-import {
-  applyDaltonization,
-  applyHueRotation,
-  decodeJpegBase64,
-  encodeToDataUri,
-} from "../../tensorHelper";
-import ModeSelector from "../components/ModeSelector";
-import { COLORS } from "../theme/colors";
-import { styles } from "../theme/styles";
-import {
-  applyCalibrationToBuffer,
-  resolveCalibration,
-} from "../utils/cameraCalibration";
-import { ScreenErrorBoundary } from "../utils/logger";
-
-const { width } = Dimensions.get("window");
-
-function CameraEnhanceScreenInner({ navigation }) {
-  const { hasPermission, requestPermission } = useCameraPermission();
-  const isFocused = useIsFocused();
-  const [cameraPosition, setCameraPosition] = useState("back");
-  const [cvdType, setCvdType] = useState("Off");
-  const [algorithm, setAlgorithm] = useState("daltonization");
-  const [showModal, setShowModal] = useState(false);
-  const [cameraReady, setCameraReady] = useState(false);
-  const [frozen, setFrozen] = useState(false);
-  const [processing, setProcessing] = useState(false);
-  const [resultUri, setResultUri] = useState(null);
-  const [showOriginal, setShowOriginal] = useState(false);
-
-  const cameraRef = useRef(null);
-  const isMountedRef = useRef(true);
-  const decodedRef = useRef(null);
-  const frozenUriRef = useRef(null);
-  const intensityRef = useRef(100);
-  const [intensity, setIntensity] = useState(100);
-  const device = useCameraDevice(cameraPosition);
-
-  useEffect(() => {
-    AsyncStorage.getItem("@recolor_intensity").then((val) => {
-      if (val !== null) {
-        intensityRef.current = Number(val);
-        setIntensity(Number(val));
-      }
-    });
-
-    const fetchCVDDefault = async () => {
-      try {
-        let diag = await AsyncStorage.getItem("@recolor_latest_diagnosis");
-
-        if (!diag && auth.currentUser) {
-          const q = query(
-            collection(db, "users", auth.currentUser.uid, "history"),
-            orderBy("date", "desc"),
-            limit(1),
-          );
-          const snap = await getDocs(q);
-          if (!snap.empty) {
-            diag = snap.docs[0].data().diagnosis || "";
-            await AsyncStorage.setItem("@recolor_latest_diagnosis", diag);
-          }
-        }
-
-        if (diag) {
-          if (diag.includes("Protan")) setCvdType("Protan");
-          else if (diag.includes("Deutan")) setCvdType("Deutan");
-          else if (diag.includes("Tritan")) setCvdType("Tritan");
-          else setCvdType("Off");
-        } else {
-          setCvdType("Off");
-        }
-      } catch (e) {
-        console.warn("Failed to fetch CVD default", e);
-      }
-    };
-
-    const unsubscribe = navigation.addListener("focus", () => {
-      fetchCVDDefault();
-    });
-
-    fetchCVDDefault();
-
-    isMountedRef.current = true;
-    const timer = setTimeout(() => {
-      if (isMountedRef.current) setCameraReady(true);
-    }, 700);
-    return () => {
-      isMountedRef.current = false;
-      clearTimeout(timer);
-      unsubscribe();
-    };
-  }, [navigation]);
-
-  useEffect(() => {
-    if (!hasPermission) requestPermission();
-  }, [hasPermission]);
-
-  const runEnhancement = useCallback((cvd, algo) => {
-    if (!decodedRef.current || cvd === "Off") return null;
-    const { data, width: w, height: h } = decodedRef.current;
-    const src = { data, width: w, height: h };
-
-    const enhanced =
-      algo === "hue_rotation"
-        ? applyHueRotation(src, cvd)
-        : applyDaltonization(src, null, cvd);
-
-    const blend = intensityRef.current / 100;
-    if (blend >= 1) return encodeToDataUri(enhanced, w, h);
-
-    const blended = new Uint8Array(data.length);
-    for (let i = 0; i < data.length; i += 4) {
-      blended[i] = Math.round(data[i] * (1 - blend) + enhanced[i] * blend);
-      blended[i + 1] = Math.round(
-        data[i + 1] * (1 - blend) + enhanced[i + 1] * blend,
-      );
-      blended[i + 2] = Math.round(
-        data[i + 2] * (1 - blend) + enhanced[i + 2] * blend,
-      );
-      blended[i + 3] = data[i + 3];
-    }
-    return encodeToDataUri(blended, w, h);
-  }, []);
-
-  const handleIntensityCommit = (val) => {
-    intensityRef.current = val;
-    setIntensity(val);
-    AsyncStorage.setItem("@recolor_intensity", String(val));
-    if (frozen && decodedRef.current) {
-      setProcessing(true);
-      setTimeout(() => {
-        setResultUri(
-          runEnhancement(cvdType, algorithm) || frozenUriRef.current,
-        );
-        setProcessing(false);
-      }, 50);
-    }
-  };
-
-  const handleFreeze = async () => {
-    if (!cameraRef.current) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    setProcessing(true);
-    try {
-      const photo = await cameraRef.current.takePhoto({
-        qualityPrioritization: "quality",
-        enableShutterSound: false,
-      });
-      const resized = await ImageManipulator.manipulateAsync(
-        `file://${photo.path}`,
-        [{ resize: { width: 1040 } }],
-        {
-          base64: true,
-          format: ImageManipulator.SaveFormat.JPEG,
-          compress: 0.92,
-        },
-      );
-      if (!isMountedRef.current) return;
-      frozenUriRef.current = resized.uri;
-      decodedRef.current = decodeJpegBase64(resized.base64);
-
-      const calib = await resolveCalibration(decodedRef.current.data);
-      applyCalibrationToBuffer(decodedRef.current.data, calib);
-
-      setResultUri(runEnhancement(cvdType, algorithm) || resized.uri);
-      setFrozen(true);
-    } catch (e) {
-      Alert.alert("Error", "Processing failed.");
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleSave = async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-      () => {},
-    );
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== "granted") {
-        return Alert.alert(
-          "Permission needed",
-          "Allow gallery access in settings.",
-        );
-      }
-
-      const targetUri = showOriginal ? frozenUriRef.current : resultUri;
-      if (!targetUri) return;
-
-      let b64;
-      if (targetUri.startsWith("data:")) {
-        b64 = targetUri.split(",")[1];
-      } else {
-        b64 = await FileSystem.readAsStringAsync(targetUri, {
-          encoding: "base64",
-        });
-      }
-
-      const tmpPath = `${FileSystem.documentDirectory}recolor_final_save_${Date.now()}.jpg`;
-      await FileSystem.writeAsStringAsync(tmpPath, b64, { encoding: "base64" });
-
-      const asset = await MediaLibrary.createAssetAsync(tmpPath);
-      const userName = auth.currentUser?.email?.split("@")[0] || "Guest";
-      const albumName = `ReColor_${userName}`;
-      const album = await MediaLibrary.getAlbumAsync(albumName);
-
-      if (!album) {
-        await MediaLibrary.createAlbumAsync(albumName, asset, false);
-      } else {
-        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
-      }
-
-      await FileSystem.deleteAsync(tmpPath, { idempotent: true });
-      Alert.alert("Saved", "Photo added to your ReColor album.");
-    } catch (e) {
-      Alert.alert("Error", "Could not save photo.");
-    }
-  };
-
-  const handleReset = () => {
-    setFrozen(false);
-    setResultUri(null);
-    decodedRef.current = null;
-    frozenUriRef.current = null;
-  };
-
-  const showInfo = () => {
-    Alert.alert(
-      "How to use Enhancement",
-      "BEFORE CAPTURE:\nFrame your subject and tap the shutter button.\n\nAFTER CAPTURE:\nYour diagnosed filter is automatically applied. You can change the filter type or adjust the intensity slider to enhance color distinguishability.",
-    );
-  };
-
-  const displayUri = showOriginal ? frozenUriRef.current : resultUri;
-
-  return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
-      {!frozen ? (
-        device &&
-        cameraReady && (
-          <Camera
-            ref={cameraRef}
-            style={StyleSheet.absoluteFill}
-            device={device}
-            isActive={isFocused}
-            photo
-          />
-        )
-      ) : (
-        <Image
-          source={{ uri: displayUri }}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-        />
-      )}
-
-      {processing && (
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: "rgba(0,0,0,0.7)",
-              justifyContent: "center",
-              alignItems: "center",
-              zIndex: 10,
-            },
-          ]}
-        >
-          <ActivityIndicator size="large" color="#FFF" />
-          <Text style={{ color: "#FFF", marginTop: 12 }}>Processing...</Text>
-        </View>
-      )}
-
-      {frozen && !processing && (
-        <View
-          style={{
-            position: "absolute",
-            top: 120,
-            bottom: 200,
-            left: 50,
-            right: 50,
-            zIndex: 5,
-          }}
-          onStartShouldSetResponder={() => true}
-          onResponderGrant={() => setShowOriginal(true)}
-          onResponderRelease={() => setShowOriginal(false)}
-        />
-      )}
-
-      <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
-        <View style={styles.camTopBar}>
-          <TouchableOpacity
-            onPress={() => (frozen ? handleReset() : navigation.goBack())}
-          >
-            <Ionicons
-              name={frozen ? "close" : "arrow-back"}
-              size={26}
-              color="#FFF"
-            />
-          </TouchableOpacity>
-          <Text style={{ color: "#FFF", fontWeight: "bold" }}>
-            {frozen
-              ? showOriginal
-                ? "Original"
-                : `${cvdType} Enhanced`
-              : "Color Enhancement"}
-          </Text>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <TouchableOpacity onPress={showInfo} style={{ marginRight: 15 }}>
-              <Ionicons
-                name="information-circle-outline"
-                size={26}
-                color="#FFF"
-              />
-            </TouchableOpacity>
-            {!frozen && (
-              <TouchableOpacity onPress={() => setShowModal(true)}>
-                <Ionicons name="menu" size={28} color="#FFF" />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
-        {/* ALGORITHM BUTTONS (Visible ONLY after capture) */}
-        {frozen && (
-          <View
-            style={{
-              position: "absolute",
-              top: 110,
-              left: 20,
-              gap: 10,
-              zIndex: 10,
-            }}
-          >
-            {["daltonization", "hue_rotation"].map((a) => (
-              <TouchableOpacity
-                key={a}
-                onPress={() => {
-                  setAlgorithm(a);
-                  setProcessing(true);
-                  setTimeout(() => {
-                    setResultUri(runEnhancement(cvdType, a));
-                    setProcessing(false);
-                  }, 50);
-                }}
-                style={[
-                  styles.filterBtn,
-                  {
-                    backgroundColor:
-                      algorithm === a ? COLORS.secondary : "rgba(0,0,0,0.5)",
-                    width: 80,
-                    height: 40,
-                    borderRadius: 10,
-                  },
-                ]}
-              >
-                <Text
-                  style={{ color: "#FFF", fontSize: 10, fontWeight: "bold" }}
-                >
-                  {a === "daltonization" ? "ADAPT" : "HUE"}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        {/* CVD TYPE BUTTONS (Visible ONLY after capture) */}
-        {frozen && (
-          <View
-            style={{
-              position: "absolute",
-              top: 110,
-              right: 20,
-              alignItems: "center",
-              zIndex: 10,
-            }}
-          >
-            {["Off", "Protan", "Deutan", "Tritan"].map((m) => (
-              <TouchableOpacity
-                key={m}
-                onPress={() => {
-                  setCvdType(m);
-                  setProcessing(true);
-                  setTimeout(() => {
-                    setResultUri(runEnhancement(m, algorithm));
-                    setProcessing(false);
-                  }, 50);
-                }}
-                style={[
-                  styles.filterBtn,
-                  {
-                    backgroundColor:
-                      cvdType === m ? COLORS.primary : "rgba(0,0,0,0.5)",
-                    marginBottom: 15,
-                  },
-                ]}
-              >
-                <Text
-                  style={{ color: "#FFF", fontWeight: "bold", fontSize: 10 }}
-                >
-                  {m === "Off" ? "Off" : m.charAt(0)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        <View style={{ position: "absolute", bottom: 40, left: 0, right: 0 }}>
-          {frozen && cvdType !== "Off" && (
-            <View style={{ alignItems: "center", marginBottom: 20 }}>
-              <Text style={{ color: "#FFF", fontSize: 12 }}>
-                Intensity: {Math.round(intensity)}%
-              </Text>
-              <Slider
-                style={{ width: "80%", height: 40 }}
-                minimumValue={0}
-                maximumValue={100}
-                value={intensity}
-                onSlidingComplete={handleIntensityCommit}
-                minimumTrackTintColor={COLORS.primary}
-                thumbTintColor="#FFF"
-              />
-            </View>
-          )}
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-around",
-              alignItems: "center",
-            }}
-          >
-            {frozen ? (
-              <>
-                <TouchableOpacity onPress={handleReset}>
-                  <Ionicons name="refresh" size={32} color="#FFF" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleSave}>
-                  <Ionicons name="download-outline" size={32} color="#FFF" />
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <TouchableOpacity
-                  onPress={() =>
-                    setCameraPosition((p) => (p === "back" ? "front" : "back"))
-                  }
-                >
-                  <Ionicons name="camera-reverse" size={30} color="#FFF" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.shutterBtn}
-                  onPress={handleFreeze}
-                >
-                  <Ionicons name="snow" size={24} color="#333" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate("EnhanceGallery")}
-                >
-                  <Ionicons name="images" size={30} color="#FFF" />
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-      </SafeAreaView>
-      <ModeSelector
-        visible={showModal}
-        onClose={() => setShowModal(false)}
-        navigation={navigation}
-        currentMode="Enhancement"
-      />
-    </View>
-  );
-}
-
-export default function CameraEnhanceScreen(props) {
-  return (
-    <ScreenErrorBoundary navigation={props.navigation}>
-      <CameraEnhanceScreenInner {...props} />
-    </ScreenErrorBoundary>
-  );
-}
 </file>
 
 <file path="src/screens/ColorIdentifierScreen.js">
@@ -10530,6 +10547,610 @@ export default function ColorIdentifierScreen(props) {
 }
 </file>
 
+<file path="package.json">
+{
+  "name": "recolor",
+  "main": "node_modules/expo/AppEntry.js",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "expo start",
+    "reset-project": "node ./scripts/reset-project.js",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "lint": "expo lint"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.3",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/slider": "5.0.1",
+    "@react-navigation/bottom-tabs": "^7.8.11",
+    "@react-navigation/elements": "^2.6.3",
+    "@react-navigation/native": "^7.1.24",
+    "@react-navigation/native-stack": "^7.8.5",
+    "@react-navigation/stack": "^7.6.11",
+    "@shopify/react-native-skia": "2.2.12",
+    "base64-arraybuffer": "^1.0.2",
+    "buffer": "^6.0.3",
+    "expo": "~54.0.27",
+    "expo-auth-session": "~7.0.10",
+    "expo-brightness": "~14.0.8",
+    "expo-constants": "~18.0.11",
+    "expo-dev-client": "~6.0.20",
+    "expo-file-system": "~19.0.20",
+    "expo-font": "~14.0.10",
+    "expo-haptics": "~15.0.8",
+    "expo-image": "~3.0.11",
+    "expo-image-manipulator": "~14.0.8",
+    "expo-image-picker": "~17.0.9",
+    "expo-linking": "~8.0.10",
+    "expo-media-library": "~18.2.1",
+    "expo-router": "~6.0.17",
+    "expo-sharing": "~14.0.8",
+    "expo-speech": "~14.0.8",
+    "expo-splash-screen": "~31.0.12",
+    "expo-status-bar": "~3.0.9",
+    "expo-symbols": "~1.0.8",
+    "expo-system-ui": "~6.0.9",
+    "expo-web-browser": "~15.0.10",
+    "firebase": "^12.12.1",
+    "jpeg-js": "^0.4.4",
+    "moti": "^0.30.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-fast-tflite": "^1.5.1",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0",
+    "react-native-vision-camera": "^4.7.3",
+    "react-native-web": "~0.21.0",
+    "react-native-worklets": "^0.8.0",
+    "react-native-worklets-core": "^1.6.3"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.0",
+    "eslint": "^9.25.0",
+    "eslint-config-expo": "~10.0.0",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}
+</file>
+
+<file path="src/screens/CameraEnhanceScreen.js">
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Slider from "@react-native-community/slider";
+import { useIsFocused } from "@react-navigation/native";
+import {
+  Canvas,
+  RuntimeShader,
+  Image as SkiaImage,
+  useCanvasRef,
+  useImage,
+} from "@shopify/react-native-skia";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Haptics from "expo-haptics";
+import * as ImageManipulator from "expo-image-manipulator";
+import * as MediaLibrary from "expo-media-library";
+import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import {
+  Camera,
+  useCameraDevice,
+  useCameraPermission,
+} from "react-native-vision-camera";
+import { auth, db } from "../../firebaseConfig";
+import {
+  getDaltonizationUniforms,
+  getHueRotationUniforms,
+} from "../../tensorHelper";
+import ModeSelector from "../components/ModeSelector";
+import { COLORS } from "../theme/colors";
+import { styles } from "../theme/styles";
+import { loadCalibration } from "../utils/cameraCalibration";
+import {
+  DALTONIZATION_EFFECT,
+  HUE_ROTATION_EFFECT,
+} from "../utils/constants";
+import { ScreenErrorBoundary } from "../utils/logger";
+
+const { width, height: screenHeight } = Dimensions.get("window");
+
+function CameraEnhanceScreenInner({ navigation }) {
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const isFocused = useIsFocused();
+  const [cameraPosition, setCameraPosition] = useState("back");
+  const [cvdType, setCvdType] = useState("Off");
+  const [algorithm, setAlgorithm] = useState("daltonization");
+  const [showModal, setShowModal] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [frozen, setFrozen] = useState(false);
+  const [frozenUri, setFrozenUri] = useState(null);
+  const [processing, setProcessing] = useState(false);
+  const [showOriginal, setShowOriginal] = useState(false);
+  const [intensity, setIntensity] = useState(100);
+  const [calib, setCalib] = useState({ rScale: 1, gScale: 1, bScale: 1 });
+
+  const cameraRef = useRef(null);
+  const isMountedRef = useRef(true);
+  const canvasRef = useCanvasRef();
+  const device = useCameraDevice(cameraPosition);
+  const skImage = useImage(frozenUri);
+
+  // Load saved intensity once
+  useEffect(() => {
+    AsyncStorage.getItem("@recolor_intensity").then((val) => {
+      if (val !== null && isMountedRef.current) setIntensity(Number(val));
+    });
+
+    const fetchCVDDefault = async () => {
+      try {
+        let diag = await AsyncStorage.getItem("@recolor_latest_diagnosis");
+
+        if (!diag && auth.currentUser) {
+          const q = query(
+            collection(db, "users", auth.currentUser.uid, "history"),
+            orderBy("date", "desc"),
+            limit(1),
+          );
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            diag = snap.docs[0].data().diagnosis || "";
+            await AsyncStorage.setItem("@recolor_latest_diagnosis", diag);
+          }
+        }
+
+        if (diag) {
+          if (diag.includes("Protan")) setCvdType("Protan");
+          else if (diag.includes("Deutan")) setCvdType("Deutan");
+          else if (diag.includes("Tritan")) setCvdType("Tritan");
+          else setCvdType("Off");
+        } else {
+          setCvdType("Off");
+        }
+      } catch (e) {
+        console.warn("Failed to fetch CVD default", e);
+      }
+    };
+
+    const unsubscribe = navigation.addListener("focus", () => {
+      fetchCVDDefault();
+    });
+
+    fetchCVDDefault();
+
+    isMountedRef.current = true;
+    const timer = setTimeout(() => {
+      if (isMountedRef.current) setCameraReady(true);
+    }, 700);
+    return () => {
+      isMountedRef.current = false;
+      clearTimeout(timer);
+      unsubscribe();
+    };
+  }, [navigation]);
+
+  useEffect(() => {
+    if (!hasPermission) requestPermission();
+  }, [hasPermission, requestPermission]);
+
+  // Refresh manual camera calibration on mount + on focus, so changes made
+  // in Settings → Camera Calibration take effect immediately.
+  useEffect(() => {
+    const apply = (saved) => {
+      if (!isMountedRef.current) return;
+      if (saved) {
+        setCalib({
+          rScale: saved.rScale,
+          gScale: saved.gScale,
+          bScale: saved.bScale,
+        });
+      } else {
+        setCalib({ rScale: 1, gScale: 1, bScale: 1 });
+      }
+    };
+    loadCalibration().then(apply);
+    const unsub = navigation.addListener("focus", () =>
+      loadCalibration().then(apply),
+    );
+    return unsub;
+  }, [navigation]);
+
+  // ── Build the shader uniforms ─────────────────────────────────────
+  // The shader runs on the GPU. When showOriginal is true (long-press) or
+  // cvdType === 'Off', we force intensity to 0 — calibration still applies
+  // but enhancement is skipped, so the user sees the calibrated original.
+  const effectiveIntensity =
+    showOriginal || cvdType === "Off" ? 0 : intensity / 100;
+
+  const shaderUniforms = useMemo(() => {
+    if (algorithm === "hue_rotation") {
+      return getHueRotationUniforms(cvdType, calib, effectiveIntensity);
+    }
+    return getDaltonizationUniforms(cvdType, calib, effectiveIntensity);
+  }, [algorithm, cvdType, calib, effectiveIntensity]);
+
+  const shaderEffect =
+    algorithm === "hue_rotation" ? HUE_ROTATION_EFFECT : DALTONIZATION_EFFECT;
+
+  // ── Freeze (capture only — no JS pixel work) ──────────────────────
+  const handleFreeze = async () => {
+    if (!cameraRef.current || processing) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setProcessing(true);
+    try {
+      const photo = await cameraRef.current.takePhoto({
+        qualityPrioritization: "quality",
+        enableShutterSound: false,
+      });
+      const resized = await ImageManipulator.manipulateAsync(
+        `file://${photo.path}`,
+        [{ resize: { width: 1040 } }],
+        {
+          base64: false,
+          format: ImageManipulator.SaveFormat.JPEG,
+          compress: 0.92,
+        },
+      );
+      if (!isMountedRef.current) return;
+      setFrozenUri(resized.uri);
+      setFrozen(true);
+    } catch (e) {
+      console.warn("[CameraEnhance] freeze failed", e);
+      Alert.alert("Error", "Capture failed.");
+    } finally {
+      if (isMountedRef.current) setProcessing(false);
+    }
+  };
+
+  const handleIntensityCommit = useCallback((val) => {
+    setIntensity(val);
+    AsyncStorage.setItem("@recolor_intensity", String(val));
+    // No re-processing needed — uniforms update reactively and the GPU
+    // re-renders for free.
+  }, []);
+
+  // ── Save: snapshot the GPU canvas ────────────────────────────────
+  // canvasRef.current.makeImageSnapshot() returns a SkImage with the shader
+  // already applied, so we don't need to re-run any pixel math.
+  const handleSave = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+      () => {},
+    );
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== "granted") {
+        return Alert.alert(
+          "Permission needed",
+          "Allow gallery access in settings.",
+        );
+      }
+
+      let b64;
+      if (showOriginal && frozenUri) {
+        // Save the un-enhanced original directly from disk
+        b64 = await FileSystem.readAsStringAsync(frozenUri, {
+          encoding: "base64",
+        });
+      } else if (canvasRef.current) {
+        // Snapshot the GPU-rendered canvas (calibrated + shader-enhanced)
+        const snap = canvasRef.current.makeImageSnapshot();
+        if (!snap) throw new Error("snapshot failed");
+        b64 = snap.encodeToBase64();
+      } else {
+        throw new Error("no source");
+      }
+
+      const tmpPath = `${FileSystem.documentDirectory}recolor_final_save_${Date.now()}.jpg`;
+      await FileSystem.writeAsStringAsync(tmpPath, b64, {
+        encoding: "base64",
+      });
+
+      const asset = await MediaLibrary.createAssetAsync(tmpPath);
+      const userName = auth.currentUser?.email?.split("@")[0] || "Guest";
+      const albumName = `ReColor_${userName}`;
+      const album = await MediaLibrary.getAlbumAsync(albumName);
+
+      if (!album) {
+        await MediaLibrary.createAlbumAsync(albumName, asset, false);
+      } else {
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+      }
+
+      await FileSystem.deleteAsync(tmpPath, { idempotent: true });
+      Alert.alert("Saved", "Photo added to your ReColor album.");
+    } catch (e) {
+      Alert.alert("Error", "Could not save photo.");
+    }
+  };
+
+  const handleReset = () => {
+    setFrozen(false);
+    setFrozenUri(null);
+    setShowOriginal(false);
+  };
+
+  const showInfo = () => {
+    Alert.alert(
+      "How to use Enhancement",
+      "BEFORE CAPTURE:\nFrame your subject and tap the shutter button.\n\nAFTER CAPTURE:\nYour diagnosed filter is automatically applied. You can change the filter type or adjust the intensity slider to enhance color distinguishability.",
+    );
+  };
+
+  // ─────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────
+  const showShader = !showOriginal && cvdType !== "Off" && shaderEffect;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: "#000" }}>
+      {!frozen ? (
+        // Live camera preview before freeze
+        device &&
+        cameraReady && (
+          <Camera
+            ref={cameraRef}
+            style={StyleSheet.absoluteFill}
+            device={device}
+            isActive={isFocused}
+            photo
+          />
+        )
+      ) : skImage ? (
+        // Skia GPU pipeline replaces the JS pixel loop
+        <Canvas ref={canvasRef} style={StyleSheet.absoluteFill}>
+          <SkiaImage
+            image={skImage}
+            x={0}
+            y={0}
+            width={width}
+            height={screenHeight}
+            fit="cover"
+          >
+            {showShader && (
+              <RuntimeShader source={shaderEffect} uniforms={shaderUniforms} />
+            )}
+          </SkiaImage>
+        </Canvas>
+      ) : (
+        // Image still decoding — show plain Image as a placeholder
+        <Image
+          source={{ uri: frozenUri }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
+      )}
+
+      {(processing || (frozen && frozenUri && !skImage)) && (
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: "rgba(0,0,0,0.7)",
+              justifyContent: "center",
+              alignItems: "center",
+              zIndex: 10,
+            },
+          ]}
+        >
+          <ActivityIndicator size="large" color="#FFF" />
+          <Text style={{ color: "#FFF", marginTop: 12 }}>Processing...</Text>
+        </View>
+      )}
+
+      {/* Long-press zone for original/enhanced toggle */}
+      {frozen && !processing && (
+        <View
+          style={{
+            position: "absolute",
+            top: 120,
+            bottom: 200,
+            left: 50,
+            right: 50,
+            zIndex: 5,
+          }}
+          onStartShouldSetResponder={() => true}
+          onResponderGrant={() => setShowOriginal(true)}
+          onResponderRelease={() => setShowOriginal(false)}
+        />
+      )}
+
+      <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
+        <View style={styles.camTopBar}>
+          <TouchableOpacity
+            onPress={() => (frozen ? handleReset() : navigation.goBack())}
+          >
+            <Ionicons
+              name={frozen ? "close" : "arrow-back"}
+              size={26}
+              color="#FFF"
+            />
+          </TouchableOpacity>
+          <Text style={{ color: "#FFF", fontWeight: "bold" }}>
+            {frozen
+              ? showOriginal
+                ? "Original"
+                : `${cvdType} Enhanced`
+              : "Color Enhancement"}
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity onPress={showInfo} style={{ marginRight: 15 }}>
+              <Ionicons
+                name="information-circle-outline"
+                size={26}
+                color="#FFF"
+              />
+            </TouchableOpacity>
+            {!frozen && (
+              <TouchableOpacity onPress={() => setShowModal(true)}>
+                <Ionicons name="menu" size={28} color="#FFF" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Algorithm selector (visible after capture). Switching now just
+            swaps the shader effect — no JS pixel pass, no setTimeout dance. */}
+        {frozen && (
+          <View
+            style={{
+              position: "absolute",
+              top: 110,
+              left: 20,
+              gap: 10,
+              zIndex: 10,
+            }}
+          >
+            {["daltonization", "hue_rotation"].map((a) => (
+              <TouchableOpacity
+                key={a}
+                onPress={() => setAlgorithm(a)}
+                style={[
+                  styles.filterBtn,
+                  {
+                    backgroundColor:
+                      algorithm === a ? COLORS.secondary : "rgba(0,0,0,0.5)",
+                    width: 80,
+                    height: 40,
+                    borderRadius: 10,
+                  },
+                ]}
+              >
+                <Text
+                  style={{ color: "#FFF", fontSize: 10, fontWeight: "bold" }}
+                >
+                  {a === "daltonization" ? "ADAPT" : "HUE"}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* CVD TYPE BUTTONS (Visible ONLY after capture) */}
+        {frozen && (
+          <View
+            style={{
+              position: "absolute",
+              top: 110,
+              right: 20,
+              alignItems: "center",
+              zIndex: 10,
+            }}
+          >
+            {["Off", "Protan", "Deutan", "Tritan"].map((m) => (
+              <TouchableOpacity
+                key={m}
+                onPress={() => setCvdType(m)}
+                style={[
+                  styles.filterBtn,
+                  {
+                    backgroundColor:
+                      cvdType === m ? COLORS.primary : "rgba(0,0,0,0.5)",
+                    marginBottom: 15,
+                  },
+                ]}
+              >
+                <Text
+                  style={{ color: "#FFF", fontWeight: "bold", fontSize: 10 }}
+                >
+                  {m === "Off" ? "Off" : m.charAt(0)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        <View style={{ position: "absolute", bottom: 40, left: 0, right: 0 }}>
+          {frozen && cvdType !== "Off" && (
+            <View style={{ alignItems: "center", marginBottom: 20 }}>
+              <Text style={{ color: "#FFF", fontSize: 12 }}>
+                Intensity: {Math.round(intensity)}%
+              </Text>
+              <Slider
+                style={{ width: "80%", height: 40 }}
+                minimumValue={0}
+                maximumValue={100}
+                value={intensity}
+                onSlidingComplete={handleIntensityCommit}
+                minimumTrackTintColor={COLORS.primary}
+                thumbTintColor="#FFF"
+              />
+            </View>
+          )}
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-around",
+              alignItems: "center",
+            }}
+          >
+            {frozen ? (
+              <>
+                <TouchableOpacity onPress={handleReset}>
+                  <Ionicons name="refresh" size={32} color="#FFF" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleSave}>
+                  <Ionicons name="download-outline" size={32} color="#FFF" />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <TouchableOpacity
+                  onPress={() =>
+                    setCameraPosition((p) => (p === "back" ? "front" : "back"))
+                  }
+                >
+                  <Ionicons name="camera-reverse" size={30} color="#FFF" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.shutterBtn}
+                  onPress={handleFreeze}
+                >
+                  <Ionicons name="snow" size={24} color="#333" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("EnhanceGallery")}
+                >
+                  <Ionicons name="images" size={30} color="#FFF" />
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </SafeAreaView>
+      <ModeSelector
+        visible={showModal}
+        onClose={() => setShowModal(false)}
+        navigation={navigation}
+        currentMode="Enhancement"
+      />
+    </View>
+  );
+}
+
+export default function CameraEnhanceScreen(props) {
+  return (
+    <ScreenErrorBoundary navigation={props.navigation}>
+      <CameraEnhanceScreenInner {...props} />
+    </ScreenErrorBoundary>
+  );
+}
+</file>
+
 <file path="src/screens/LoginScreen.js">
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -10848,78 +11469,6 @@ const styles = StyleSheet.create({
   },
   versionText: { fontSize: 11, color: COLORS.primary, fontWeight: "600" },
 });
-</file>
-
-<file path="package.json">
-{
-  "name": "recolor",
-  "main": "node_modules/expo/AppEntry.js",
-  "version": "1.0.0",
-  "scripts": {
-    "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
-    "web": "expo start --web",
-    "lint": "expo lint"
-  },
-  "dependencies": {
-    "@expo/vector-icons": "^15.0.3",
-    "@react-native-async-storage/async-storage": "2.2.0",
-    "@react-native-community/slider": "5.0.1",
-    "@react-navigation/bottom-tabs": "^7.8.11",
-    "@react-navigation/elements": "^2.6.3",
-    "@react-navigation/native": "^7.1.24",
-    "@react-navigation/native-stack": "^7.8.5",
-    "@react-navigation/stack": "^7.6.11",
-    "@shopify/react-native-skia": "2.2.12",
-    "base64-arraybuffer": "^1.0.2",
-    "buffer": "^6.0.3",
-    "expo": "~54.0.27",
-    "expo-auth-session": "~7.0.10",
-    "expo-brightness": "~14.0.8",
-    "expo-constants": "~18.0.11",
-    "expo-dev-client": "~6.0.20",
-    "expo-file-system": "~19.0.20",
-    "expo-font": "~14.0.10",
-    "expo-haptics": "~15.0.8",
-    "expo-image": "~3.0.11",
-    "expo-image-manipulator": "~14.0.8",
-    "expo-image-picker": "~17.0.9",
-    "expo-linking": "~8.0.10",
-    "expo-media-library": "~18.2.1",
-    "expo-router": "~6.0.17",
-    "expo-sharing": "~14.0.8",
-    "expo-speech": "~14.0.8",
-    "expo-splash-screen": "~31.0.12",
-    "expo-status-bar": "~3.0.9",
-    "expo-symbols": "~1.0.8",
-    "expo-system-ui": "~6.0.9",
-    "expo-web-browser": "~15.0.10",
-    "firebase": "^12.12.1",
-    "jpeg-js": "^0.4.4",
-    "moti": "^0.30.0",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "react-native": "0.81.5",
-    "react-native-fast-tflite": "^1.5.1",
-    "react-native-gesture-handler": "~2.28.0",
-    "react-native-reanimated": "~4.1.1",
-    "react-native-safe-area-context": "~5.6.0",
-    "react-native-screens": "~4.16.0",
-    "react-native-vision-camera": "^4.7.3",
-    "react-native-web": "~0.21.0",
-    "react-native-worklets": "^0.8.0",
-    "react-native-worklets-core": "^1.6.3"
-  },
-  "devDependencies": {
-    "@types/react": "~19.1.0",
-    "eslint": "^9.25.0",
-    "eslint-config-expo": "~10.0.0",
-    "typescript": "~5.9.2"
-  },
-  "private": true
-}
 </file>
 
 <file path="src/screens/TestScreen.js">
@@ -11682,6 +12231,73 @@ export function getCVDRows(cvdType) {
   const m = CVD_COMBINED[cvdType];
   if (!m) return { row0: [1, 0, 0], row1: [0, 1, 0], row2: [0, 0, 1] };
   return { row0: [...m[0]], row1: [...m[1]], row2: [...m[2]] };
+}
+
+const IDENTITY_ROW = [
+  [1, 0, 0],
+  [0, 1, 0],
+  [0, 0, 1],
+];
+const ZERO_ROW = [
+  [0, 0, 0],
+  [0, 0, 0],
+  [0, 0, 0],
+];
+
+/**
+ * Builds the uniforms object for DALTONIZATION_EFFECT.
+ *
+ * GPU port of applyDaltonization: the shader needs both the simulation
+ * matrix (sim0/sim1/sim2) and the error redistribution matrix
+ * (err0/err1/err2) plus the camera calibration scalars and an intensity
+ * blend factor.
+ *
+ * @param {'Protan'|'Deutan'|'Tritan'|'Off'} cvdType
+ * @param {{rScale,gScale,bScale} | null} calib  Optional calibration scalars
+ * @param {number} intensity                     0..1 blend (1 = full effect)
+ */
+export function getDaltonizationUniforms(cvdType, calib, intensity = 1) {
+  const sim = CVD_COMBINED[cvdType] || IDENTITY_ROW;
+  const err = CVD_ERR_SHIFT[cvdType] || ZERO_ROW;
+  const c = calib || { rScale: 1, gScale: 1, bScale: 1 };
+  return {
+    sim0: [...sim[0]],
+    sim1: [...sim[1]],
+    sim2: [...sim[2]],
+    err0: [...err[0]],
+    err1: [...err[1]],
+    err2: [...err[2]],
+    calib: [c.rScale, c.gScale, c.bScale],
+    intensity: cvdType === "Off" ? 0 : Math.max(0, Math.min(1, intensity)),
+  };
+}
+
+/**
+ * Builds the uniforms object for HUE_ROTATION_EFFECT.
+ *
+ * GPU port of applyHueRotation. Looks up the per-CVD band config (center,
+ * range, shift) from the shared HUE_ROTATION_CONFIG and packages it for
+ * the SkSL shader.
+ *
+ * @param {'Protan'|'Deutan'|'Tritan'|'Off'} cvdType
+ * @param {{rScale,gScale,bScale} | null} calib
+ * @param {number} intensity
+ */
+export function getHueRotationUniforms(cvdType, calib, intensity = 1) {
+  const cfg = HUE_ROTATION_CONFIG[cvdType] || {
+    center: 0,
+    range: 1,
+    shift: 0,
+  };
+  const c = calib || { rScale: 1, gScale: 1, bScale: 1 };
+  return {
+    calib: [c.rScale, c.gScale, c.bScale],
+    center: cfg.center,
+    range: cfg.range,
+    shift: cfg.shift,
+    satMin: 0.15,
+    intensity: cvdType === "Off" ? 0 : Math.max(0, Math.min(1, intensity)),
+  };
 }
 
 const CVD_ERR_SHIFT = {

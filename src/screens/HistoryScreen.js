@@ -4,18 +4,20 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { auth, db, onAuthStateChanged } from "../../firebaseConfig";
 import BackgroundBubbles from "../components/BackgroundBubbles";
-import Card from "../components/Card";
 import Header from "../components/Header";
-import { COLORS } from "../theme/colors";
-import { styles } from "../theme/styles";
+import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
 export default function HistoryScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [historyData, setHistoryData] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +53,11 @@ export default function HistoryScreen({ navigation }) {
                 total: d.total || 14,
                 severity: d.severity || "N/A",
                 date: d.date?.toDate
-                  ? d.date.toDate().toLocaleDateString()
+                  ? d.date.toDate().toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
                   : "Just now",
               };
             }),
@@ -74,158 +80,236 @@ export default function HistoryScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <BackgroundBubbles />
-      <Header title="Your History" back />
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 3,
-          backgroundColor: "#FFF8E1",
-          paddingVertical: 10,
-          paddingHorizontal: 8,
-          borderBottomWidth: 1,
-          borderBottomColor: "#FFE082",
-        }}
-      >
-        <Ionicons name="warning-outline" size={12} color="#F59E0B" />
-        <Text style={{ fontSize: 10, fontWeight: "700", color: "#F59E0B" }}>
-          NOT A MEDICAL DIAGNOSIS — SCREENING PURPOSE ONLY
+      <Header title="Clinical History" back />
+
+      {/* Utility Disclaimer Banner */}
+      <View style={styles.disclaimer}>
+        <Ionicons name="shield-checkmark" size={12} color="#B45309" />
+        <Text style={styles.disclaimerText}>
+          OFFICIAL SCREENING LOG • NOT A MEDICAL DIAGNOSIS
         </Text>
       </View>
+
       {loading ? (
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
+        <View style={styles.center}>
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       ) : historyData.length === 0 ? (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            padding: 30,
-          }}
-        >
-          {/* Approachable Illustration  */}
-          <View
-            style={{
-              backgroundColor: "#F0F2FF",
-              padding: 25,
-              borderRadius: 100,
-              marginBottom: 20,
-            }}
-          >
+        <Animated.View entering={FadeInUp} style={styles.emptyContainer}>
+          <View style={styles.emptyIconBox}>
             <Ionicons name="stats-chart" size={60} color={COLORS.primary} />
           </View>
-
-          {/* Human Labels & Conversational Copy  */}
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "800",
-              color: "#1A1A2E",
-              textAlign: "center",
-            }}
-          >
-            Ready for your first screening?
+          <Text style={styles.emptyTitle}>No Assessments Yet</Text>
+          <Text style={styles.emptyDesc}>
+            Your color perception journey starts here. Take your first Ishihara
+            test to generate your clinical profile.
           </Text>
-
-          <Text
-            style={{
-              fontSize: 14,
-              color: "#4A4A4A",
-              textAlign: "center",
-              marginTop: 10,
-              lineHeight: 20,
-            }}
-          >
-            Take a 5-minute test to start tracking your color perception
-            journey. Your history will appear here after your first screening.
-          </Text>
-
-          {/* Call to Action Button  */}
           <TouchableOpacity
-            style={[
-              styles.btnPrimary,
-              { marginTop: 30, width: "100%", paddingVertical: 16 },
-            ]}
+            style={styles.ctaButton}
             onPress={() => navigation.navigate("IshiharaIntro")}
           >
-            <Text style={[styles.btnText, { fontSize: 16 }]}>
-              Take the test{" "}
-            </Text>
+            <Text style={styles.ctaText}>Begin Initial Screening</Text>
+            <Ionicons name="arrow-forward" size={18} color="#FFF" />
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 20 }}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: insets.bottom + 20 },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.sectionLabel}>RECENT DIAGNOSTICS</Text>
           {historyData.map((item, index) => (
-            <Card key={index} style={{ marginBottom: 15, paddingVertical: 18 }}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <View style={{ flex: 1 }}>
-                  {/* Improved Color Contrast for Accessibility  */}
-                  <Text
-                    style={{
-                      fontSize: 17,
-                      fontWeight: "bold",
-                      color: "#1A1A2E",
-                    }}
-                  >
-                    {item.type}
-                  </Text>
-                  <Text
-                    style={{ fontSize: 13, color: "#4A4A4A", marginTop: 2 }}
-                  >
-                    Completed on {item.date}
+            <Animated.View
+              key={item.id}
+              entering={FadeInDown.delay(index * 100).duration(500)}
+              style={styles.historyCard}
+            >
+              <View style={styles.cardHeader}>
+                <View style={styles.typeBadge}>
+                  <Text style={styles.typeText}>{item.type}</Text>
+                </View>
+                <Text style={styles.dateText}>{item.date}</Text>
+              </View>
+
+              <View style={styles.cardBody}>
+                <View>
+                  <Text style={styles.scoreLabel}>Accuracy Score</Text>
+                  <Text style={styles.scoreValue}>
+                    {item.score}
+                    <Text style={styles.scoreTotal}>/{item.total}</Text>
                   </Text>
                 </View>
 
-                <View style={{ alignItems: "flex-end", marginLeft: 10 }}>
-                  <Text
-                    style={{
-                      fontSize: 22,
-                      fontWeight: "800",
-                      color: COLORS.primary,
-                    }}
-                  >
-                    {item.score}/{item.total}
-                  </Text>
+                <View style={styles.severityContainer}>
+                  <Text style={styles.severityLabel}>SEVERITY</Text>
                   <View
-                    style={{
-                      backgroundColor:
-                        item.severity === "Severe" ? "#FFEBEE" : "#FFF3E0",
-                      paddingHorizontal: 8,
-                      paddingVertical: 2,
-                      borderRadius: 6,
-                      marginTop: 4,
-                    }}
+                    style={[
+                      styles.severityBadge,
+                      {
+                        backgroundColor:
+                          item.severity === "Severe" ? "#FEF2F2" : "#FFF7ED",
+                      },
+                    ]}
                   >
                     <Text
-                      style={{
-                        fontSize: 11,
-                        fontWeight: "800",
-                        color:
-                          item.severity === "Severe"
-                            ? COLORS.danger
-                            : "#E65100",
-                      }}
+                      style={[
+                        styles.severityText,
+                        {
+                          color:
+                            item.severity === "Severe" ? "#EF4444" : "#F59E0B",
+                        },
+                      ]}
                     >
                       {item.severity.toUpperCase()}
                     </Text>
                   </View>
                 </View>
               </View>
-            </Card>
+            </Animated.View>
           ))}
         </ScrollView>
       )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  disclaimer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#FFF8E1",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#FFE082",
+  },
+  disclaimerText: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#B45309",
+    letterSpacing: 1,
+  },
+  listContent: { padding: SPACING.lg },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: COLORS.textLight,
+    letterSpacing: 1.5,
+    marginBottom: SPACING.md,
+    opacity: 0.7,
+  },
+  historyCard: {
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    marginBottom: SPACING.md,
+    ...SHADOW.sm,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  typeBadge: {
+    backgroundColor: COLORS.primary + "10",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: RADIUS.md,
+  },
+  typeText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: COLORS.primary,
+  },
+  dateText: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    fontWeight: "600",
+  },
+  cardBody: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+  },
+  scoreLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: COLORS.textLight,
+    marginBottom: 2,
+  },
+  scoreValue: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: COLORS.text,
+  },
+  scoreTotal: {
+    fontSize: 16,
+    color: COLORS.textLight,
+  },
+  severityContainer: { alignItems: "flex-end" },
+  severityLabel: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: COLORS.textLight,
+    marginBottom: 4,
+  },
+  severityBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: RADIUS.md,
+  },
+  severityText: {
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+  emptyIconBox: {
+    backgroundColor: "#EEF2FF",
+    padding: 30,
+    borderRadius: 50,
+    marginBottom: 24,
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: COLORS.text,
+    textAlign: "center",
+  },
+  emptyDesc: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    textAlign: "center",
+    marginTop: 12,
+    lineHeight: 22,
+  },
+  ctaButton: {
+    backgroundColor: COLORS.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: RADIUS.lg,
+    marginTop: 32,
+    gap: 10,
+    ...SHADOW.md,
+  },
+  ctaText: {
+    color: "#FFF",
+    fontWeight: "800",
+    fontSize: 16,
+  },
+});

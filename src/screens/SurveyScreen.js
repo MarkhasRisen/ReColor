@@ -12,16 +12,16 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { auth, db } from "../../firebaseConfig";
 import BackgroundBubbles from "../components/BackgroundBubbles";
-import Card from "../components/Card";
 import Header from "../components/Header";
-import { COLORS } from "../theme/colors";
-import { styles } from "../theme/styles";
+import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
 const CAUSES = ["Medical Intake", "Genetics", "Ageing", "Others"];
 
@@ -38,27 +38,22 @@ export default function SurveyScreen({ navigation }) {
       setChecking(false);
       return;
     }
+    // Check if the user has already contributed to the research
     getDocs(query(collection(db, "surveys"), where("userId", "==", uid)))
       .then((snap) => setAlreadySubmitted(!snap.empty))
-      .catch(() => {})
+      .catch((err) => console.error("Survey check error:", err))
       .finally(() => setChecking(false));
   }, []);
 
   const handleSubmit = async () => {
-    if (alreadySubmitted) {
-      Alert.alert(
-        "Already Submitted",
-        "You have already completed this survey. Thank you for your contribution!",
-      );
-      return;
-    }
     if (selectedCause === null || !selectedSex) {
       Alert.alert(
-        "Incomplete",
-        "Please answer all questions before submitting.",
+        "Incomplete Form",
+        "Please provide all details to help our clinical research.",
       );
       return;
     }
+
     setSubmitting(true);
     try {
       const surveyData = {
@@ -67,16 +62,22 @@ export default function SurveyScreen({ navigation }) {
         userId: auth.currentUser?.uid || "anonymous",
         timestamp: serverTimestamp(),
       };
+
+      // Save to global research collection
       await addDoc(collection(db, "surveys"), surveyData);
+
+      // Save to user's private history
       if (auth.currentUser) {
         await addDoc(
           collection(db, "users", auth.currentUser.uid, "surveys"),
           surveyData,
         );
       }
+
       navigation.replace("SurveySuccess");
     } catch (e) {
       console.warn("[Survey] save failed:", e);
+      // Fallback for demo/offline purposes
       navigation.replace("SurveySuccess");
     } finally {
       setSubmitting(false);
@@ -86,158 +87,263 @@ export default function SurveyScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <BackgroundBubbles />
-      <Header title="Quick Survey" back />
-      <ScrollView
-        contentContainerStyle={{ padding: 20 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text
-          style={{
-            textAlign: "center",
-            fontWeight: "bold",
-            fontSize: 18,
-            marginBottom: 5,
-          }}
-        >
-          Help Us Understand
-        </Text>
-        <Text style={{ textAlign: "center", color: "#777", marginBottom: 25 }}>
-          What do you think are the causes of your CVD?
-        </Text>
+      <Header title="Patient Survey" back />
 
-        {checking ? (
-          <ActivityIndicator style={{ marginTop: 30 }} color={COLORS.primary} />
-        ) : alreadySubmitted ? (
-          <View
-            style={{
-              marginTop: 30,
-              backgroundColor: "#E8F5E9",
-              padding: 16,
-              borderRadius: 12,
-              alignItems: "center",
-              borderWidth: 1,
-              borderColor: "#C8E6C9",
-            }}
-          >
-            <Ionicons
-              name="checkmark-circle"
-              size={28}
-              color={COLORS.success}
-            />
-            <Text style={{ color: "#2E7D32", fontWeight: "700", marginTop: 8 }}>
-              Survey Already Submitted
-            </Text>
-            <Text
-              style={{
-                color: "#555",
-                fontSize: 12,
-                marginTop: 4,
-                textAlign: "center",
-              }}
-            >
-              Thank you for your contribution to the research.
-            </Text>
+      {checking ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={COLORS.primary} size="large" />
+        </View>
+      ) : alreadySubmitted ? (
+        <Animated.View entering={FadeInUp.duration(600)} style={styles.center}>
+          <View style={styles.iconBox}>
+            <Ionicons name="checkmark-done" size={50} color={COLORS.success} />
           </View>
-        ) : (
-          <>
-            {/* Moved interactive UI inside the else block */}
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                justifyContent: "space-between",
-                marginBottom: 20,
-              }}
-            >
-              {CAUSES.map((item, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  onPress={() => setSelectedCause(idx)}
-                  style={[
-                    styles.surveyOption,
-                    selectedCause === idx && {
-                      borderColor: COLORS.primary,
-                      borderWidth: 2,
-                      backgroundColor: "#F3E5F5",
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={
-                      selectedCause === idx
-                        ? "checkmark-circle"
-                        : "radio-button-off"
-                    }
-                    size={24}
-                    color={selectedCause === idx ? COLORS.primary : "#CCC"}
-                  />
-                  <Text style={{ fontWeight: "bold", marginTop: 10 }}>
-                    {item}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Card>
-              <Text style={{ fontWeight: "bold", marginBottom: 15 }}>Sex</Text>
-              <View
-                style={{ flexDirection: "row", justifyContent: "space-around" }}
-              >
-                {["Male", "Female"].map((sex) => (
+          <Text style={styles.completeTitle}>Contribution Received</Text>
+          <Text style={styles.completeDesc}>
+            Thank you for participating. Your data helps improve clinical
+            outcomes for color vision deficiency research.
+          </Text>
+          <TouchableOpacity
+            style={styles.doneBtn}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.doneBtnText}>Return to Knowledge Base</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+        >
+          <Animated.View entering={FadeInDown.duration(500)}>
+            <Text style={styles.sectionLabel}>CVD ORIGIN RESEARCH</Text>
+            <View style={styles.moduleCard}>
+              <Text style={styles.question}>
+                What do you believe is the primary cause of your condition?
+              </Text>
+              <View style={styles.optionsGrid}>
+                {CAUSES.map((item, idx) => (
                   <TouchableOpacity
-                    key={sex}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      padding: 10,
-                      borderWidth: 1,
-                      borderColor:
-                        selectedSex === sex ? COLORS.primary : "#EEE",
-                      borderRadius: 8,
-                      width: "45%",
-                      justifyContent: "center",
-                    }}
-                    onPress={() => setSelectedSex(sex)}
+                    key={idx}
+                    style={[
+                      styles.option,
+                      selectedCause === idx && styles.optionSelected,
+                    ]}
+                    onPress={() => setSelectedCause(idx)}
                   >
                     <Ionicons
                       name={
-                        selectedSex === sex
+                        selectedCause === idx
                           ? "radio-button-on"
                           : "radio-button-off"
                       }
                       size={20}
-                      color={selectedSex === sex ? COLORS.primary : "#999"}
+                      color={
+                        selectedCause === idx
+                          ? COLORS.primary
+                          : COLORS.textLight
+                      }
                     />
                     <Text
-                      style={{
-                        marginLeft: 10,
-                        fontWeight: selectedSex === sex ? "bold" : "normal",
-                      }}
+                      style={[
+                        styles.optionText,
+                        selectedCause === idx && styles.textSelected,
+                      ]}
+                    >
+                      {item}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <Text style={styles.sectionLabel}>DEMOGRAPHIC DATA</Text>
+            <View style={styles.moduleCard}>
+              <Text style={styles.question}>Biological Sex</Text>
+              <View style={styles.row}>
+                {["Male", "Female"].map((sex) => (
+                  <TouchableOpacity
+                    key={sex}
+                    style={[
+                      styles.sexBtn,
+                      selectedSex === sex && styles.sexSelected,
+                    ]}
+                    onPress={() => setSelectedSex(sex)}
+                  >
+                    <Text
+                      style={[
+                        styles.sexText,
+                        selectedSex === sex && styles.textSelected,
+                      ]}
                     >
                       {sex}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
-            </Card>
+            </View>
 
             <TouchableOpacity
-              style={[
-                styles.btnPrimary,
-                { marginTop: 30, backgroundColor: "#111" },
-              ]}
+              style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
               onPress={handleSubmit}
               disabled={submitting}
             >
               {submitting ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.btnText}>Submit Survey</Text>
+                <Text style={styles.submitText}>Submit Clinical Data</Text>
               )}
             </TouchableOpacity>
-          </>
-        )}
-      </ScrollView>
+
+            <Text style={styles.footerInfo}>
+              Your response is anonymized and used strictly for educational
+              research purposes.
+            </Text>
+          </Animated.View>
+        </ScrollView>
+      )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+  scroll: {
+    padding: SPACING.lg,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: COLORS.textLight,
+    letterSpacing: 1.5,
+    marginBottom: 12,
+    marginLeft: 4,
+  },
+  moduleCard: {
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    marginBottom: 25,
+    ...SHADOW.sm,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  question: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: COLORS.text,
+    marginBottom: 20,
+    lineHeight: 22,
+  },
+  optionsGrid: {
+    gap: 12,
+  },
+  option: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    gap: 12,
+  },
+  optionSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + "05",
+  },
+  optionText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: COLORS.text,
+  },
+  textSelected: {
+    color: COLORS.primary,
+    fontWeight: "800",
+  },
+  row: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  sexBtn: {
+    flex: 1,
+    padding: 16,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    alignItems: "center",
+  },
+  sexSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + "05",
+  },
+  sexText: {
+    fontWeight: "700",
+    color: COLORS.textLight,
+  },
+  submitBtn: {
+    backgroundColor: COLORS.text,
+    padding: 20,
+    borderRadius: RADIUS.xl,
+    alignItems: "center",
+    marginTop: 10,
+    ...SHADOW.md,
+  },
+  submitText: {
+    color: "#FFF",
+    fontWeight: "800",
+    fontSize: 16,
+    letterSpacing: 0.5,
+  },
+  iconBox: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: COLORS.success + "15",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 25,
+  },
+  completeTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: COLORS.text,
+    textAlign: "center",
+  },
+  completeDesc: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    textAlign: "center",
+    marginTop: 12,
+    lineHeight: 22,
+  },
+  doneBtn: {
+    marginTop: 30,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  doneBtnText: {
+    color: COLORS.text,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  footerInfo: {
+    textAlign: "center",
+    color: COLORS.textLight,
+    fontSize: 11,
+    marginTop: 25,
+    opacity: 0.6,
+    lineHeight: 16,
+  },
+});

@@ -7,10 +7,15 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
+import Animated, { FadeInUp } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Header from "../components/Header";
 import { ARTICLES } from "../data/articles";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
+
+// --- SECTION RENDERER: PRESERVING ALL YOUR CUSTOM LOGIC ---
 
 function SectionRenderer({ section }) {
   switch (section.type) {
@@ -248,22 +253,28 @@ function SectionRenderer({ section }) {
   }
 }
 
+// --- ARTICLE LIST VIEW ---
+
 function ArticleCard({ article, onPress }) {
   return (
     <MotiView
-      from={{ opacity: 0, translateY: 12 }}
+      from={{ opacity: 0, translateY: 15 }}
       animate={{ opacity: 1, translateY: 0 }}
-      transition={{ type: "spring", damping: 18 }}
+      transition={{ type: "spring", damping: 20 }}
     >
       <TouchableOpacity
         style={styles.articleCard}
         onPress={onPress}
-        activeOpacity={0.88}
+        activeOpacity={0.9}
       >
         <Image source={article.coverImage} style={styles.articleCover} />
         <View style={styles.articleCardBody}>
           <View style={styles.metaRow}>
-            <Text style={styles.categoryTag}>{article.category}</Text>
+            <View style={styles.categoryBadge}>
+              <Text style={styles.categoryText}>
+                {article.category.toUpperCase()}
+              </Text>
+            </View>
             <Text style={styles.readTime}>{article.readTime}</Text>
           </View>
           <Text style={styles.articleTitle}>{article.title}</Text>
@@ -276,40 +287,58 @@ function ArticleCard({ article, onPress }) {
   );
 }
 
+// --- ARTICLE DETAIL VIEW ---
+
 function ArticleDetail({ article, onBack }) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <ScrollView style={styles.detailRoot} showsVerticalScrollIndicator={false}>
-      <Image source={article.coverImage} style={styles.detailCover} />
+    <View style={styles.detailRoot}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <Image source={article.coverImage} style={styles.detailCover} />
 
-      <View style={styles.detailContent}>
-        <View style={styles.metaRow}>
-          <Text style={styles.categoryTag}>{article.category}</Text>
-          <Text style={styles.readTime}>{article.readTime}</Text>
-        </View>
-        <Text style={styles.detailTitle}>{article.title}</Text>
-        <Text style={styles.detailSummary}>{article.summary}</Text>
+        <Animated.View
+          entering={FadeInUp.duration(600)}
+          style={styles.detailCard}
+        >
+          <View style={styles.metaRow}>
+            <Text style={styles.categoryTag}>{article.category}</Text>
+            <Text style={styles.readTime}>{article.readTime}</Text>
+          </View>
+          <Text style={styles.detailTitle}>{article.title}</Text>
+          <Text style={styles.detailSummary}>{article.summary}</Text>
 
-        <View style={styles.divider} />
+          <View style={styles.divider} />
 
-        {article.sections.map((sec, i) => (
-          <SectionRenderer key={i} section={sec} />
-        ))}
+          {article.sections.map((sec, i) => (
+            <SectionRenderer key={i} section={sec} />
+          ))}
 
-        {/* Disclaimer */}
-        <View style={styles.disclaimer}>
-          <Ionicons name="warning-outline" size={16} color={COLORS.warning} />
-          <Text style={styles.disclaimerText}>
-            SCREENING PURPOSE ONLY. NOT A CLINICAL DIAGNOSIS.
-          </Text>
-        </View>
-      </View>
+          <View style={styles.clinicalDisclaimer}>
+            <Ionicons
+              name="shield-checkmark"
+              size={16}
+              color={COLORS.warning}
+            />
+            <Text style={styles.disclaimerText}>
+              SCREENING PURPOSE ONLY • NOT A MEDICAL DIAGNOSIS
+            </Text>
+          </View>
+        </Animated.View>
+        <View style={{ height: 100 }} />
+      </ScrollView>
 
-      <TouchableOpacity style={styles.backFab} onPress={onBack}>
+      <TouchableOpacity
+        style={[styles.backFab, { top: insets.top + 10 }]}
+        onPress={onBack}
+      >
         <Ionicons name="arrow-back" size={22} color="#FFF" />
       </TouchableOpacity>
-    </ScrollView>
+    </View>
   );
 }
+
+// --- MAIN SCREEN ---
 
 export default function ArticleScreen({ navigation, route }) {
   const [selected, setSelected] = React.useState(
@@ -324,22 +353,13 @@ export default function ArticleScreen({ navigation, route }) {
 
   return (
     <View style={styles.root}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Learn & Understand</Text>
-        <Image
-          source={require("../../assets/icon.png")}
-          style={styles.headerLogo}
-        />
-      </View>
+      <Header title="Clinical Literacy" back />
 
       <ScrollView
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       >
+        <Text style={styles.listLabel}>LATEST DIAGNOSTIC GUIDES</Text>
         {ARTICLES.map((article) => (
           <ArticleCard
             key={article.id}
@@ -348,10 +368,14 @@ export default function ArticleScreen({ navigation, route }) {
           />
         ))}
 
-        <View style={styles.footerDisclaimer}>
-          <Ionicons name="warning-outline" size={14} color={COLORS.warning} />
-          <Text style={styles.footerDisclaimerText}>
-            SCREENING PURPOSE ONLY. NOT A CLINICAL DIAGNOSIS.
+        <View style={styles.footerInfo}>
+          <Ionicons
+            name="information-circle-outline"
+            size={14}
+            color={COLORS.textLight}
+          />
+          <Text style={styles.footerInfoText}>
+            Medical content is for educational screening purposes.
           </Text>
         </View>
       </ScrollView>
@@ -360,333 +384,318 @@ export default function ArticleScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.background },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: SPACING.md,
-    paddingTop: 52,
-    paddingBottom: SPACING.md,
-    backgroundColor: COLORS.card,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+  root: { flex: 1, backgroundColor: "#F8FAFC" },
+  listContent: { padding: SPACING.lg },
+  listLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: COLORS.textLight,
+    letterSpacing: 1.5,
+    marginBottom: 16,
+    marginLeft: 4,
   },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: COLORS.text },
-  headerLogo: { width: 36, height: 36, resizeMode: "contain" },
-
-  listContent: {
-    padding: SPACING.md,
-    gap: SPACING.md,
-    paddingBottom: SPACING.xxl,
-  },
-
   articleCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.xl,
     overflow: "hidden",
+    marginBottom: SPACING.lg,
     ...SHADOW.md,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
   },
-  articleCover: { width: "100%", height: 160, resizeMode: "cover" },
-  articleCardBody: { padding: SPACING.md },
+  articleCover: { width: "100%", height: 160 },
+  articleCardBody: { padding: SPACING.lg },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: SPACING.sm,
-    marginBottom: 6,
+    gap: 8,
+    marginBottom: 8,
   },
-  categoryTag: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: COLORS.primary,
-    backgroundColor: COLORS.surfaceAlt,
+  categoryBadge: {
+    backgroundColor: COLORS.primary + "10",
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 6,
   },
-  readTime: { fontSize: 12, color: COLORS.textLight },
+  categoryText: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: COLORS.primary,
+    letterSpacing: 0.5,
+  },
+  readTime: { fontSize: 12, color: COLORS.textLight, fontWeight: "600" },
   articleTitle: {
     fontSize: 18,
     fontWeight: "800",
     color: COLORS.text,
-    marginBottom: 4,
-  },
-  articleSummary: { fontSize: 13, color: COLORS.textLight, lineHeight: 19 },
-
-  // Detail view
-  detailRoot: { flex: 1, backgroundColor: COLORS.background },
-  detailCover: { width: "100%", height: 220, resizeMode: "cover" },
-  detailContent: { padding: SPACING.md },
-  detailTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: COLORS.text,
     marginBottom: 6,
   },
-  detailSummary: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    lineHeight: 21,
-    marginBottom: SPACING.md,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginBottom: SPACING.md,
-  },
+  articleSummary: { fontSize: 13, color: COLORS.textLight, lineHeight: 20 },
 
-  sectionHeading: {
-    fontSize: 16,
+  // Detail view
+  detailRoot: { flex: 1, backgroundColor: "#F8FAFC" },
+  detailCover: { width: "100%", height: 300 },
+  detailCard: {
+    backgroundColor: "#F8FAFC",
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    marginTop: -40,
+    padding: SPACING.lg,
+  },
+  categoryTag: {
+    fontSize: 11,
     fontWeight: "800",
+    color: COLORS.primary,
+    backgroundColor: COLORS.primary + "10",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  detailTitle: {
+    fontSize: 26,
+    fontWeight: "900",
     color: COLORS.text,
-    marginTop: SPACING.md,
-    marginBottom: SPACING.sm,
+    marginBottom: 12,
+  },
+  detailSummary: {
+    fontSize: 15,
+    color: COLORS.textLight,
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  divider: { height: 1, backgroundColor: "#E2E8F0", marginBottom: 25 },
+  sectionHeading: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: COLORS.text,
+    marginTop: 24,
+    marginBottom: 12,
   },
   paragraph: {
-    fontSize: 14,
+    fontSize: 15,
     color: COLORS.text,
-    lineHeight: 22,
-    marginBottom: SPACING.sm,
+    lineHeight: 24,
+    marginBottom: 18,
+  },
+  backFab: {
+    position: "absolute",
+    left: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
-  dosDontsRow: {
-    flexDirection: "row",
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
-  },
+  // Reused Components Style
+  dosDontsRow: { flexDirection: "row", gap: 12, marginBottom: 20 },
   dosDontsCard: {
     flex: 1,
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.md,
-    padding: SPACING.sm,
-    borderTopWidth: 3,
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.lg,
+    padding: 12,
+    borderTopWidth: 4,
     ...SHADOW.sm,
   },
   dosDontsHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    marginBottom: 6,
+    gap: 6,
+    marginBottom: 8,
   },
-  dosDontsTitle: { fontSize: 13, fontWeight: "700" },
-  doItem: { fontSize: 12, color: COLORS.text, lineHeight: 18 },
-  dontItem: { fontSize: 12, color: COLORS.text, lineHeight: 18 },
-
-  contrastList: { gap: SPACING.sm, marginBottom: SPACING.md },
+  dosDontsTitle: { fontSize: 13, fontWeight: "800" },
+  doItem: { fontSize: 12, color: COLORS.text, lineHeight: 18, marginBottom: 4 },
+  dontItem: {
+    fontSize: 12,
+    color: COLORS.text,
+    lineHeight: 18,
+    marginBottom: 4,
+  },
+  contrastList: { gap: 10, marginBottom: 20 },
   contrastRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: SPACING.sm,
-    backgroundColor: COLORS.card,
-    padding: SPACING.sm,
-    borderRadius: RADIUS.sm,
+    gap: 12,
+    backgroundColor: "#FFF",
+    padding: 12,
+    borderRadius: RADIUS.lg,
     ...SHADOW.sm,
   },
-  contrastBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+  contrastBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+  contrastRatio: { fontSize: 12, fontWeight: "800", color: "#FFF" },
+  contrastLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.text,
   },
-  contrastRatio: { fontSize: 12, fontWeight: "700", color: "#FFF" },
-  contrastLabel: { flex: 1, fontSize: 13, color: COLORS.text },
-
-  palettesList: { gap: SPACING.sm, marginBottom: SPACING.md },
+  palettesList: { gap: 12, marginBottom: 20 },
   paletteRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: SPACING.md,
-    backgroundColor: COLORS.card,
-    padding: SPACING.sm,
-    borderRadius: RADIUS.md,
+    gap: 16,
+    backgroundColor: "#FFF",
+    padding: 12,
+    borderRadius: RADIUS.xl,
     ...SHADOW.sm,
   },
   swatchRow: { flexDirection: "row", gap: 4 },
-  swatch: { width: 28, height: 28, borderRadius: 14 },
-  paletteName: { fontSize: 14, fontWeight: "700", color: COLORS.text },
-  paletteSafe: { fontSize: 12, color: COLORS.textLight },
-
+  swatch: { width: 32, height: 32, borderRadius: 16 },
+  paletteName: { fontSize: 15, fontWeight: "800", color: COLORS.text },
+  paletteSafe: { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
   toolsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
+    gap: 10,
+    marginBottom: 20,
   },
   toolChip: {
-    backgroundColor: COLORS.surfaceAlt,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+    backgroundColor: COLORS.primary + "08",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: COLORS.primary + "20",
   },
-  toolText: { fontSize: 13, color: COLORS.primary, fontWeight: "600" },
-
-  articleList: { gap: SPACING.sm, marginBottom: SPACING.md },
-  listItem: { flexDirection: "row", gap: SPACING.sm, alignItems: "flex-start" },
+  toolText: { fontSize: 13, color: COLORS.primary, fontWeight: "700" },
+  spectrumWrap: { marginBottom: 24, padding: 4 },
+  spectrumBar: {
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.primary,
+    marginBottom: 8,
+    opacity: 0.8,
+  }, // Note: Standardizing this bar
+  spectrumLabels: { flexDirection: "row", justifyContent: "space-between" },
+  spectrumLabel: { fontSize: 11, fontWeight: "700", color: COLORS.textLight },
+  cvdTypesList: { gap: 12, marginBottom: 20 },
+  cvdTypeCard: {
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.lg,
+    padding: 16,
+    ...SHADOW.sm,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  cvdTypeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 10,
+  },
+  cvdSwatches: { flexDirection: "row", gap: 4 },
+  cvdSwatch: { width: 24, height: 24, borderRadius: 12 },
+  cvdTypeName: { fontSize: 15, fontWeight: "800", color: COLORS.text },
+  cvdTypeSub: { fontSize: 11, color: COLORS.primary, fontWeight: "800" },
+  cvdTypeDesc: { fontSize: 13, color: COLORS.textLight, lineHeight: 20 },
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    backgroundColor: COLORS.primary + "05",
+    borderRadius: RADIUS.xl,
+    padding: 20,
+    marginBottom: 20,
+  },
+  statItem: { alignItems: "center" },
+  statValue: { fontSize: 24, fontWeight: "900", color: COLORS.primary },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: COLORS.textLight,
+    marginTop: 4,
+  },
+  coneRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 24,
+  },
+  coneItem: { alignItems: "center", gap: 6 },
+  coneCircle: { width: 56, height: 56, borderRadius: 28, ...SHADOW.sm },
+  coneLabel: { fontSize: 14, fontWeight: "800", color: COLORS.text },
+  coneSub: { fontSize: 11, color: COLORS.textLight },
+  causesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 24,
+  },
+  causeChip: {
+    backgroundColor: "#FFF",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  causeText: { fontSize: 13, color: COLORS.text, fontWeight: "700" },
+  bentoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 24,
+  },
+  bentoCell: {
+    width: "48%",
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.lg,
+    padding: 16,
+    ...SHADOW.sm,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  bentoCellTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: COLORS.text,
+    marginBottom: 6,
+  },
+  bentoCellDesc: { fontSize: 12, color: COLORS.textLight, lineHeight: 18 },
+  quickWinsList: { gap: 12, marginBottom: 24 },
+  quickWinRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  quickWinText: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.text,
+    lineHeight: 22,
+    fontWeight: "600",
+  },
+  articleList: { gap: 12, marginBottom: 24 },
+  listItem: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
   listDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: COLORS.primary,
-    marginTop: 6,
+    marginTop: 7,
   },
-  listItemTitle: { fontSize: 14, fontWeight: "700", color: COLORS.text },
-  listItemDesc: { fontSize: 13, color: COLORS.textLight, lineHeight: 19 },
+  listItemTitle: { fontSize: 15, fontWeight: "800", color: COLORS.text },
+  listItemDesc: { fontSize: 13, color: COLORS.textLight, lineHeight: 20 },
 
-  disclaimer: {
+  clinicalDisclaimer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: SPACING.sm,
+    gap: 10,
     backgroundColor: "#FFF8E1",
-    padding: SPACING.md,
-    borderRadius: RADIUS.md,
-    marginTop: SPACING.lg,
-    marginBottom: SPACING.xxl,
+    padding: 16,
+    borderRadius: RADIUS.lg,
+    marginTop: 30,
+    borderWidth: 1,
+    borderColor: "#FFE082",
   },
   disclaimerText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: COLORS.warning,
-    flex: 1,
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#B45309",
+    letterSpacing: 0.5,
   },
-
-  backFab: {
-    position: "absolute",
-    top: 48,
-    left: SPACING.md,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.5)",
+  footerInfo: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 8,
+    marginTop: 10,
+    opacity: 0.5,
   },
-
-  footerDisclaimer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.sm,
-    backgroundColor: "#FFF8E1",
-    padding: SPACING.md,
-    borderRadius: RADIUS.md,
-    marginTop: SPACING.md,
-  },
-  footerDisclaimerText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: COLORS.warning,
-  },
-
-  // Severity spectrum
-  spectrumWrap: { marginBottom: SPACING.md },
-  spectrumBar: {
-    height: 12,
-    borderRadius: 6,
-    background: "linear-gradient(to right, #27AE60, #F39C12, #E74C3C)",
-    backgroundColor: "#F39C12",
-    marginBottom: 6,
-    // Simulated gradient via shadow
-    shadowColor: "#E74C3C",
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.4,
-  },
-  spectrumLabels: { flexDirection: "row", justifyContent: "space-between" },
-  spectrumLabel: { fontSize: 12, color: COLORS.textLight },
-
-  // CVD types
-  cvdTypesList: { gap: SPACING.sm, marginBottom: SPACING.md },
-  cvdTypeCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.md,
-    padding: SPACING.sm,
-    ...SHADOW.sm,
-  },
-  cvdTypeHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.sm,
-    marginBottom: 6,
-  },
-  cvdSwatches: { flexDirection: "row", gap: 4 },
-  cvdSwatch: { width: 22, height: 22, borderRadius: 11 },
-  cvdTypeName: { fontSize: 14, fontWeight: "700", color: COLORS.text },
-  cvdTypeSub: { fontSize: 11, color: COLORS.primary, fontWeight: "600" },
-  cvdTypeDesc: { fontSize: 13, color: COLORS.textLight, lineHeight: 18 },
-
-  // Stats
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    backgroundColor: COLORS.surfaceAlt,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  statItem: { alignItems: "center" },
-  statValue: { fontSize: 20, fontWeight: "800", color: COLORS.primary },
-  statLabel: {
-    fontSize: 11,
-    color: COLORS.textLight,
-    marginTop: 2,
-    textAlign: "center",
-  },
-
-  // Cone diagram
-  coneRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginBottom: SPACING.md,
-  },
-  coneItem: { alignItems: "center", gap: 4 },
-  coneCircle: { width: 48, height: 48, borderRadius: 24 },
-  coneLabel: { fontSize: 13, fontWeight: "700", color: COLORS.text },
-  coneSub: { fontSize: 11, color: COLORS.textLight },
-
-  // Causes
-  causesRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
-  },
-  causeChip: {
-    backgroundColor: COLORS.surfaceAlt,
-    borderRadius: 20,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  causeText: { fontSize: 13, color: COLORS.text, fontWeight: "500" },
-
-  // Bento grid
-  bentoGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
-  },
-  bentoCell: {
-    width: "47%",
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.md,
-    padding: SPACING.sm,
-    ...SHADOW.sm,
-  },
-  bentoCellTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  bentoCellDesc: { fontSize: 12, color: COLORS.textLight, lineHeight: 17 },
-
-  // Quick wins
-  quickWinsList: { gap: SPACING.sm, marginBottom: SPACING.md },
-  quickWinRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: SPACING.sm,
-  },
-  quickWinText: { flex: 1, fontSize: 13, color: COLORS.text, lineHeight: 19 },
+  footerInfoText: { fontSize: 10, color: COLORS.textLight, fontWeight: "700" },
 });
