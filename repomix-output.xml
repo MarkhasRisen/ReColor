@@ -1720,81 +1720,6 @@ export class ScreenErrorBoundary extends Component {
 }
 </file>
 
-<file path="src/components/BackgroundBubbles.js">
-import { StyleSheet, View } from "react-native";
-import { styles } from "../theme/styles";
-
-export default function BackgroundBubbles() {
-  return (
-    <View
-      style={[StyleSheet.absoluteFill, { overflow: "hidden" }]}
-      pointerEvents="none"
-    >
-      <View
-        style={[
-          styles.bubble,
-          {
-            top: -50,
-            left: -50,
-            width: 200,
-            height: 200,
-            backgroundColor: "#FFCDD2",
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.bubble,
-          {
-            top: 100,
-            left: -80,
-            width: 120,
-            height: 120,
-            backgroundColor: "#E1BEE7",
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.bubble,
-          {
-            bottom: -50,
-            right: -50,
-            width: 250,
-            height: 250,
-            backgroundColor: "#BBDEFB",
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.bubble,
-          {
-            bottom: 200,
-            right: -60,
-            width: 150,
-            height: 150,
-            backgroundColor: "#C8E6C9",
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.bubble,
-          {
-            top: "40%",
-            left: "10%",
-            width: 50,
-            height: 50,
-            backgroundColor: "#FFF9C4",
-          },
-        ]}
-      />
-    </View>
-  );
-}
-</file>
-
 <file path="src/data/articles.js">
 export const ARTICLES = [
   {
@@ -2378,250 +2303,6 @@ export async function saveTestSession({
 }
 </file>
 
-<file path="src/screens/ProfileScreen.js">
-import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
-import { signOut } from "firebase/auth";
-import {
-  collection,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-} from "firebase/firestore";
-import { useEffect, useState } from "react";
-import {
-  Alert,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { auth, db } from "../../firebaseConfig";
-import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
-
-const ActionRow = ({
-  icon,
-  title,
-  value,
-  onPress,
-  color = COLORS.primary,
-  isLast = false,
-}) => (
-  <TouchableOpacity
-    onPress={onPress}
-    style={[styles.actionRow, isLast && { borderBottomWidth: 0 }]}
-    activeOpacity={0.6}
-  >
-    <View style={[styles.rowIcon, { backgroundColor: color + "10" }]}>
-      <Ionicons name={icon} size={20} color={color} />
-    </View>
-    <View style={styles.rowContent}>
-      <Text style={styles.rowTitle}>{title}</Text>
-      {value && <Text style={styles.rowValue}>{value}</Text>}
-    </View>
-    <Ionicons name="chevron-forward" size={16} color={COLORS.textLight} />
-  </TouchableOpacity>
-);
-
-export default function ProfileScreen({ navigation }) {
-  const insets = useSafeAreaInsets();
-  const [latestAssessment, setLatestAssessment] = useState(null);
-  const user = auth.currentUser;
-
-  useEffect(() => {
-    if (!user) return;
-    const q = query(
-      collection(db, "users", user.uid, "history"),
-      orderBy("date", "desc"),
-      limit(1),
-    );
-    return onSnapshot(q, (snap) => {
-      if (!snap.empty) setLatestAssessment(snap.docs[0].data());
-    });
-  }, [user]);
-
-  const handleSignOut = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert("Sign Out", "Are you sure you want to exit your session?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: () => signOut(auth).then(() => navigation.replace("Login")),
-      },
-    ]);
-  };
-
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* IDENTITY CARD */}
-        <View style={styles.idSection}>
-          <View style={styles.avatarWrapper}>
-            <Image
-              source={{
-                uri: `https://ui-avatars.com/api/?name=${user?.email}&background=4F46E5&color=fff&size=256`,
-              }}
-              style={styles.mainAvatar}
-            />
-            <View style={styles.onlineIndicator} />
-          </View>
-          <Text style={styles.idName}>
-            {(user?.email || "Guest").split("@")[0]}
-          </Text>
-          <Text style={styles.idEmail}>{user?.email}</Text>
-        </View>
-
-        {/* CLINICAL STATUS MODULE */}
-        <View style={styles.moduleCard}>
-          <Text style={styles.moduleHeader}>DIAGNOSTIC SUMMARY</Text>
-          <ActionRow
-            icon="shield-checkmark-outline"
-            title="Vision Profile"
-            value={latestAssessment?.diagnosis || "Not Screened"}
-            color="#10B981"
-            onPress={() => navigation.navigate("History")}
-          />
-          <ActionRow
-            icon="refresh-outline"
-            title="Re-calibrate Vision"
-            value="Start Ishihara Test"
-            color="#6366F1"
-            onPress={() => navigation.navigate("IshiharaOnboarding")}
-            isLast
-          />
-        </View>
-
-        {/* SYSTEM CONFIGURATION MODULE */}
-        <View style={styles.moduleCard}>
-          <Text style={styles.moduleHeader}>SYSTEM & PREFERENCES</Text>
-          <ActionRow
-            icon="settings-outline"
-            title="App Settings"
-            value="Accessibility & Haptics"
-            color={COLORS.text}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("Settings"); // THIS CONNECTS TO THE NEW SCREEN
-            }}
-          />
-          <ActionRow
-            icon="help-buoy-outline"
-            title="Support Center"
-            color="#F59E0B"
-            onPress={() => Alert.alert("Support", "Documentation coming soon.")}
-            isLast
-          />
-        </View>
-
-        {/* LOGOUT ACTION */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut}>
-          <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-          <Text style={styles.logoutText}>Sign Out of ReColor</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.versionText}>Version 1.0 Beta </Text>
-      </ScrollView>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
-  scrollContent: { padding: SPACING.lg, paddingBottom: 120 },
-  idSection: { alignItems: "center", marginBottom: SPACING.xl },
-  avatarWrapper: { position: "relative" },
-  mainAvatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: "#E2E8F0",
-  },
-  onlineIndicator: {
-    position: "absolute",
-    bottom: 5,
-    right: 5,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#10B981",
-    borderWidth: 3,
-    borderColor: "#F8FAFC",
-  },
-  idName: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: COLORS.text,
-    marginTop: 12,
-    textTransform: "capitalize",
-  },
-  idEmail: { fontSize: 14, color: COLORS.textLight, marginTop: 2 },
-  moduleCard: {
-    backgroundColor: "#FFF",
-    borderRadius: RADIUS.xl,
-    padding: SPACING.md,
-    marginBottom: SPACING.lg,
-    ...SHADOW.sm,
-  },
-  moduleHeader: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: COLORS.textLight,
-    letterSpacing: 1.5,
-    marginBottom: SPACING.md,
-    marginLeft: 4,
-  },
-  actionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-  },
-  rowIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: RADIUS.md,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: SPACING.md,
-  },
-  rowContent: { flex: 1 },
-  rowTitle: { fontSize: 15, fontWeight: "700", color: COLORS.text },
-  rowValue: { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
-  logoutButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFF",
-    padding: 16,
-    borderRadius: RADIUS.xl,
-    borderWidth: 1,
-    borderColor: "#FEE2E2",
-  },
-  logoutText: {
-    color: "#EF4444",
-    fontWeight: "800",
-    fontSize: 15,
-    marginLeft: 8,
-  },
-  versionText: {
-    textAlign: "center",
-    color: COLORS.textLight,
-    fontSize: 10,
-    marginTop: SPACING.xl,
-    opacity: 0.4,
-  },
-});
-</file>
-
 <file path="src/theme/colors.js">
 export const COLORS = {
   primary: "#6C63FF",
@@ -2894,178 +2575,185 @@ export async function resolveCalibration(rgba = null) {
 }
 </file>
 
-<file path="src/navigation/MainTabNavigator.js">
-import { Ionicons } from "@expo/vector-icons";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import * as Haptics from "expo-haptics";
-import {
-  Dimensions,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+<file path="src/components/BackgroundBubbles.js">
+import { useEffect } from "react";
+import { Dimensions, StyleSheet, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
 } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import HistoryScreen from "../screens/HistoryScreen";
-import HomeScreen from "../screens/HomeScreen";
-import ProfileScreen from "../screens/ProfileScreen";
-import { COLORS, SHADOW } from "../theme/colors";
+const { width, height } = Dimensions.get("window");
 
-const Tab = createBottomTabNavigator();
-const { width } = Dimensions.get("window");
-
-const CustomTabBar = ({ state, descriptors, navigation }) => {
-  const insets = useSafeAreaInsets();
-  const TAB_COUNT = state.routes.length;
-  const TAB_WIDTH = width / TAB_COUNT;
-
-  // Animation for the active indicator bar at the top of the tab
+const FloatingBubble = ({
+  size,
+  color,
+  top,
+  left,
+  duration,
+  delay = 0,
+  opacity = 0.3,
+}) => {
+  const translateY = useSharedValue(0);
   const translateX = useSharedValue(0);
-  const animatedIndicatorStyle = useAnimatedStyle(() => ({
+
+  useEffect(() => {
+    translateY.value = withDelay(
+      delay,
+      withRepeat(
+        withSequence(
+          withTiming(-30, { duration }),
+          withTiming(30, { duration }),
+        ),
+        -1,
+        true,
+      ),
+    );
+
+    translateX.value = withDelay(
+      delay,
+      withRepeat(
+        withSequence(
+          withTiming(20, { duration: duration * 1.5 }),
+          withTiming(-20, { duration: duration * 1.5 }),
+        ),
+        -1,
+        true,
+      ),
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
     transform: [
-      {
-        translateX: withSpring(state.index * TAB_WIDTH, {
-          damping: 20,
-          stiffness: 180,
-        }),
-      },
+      { translateY: translateY.value },
+      { translateX: translateX.value },
     ],
   }));
 
   return (
-    <View style={[styles.tabBarContainer, { paddingBottom: insets.bottom }]}>
-      {/* Precision Active Indicator - Top Border Style */}
-      <Animated.View
-        style={[
-          styles.activeIndicator,
-          { width: TAB_WIDTH },
-          animatedIndicatorStyle,
-        ]}
-      />
-
-      <View style={styles.tabContent}>
-        {state.routes.map((route, index) => {
-          const { options } = descriptors[route.key];
-          const isFocused = state.index === index;
-
-          const onPress = () => {
-            const event = navigation.emit({
-              type: "tabPress",
-              target: route.key,
-              canPreventDefault: true,
-            });
-
-            if (!isFocused && !event.defaultPrevented) {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              navigation.navigate(route.name);
-            }
-          };
-
-          const iconMapping = {
-            Home: isFocused ? "home" : "home-outline",
-            History: isFocused ? "analytics" : "analytics-outline",
-            Profile: isFocused ? "person" : "person-outline",
-          };
-
-          const labelMapping = {
-            Home: "Home",
-            History: "Records",
-            Profile: "Profile",
-          };
-
-          return (
-            <TouchableOpacity
-              key={route.key}
-              onPress={onPress}
-              style={styles.tabItem}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityState={isFocused ? { selected: true } : {}}
-              accessibilityLabel={labelMapping[route.name]}
-            >
-              <Ionicons
-                name={iconMapping[route.name]}
-                size={24}
-                color={isFocused ? COLORS.primary : COLORS.textLight}
-              />
-              <Text
-                style={[
-                  styles.tabLabel,
-                  {
-                    color: isFocused ? COLORS.primary : COLORS.textLight,
-                    fontWeight: isFocused ? "800" : "500",
-                  },
-                ]}
-              >
-                {labelMapping[route.name]}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
+    <Animated.View
+      style={[
+        animatedStyle,
+        {
+          position: "absolute",
+          top,
+          left,
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: color,
+          opacity,
+        },
+      ]}
+    />
   );
 };
 
-export default function MainTabNavigator() {
+export default function BackgroundBubbles() {
   return (
-    <Tab.Navigator
-      tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-        lazy: true, // Performance optimization
-      }}
-    >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="History" component={HistoryScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
-    </Tab.Navigator>
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {/* Top Cluster */}
+      <FloatingBubble
+        size={200}
+        color="#FFCDD2"
+        top={-40}
+        left={-60}
+        duration={4000}
+      />
+      <FloatingBubble
+        size={80}
+        color="#E1BEE7"
+        top={120}
+        left={20}
+        duration={3000}
+        delay={500}
+      />
+
+      {/* Middle Floating accents */}
+      <FloatingBubble
+        size={40}
+        color="#FFF9C4"
+        top={height * 0.3}
+        left={width * 0.1}
+        duration={2500}
+        opacity={0.5}
+      />
+      <FloatingBubble
+        size={120}
+        color="#C8E6C9"
+        top={height * 0.4}
+        left={width * 0.8}
+        duration={5000}
+      />
+      <FloatingBubble
+        size={60}
+        color="#BBDEFB"
+        top={height * 0.55}
+        left={width * 0.05}
+        duration={3500}
+        delay={200}
+      />
+
+      {/* Bottom Cluster */}
+      <FloatingBubble
+        size={280}
+        color="#BBDEFB"
+        top={height * 0.75}
+        left={width * 0.5}
+        duration={6000}
+      />
+      <FloatingBubble
+        size={100}
+        color="#FFCDD2"
+        top={height * 0.85}
+        left={width * 0.1}
+        duration={4500}
+      />
+      <FloatingBubble
+        size={150}
+        color="#E1BEE7"
+        top={height * 0.6}
+        left={width * 0.7}
+        duration={5500}
+        delay={1000}
+      />
+
+      {/* Extra "Bubbly" Small Orbs */}
+      <FloatingBubble
+        size={25}
+        color="#C8E6C9"
+        top={height * 0.1}
+        left={width * 0.7}
+        duration={2000}
+      />
+      <FloatingBubble
+        size={30}
+        color="#FFF9C4"
+        top={height * 0.9}
+        left={width * 0.8}
+        duration={3000}
+      />
+      <FloatingBubble
+        size={20}
+        color="#FFCDD2"
+        top={height * 0.25}
+        left={width * 0.85}
+        duration={2200}
+      />
+      <FloatingBubble
+        size={35}
+        color="#BBDEFB"
+        top={height * 0.05}
+        left={width * 0.3}
+        duration={2800}
+      />
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBarContainer: {
-    position: "absolute",
-    bottom: 0,
-    width: "100%",
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.05)",
-    ...SHADOW.lg, // Stronger shadow for the edge-to-edge look
-  },
-  tabContent: {
-    flexDirection: "row",
-    height: 60,
-    alignItems: "center",
-    justifyContent: "space-around",
-  },
-  tabItem: {
-    flex: 1,
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 8,
-  },
-  tabLabel: {
-    fontSize: 10,
-    marginTop: 4,
-    letterSpacing: 0.3,
-  },
-  activeIndicator: {
-    position: "absolute",
-    top: -1, // Sits exactly on the top border
-    height: 3,
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: 2,
-    borderBottomRightRadius: 2,
-  },
-});
 </file>
 
 <file path="src/screens/AdminHubScreen.js">
@@ -3741,1057 +3429,6 @@ const styles = StyleSheet.create({
 });
 </file>
 
-<file path="src/screens/ArticleScreen.js">
-import { Ionicons } from "@expo/vector-icons";
-import { MotiView } from "moti";
-import React from "react";
-import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
-} from "react-native";
-import { ARTICLES } from "../data/articles";
-import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
-
-function SectionRenderer({ section }) {
-  switch (section.type) {
-    case "heading":
-      return <Text style={styles.sectionHeading}>{section.text}</Text>;
-
-    case "paragraph":
-      return <Text style={styles.paragraph}>{section.text}</Text>;
-
-    case "dos_donts":
-      return (
-        <View style={styles.dosDontsRow}>
-          <View
-            style={[styles.dosDontsCard, { borderTopColor: COLORS.success }]}
-          >
-            <View style={styles.dosDontsHeader}>
-              <Ionicons
-                name="checkmark-circle"
-                size={16}
-                color={COLORS.success}
-              />
-              <Text style={[styles.dosDontsTitle, { color: COLORS.success }]}>
-                Do
-              </Text>
-            </View>
-            {section.dos.map((d, i) => (
-              <Text key={i} style={styles.doItem}>
-                • {d}
-              </Text>
-            ))}
-          </View>
-          <View
-            style={[styles.dosDontsCard, { borderTopColor: COLORS.danger }]}
-          >
-            <View style={styles.dosDontsHeader}>
-              <Ionicons name="close-circle" size={16} color={COLORS.danger} />
-              <Text style={[styles.dosDontsTitle, { color: COLORS.danger }]}>
-                Don't
-              </Text>
-            </View>
-            {section.donts.map((d, i) => (
-              <Text key={i} style={styles.dontItem}>
-                • {d}
-              </Text>
-            ))}
-          </View>
-        </View>
-      );
-
-    case "contrast":
-      return (
-        <View style={styles.contrastList}>
-          {section.items.map((item, i) => (
-            <View key={i} style={styles.contrastRow}>
-              <View
-                style={[
-                  styles.contrastBadge,
-                  {
-                    backgroundColor: item.pass ? COLORS.success : COLORS.danger,
-                  },
-                ]}
-              >
-                <Text style={styles.contrastRatio}>{item.ratio}</Text>
-              </View>
-              <Text style={styles.contrastLabel}>{item.label}</Text>
-              <Ionicons
-                name={item.pass ? "checkmark-circle" : "close-circle"}
-                size={18}
-                color={item.pass ? COLORS.success : COLORS.danger}
-              />
-            </View>
-          ))}
-        </View>
-      );
-
-    case "palettes":
-      return (
-        <View style={styles.palettesList}>
-          {section.items.map((pal, i) => (
-            <View key={i} style={styles.paletteRow}>
-              <View style={styles.swatchRow}>
-                {pal.colors.map((c, ci) => (
-                  <View
-                    key={ci}
-                    style={[styles.swatch, { backgroundColor: c }]}
-                  />
-                ))}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.paletteName}>{pal.name}</Text>
-                <Text style={styles.paletteSafe}>{pal.safe}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      );
-
-    case "tools":
-      return (
-        <View style={styles.toolsRow}>
-          {section.items.map((tool, i) => (
-            <View key={i} style={styles.toolChip}>
-              <Text style={styles.toolText}>{tool}</Text>
-            </View>
-          ))}
-        </View>
-      );
-
-    case "severity_spectrum":
-      return (
-        <View style={styles.spectrumWrap}>
-          <View style={styles.spectrumBar} />
-          <View style={styles.spectrumLabels}>
-            <Text style={styles.spectrumLabel}>Mild</Text>
-            <Text style={styles.spectrumLabel}>Moderate</Text>
-            <Text style={styles.spectrumLabel}>Severe</Text>
-          </View>
-        </View>
-      );
-
-    case "cvd_types":
-      return (
-        <View style={styles.cvdTypesList}>
-          {section.items.map((cvd, i) => (
-            <View key={i} style={styles.cvdTypeCard}>
-              <View style={styles.cvdTypeHeader}>
-                <View style={styles.cvdSwatches}>
-                  {cvd.colors.map((c, ci) => (
-                    <View
-                      key={ci}
-                      style={[styles.cvdSwatch, { backgroundColor: c }]}
-                    />
-                  ))}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cvdTypeName}>{cvd.name}</Text>
-                  <Text style={styles.cvdTypeSub}>{cvd.sub}</Text>
-                </View>
-              </View>
-              <Text style={styles.cvdTypeDesc}>{cvd.desc}</Text>
-            </View>
-          ))}
-        </View>
-      );
-
-    case "stats":
-      return (
-        <View style={styles.statsRow}>
-          {section.items.map((s, i) => (
-            <View key={i} style={styles.statItem}>
-              <Text style={styles.statValue}>{s.value}</Text>
-              <Text style={styles.statLabel}>{s.label}</Text>
-            </View>
-          ))}
-        </View>
-      );
-
-    case "cone_diagram":
-      return (
-        <View style={styles.coneRow}>
-          {section.cones.map((cone, i) => (
-            <View key={i} style={styles.coneItem}>
-              <View
-                style={[styles.coneCircle, { backgroundColor: cone.color }]}
-              />
-              <Text style={styles.coneLabel}>{cone.label}</Text>
-              <Text style={styles.coneSub}>{cone.sub}</Text>
-            </View>
-          ))}
-        </View>
-      );
-
-    case "causes":
-      return (
-        <View style={styles.causesRow}>
-          {section.items.map((cause, i) => (
-            <View key={i} style={styles.causeChip}>
-              <Text style={styles.causeText}>{cause}</Text>
-            </View>
-          ))}
-        </View>
-      );
-
-    case "bento_grid":
-      return (
-        <View style={styles.bentoGrid}>
-          {section.items.map((item, i) => (
-            <View key={i} style={styles.bentoCell}>
-              <Ionicons
-                name={item.icon}
-                size={22}
-                color={COLORS.primary}
-                style={{ marginBottom: 6 }}
-              />
-              <Text style={styles.bentoCellTitle}>{item.title}</Text>
-              <Text style={styles.bentoCellDesc}>{item.desc}</Text>
-            </View>
-          ))}
-        </View>
-      );
-
-    case "quick_wins":
-      return (
-        <View style={styles.quickWinsList}>
-          {section.items.map((item, i) => (
-            <View key={i} style={styles.quickWinRow}>
-              <Ionicons
-                name="checkmark-circle"
-                size={18}
-                color={COLORS.success}
-              />
-              <Text style={styles.quickWinText}>{item}</Text>
-            </View>
-          ))}
-        </View>
-      );
-
-    case "list":
-      return (
-        <View style={styles.articleList}>
-          {section.items.map((item, i) => (
-            <View key={i} style={styles.listItem}>
-              <View style={styles.listDot} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.listItemTitle}>{item.title}</Text>
-                <Text style={styles.listItemDesc}>{item.desc}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      );
-
-    default:
-      return null;
-  }
-}
-
-function ArticleCard({ article, onPress }) {
-  return (
-    <MotiView
-      from={{ opacity: 0, translateY: 12 }}
-      animate={{ opacity: 1, translateY: 0 }}
-      transition={{ type: "spring", damping: 18 }}
-    >
-      <TouchableOpacity
-        style={styles.articleCard}
-        onPress={onPress}
-        activeOpacity={0.88}
-      >
-        <Image source={article.coverImage} style={styles.articleCover} />
-        <View style={styles.articleCardBody}>
-          <View style={styles.metaRow}>
-            <Text style={styles.categoryTag}>{article.category}</Text>
-            <Text style={styles.readTime}>{article.readTime}</Text>
-          </View>
-          <Text style={styles.articleTitle}>{article.title}</Text>
-          <Text style={styles.articleSummary} numberOfLines={2}>
-            {article.summary}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    </MotiView>
-  );
-}
-
-function ArticleDetail({ article, onBack }) {
-  return (
-    <ScrollView style={styles.detailRoot} showsVerticalScrollIndicator={false}>
-      <Image source={article.coverImage} style={styles.detailCover} />
-
-      <View style={styles.detailContent}>
-        <View style={styles.metaRow}>
-          <Text style={styles.categoryTag}>{article.category}</Text>
-          <Text style={styles.readTime}>{article.readTime}</Text>
-        </View>
-        <Text style={styles.detailTitle}>{article.title}</Text>
-        <Text style={styles.detailSummary}>{article.summary}</Text>
-
-        <View style={styles.divider} />
-
-        {article.sections.map((sec, i) => (
-          <SectionRenderer key={i} section={sec} />
-        ))}
-
-        {/* Disclaimer */}
-        <View style={styles.disclaimer}>
-          <Ionicons name="warning-outline" size={16} color={COLORS.warning} />
-          <Text style={styles.disclaimerText}>
-            SCREENING PURPOSE ONLY. NOT A CLINICAL DIAGNOSIS.
-          </Text>
-        </View>
-      </View>
-
-      <TouchableOpacity style={styles.backFab} onPress={onBack}>
-        <Ionicons name="arrow-back" size={22} color="#FFF" />
-      </TouchableOpacity>
-    </ScrollView>
-  );
-}
-
-export default function ArticleScreen({ navigation, route }) {
-  const [selected, setSelected] = React.useState(
-    route?.params?.article ?? null,
-  );
-
-  if (selected) {
-    return (
-      <ArticleDetail article={selected} onBack={() => setSelected(null)} />
-    );
-  }
-
-  return (
-    <View style={styles.root}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Learn & Understand</Text>
-        <Image
-          source={require("../../assets/icon.png")}
-          style={styles.headerLogo}
-        />
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {ARTICLES.map((article) => (
-          <ArticleCard
-            key={article.id}
-            article={article}
-            onPress={() => setSelected(article)}
-          />
-        ))}
-
-        <View style={styles.footerDisclaimer}>
-          <Ionicons name="warning-outline" size={14} color={COLORS.warning} />
-          <Text style={styles.footerDisclaimerText}>
-            SCREENING PURPOSE ONLY. NOT A CLINICAL DIAGNOSIS.
-          </Text>
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.background },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: SPACING.md,
-    paddingTop: 52,
-    paddingBottom: SPACING.md,
-    backgroundColor: COLORS.card,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: COLORS.text },
-  headerLogo: { width: 36, height: 36, resizeMode: "contain" },
-
-  listContent: {
-    padding: SPACING.md,
-    gap: SPACING.md,
-    paddingBottom: SPACING.xxl,
-  },
-
-  articleCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    overflow: "hidden",
-    ...SHADOW.md,
-  },
-  articleCover: { width: "100%", height: 160, resizeMode: "cover" },
-  articleCardBody: { padding: SPACING.md },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.sm,
-    marginBottom: 6,
-  },
-  categoryTag: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: COLORS.primary,
-    backgroundColor: COLORS.surfaceAlt,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  readTime: { fontSize: 12, color: COLORS.textLight },
-  articleTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  articleSummary: { fontSize: 13, color: COLORS.textLight, lineHeight: 19 },
-
-  // Detail view
-  detailRoot: { flex: 1, backgroundColor: COLORS.background },
-  detailCover: { width: "100%", height: 220, resizeMode: "cover" },
-  detailContent: { padding: SPACING.md },
-  detailTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: COLORS.text,
-    marginBottom: 6,
-  },
-  detailSummary: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    lineHeight: 21,
-    marginBottom: SPACING.md,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginBottom: SPACING.md,
-  },
-
-  sectionHeading: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: COLORS.text,
-    marginTop: SPACING.md,
-    marginBottom: SPACING.sm,
-  },
-  paragraph: {
-    fontSize: 14,
-    color: COLORS.text,
-    lineHeight: 22,
-    marginBottom: SPACING.sm,
-  },
-
-  dosDontsRow: {
-    flexDirection: "row",
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
-  },
-  dosDontsCard: {
-    flex: 1,
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.md,
-    padding: SPACING.sm,
-    borderTopWidth: 3,
-    ...SHADOW.sm,
-  },
-  dosDontsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginBottom: 6,
-  },
-  dosDontsTitle: { fontSize: 13, fontWeight: "700" },
-  doItem: { fontSize: 12, color: COLORS.text, lineHeight: 18 },
-  dontItem: { fontSize: 12, color: COLORS.text, lineHeight: 18 },
-
-  contrastList: { gap: SPACING.sm, marginBottom: SPACING.md },
-  contrastRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.sm,
-    backgroundColor: COLORS.card,
-    padding: SPACING.sm,
-    borderRadius: RADIUS.sm,
-    ...SHADOW.sm,
-  },
-  contrastBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  contrastRatio: { fontSize: 12, fontWeight: "700", color: "#FFF" },
-  contrastLabel: { flex: 1, fontSize: 13, color: COLORS.text },
-
-  palettesList: { gap: SPACING.sm, marginBottom: SPACING.md },
-  paletteRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.md,
-    backgroundColor: COLORS.card,
-    padding: SPACING.sm,
-    borderRadius: RADIUS.md,
-    ...SHADOW.sm,
-  },
-  swatchRow: { flexDirection: "row", gap: 4 },
-  swatch: { width: 28, height: 28, borderRadius: 14 },
-  paletteName: { fontSize: 14, fontWeight: "700", color: COLORS.text },
-  paletteSafe: { fontSize: 12, color: COLORS.textLight },
-
-  toolsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
-  },
-  toolChip: {
-    backgroundColor: COLORS.surfaceAlt,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-  },
-  toolText: { fontSize: 13, color: COLORS.primary, fontWeight: "600" },
-
-  articleList: { gap: SPACING.sm, marginBottom: SPACING.md },
-  listItem: { flexDirection: "row", gap: SPACING.sm, alignItems: "flex-start" },
-  listDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.primary,
-    marginTop: 6,
-  },
-  listItemTitle: { fontSize: 14, fontWeight: "700", color: COLORS.text },
-  listItemDesc: { fontSize: 13, color: COLORS.textLight, lineHeight: 19 },
-
-  disclaimer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.sm,
-    backgroundColor: "#FFF8E1",
-    padding: SPACING.md,
-    borderRadius: RADIUS.md,
-    marginTop: SPACING.lg,
-    marginBottom: SPACING.xxl,
-  },
-  disclaimerText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: COLORS.warning,
-    flex: 1,
-  },
-
-  backFab: {
-    position: "absolute",
-    top: 48,
-    left: SPACING.md,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  footerDisclaimer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.sm,
-    backgroundColor: "#FFF8E1",
-    padding: SPACING.md,
-    borderRadius: RADIUS.md,
-    marginTop: SPACING.md,
-  },
-  footerDisclaimerText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: COLORS.warning,
-  },
-
-  // Severity spectrum
-  spectrumWrap: { marginBottom: SPACING.md },
-  spectrumBar: {
-    height: 12,
-    borderRadius: 6,
-    background: "linear-gradient(to right, #27AE60, #F39C12, #E74C3C)",
-    backgroundColor: "#F39C12",
-    marginBottom: 6,
-    // Simulated gradient via shadow
-    shadowColor: "#E74C3C",
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.4,
-  },
-  spectrumLabels: { flexDirection: "row", justifyContent: "space-between" },
-  spectrumLabel: { fontSize: 12, color: COLORS.textLight },
-
-  // CVD types
-  cvdTypesList: { gap: SPACING.sm, marginBottom: SPACING.md },
-  cvdTypeCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.md,
-    padding: SPACING.sm,
-    ...SHADOW.sm,
-  },
-  cvdTypeHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.sm,
-    marginBottom: 6,
-  },
-  cvdSwatches: { flexDirection: "row", gap: 4 },
-  cvdSwatch: { width: 22, height: 22, borderRadius: 11 },
-  cvdTypeName: { fontSize: 14, fontWeight: "700", color: COLORS.text },
-  cvdTypeSub: { fontSize: 11, color: COLORS.primary, fontWeight: "600" },
-  cvdTypeDesc: { fontSize: 13, color: COLORS.textLight, lineHeight: 18 },
-
-  // Stats
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    backgroundColor: COLORS.surfaceAlt,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  statItem: { alignItems: "center" },
-  statValue: { fontSize: 20, fontWeight: "800", color: COLORS.primary },
-  statLabel: {
-    fontSize: 11,
-    color: COLORS.textLight,
-    marginTop: 2,
-    textAlign: "center",
-  },
-
-  // Cone diagram
-  coneRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginBottom: SPACING.md,
-  },
-  coneItem: { alignItems: "center", gap: 4 },
-  coneCircle: { width: 48, height: 48, borderRadius: 24 },
-  coneLabel: { fontSize: 13, fontWeight: "700", color: COLORS.text },
-  coneSub: { fontSize: 11, color: COLORS.textLight },
-
-  // Causes
-  causesRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
-  },
-  causeChip: {
-    backgroundColor: COLORS.surfaceAlt,
-    borderRadius: 20,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  causeText: { fontSize: 13, color: COLORS.text, fontWeight: "500" },
-
-  // Bento grid
-  bentoGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
-  },
-  bentoCell: {
-    width: "47%",
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.md,
-    padding: SPACING.sm,
-    ...SHADOW.sm,
-  },
-  bentoCellTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  bentoCellDesc: { fontSize: 12, color: COLORS.textLight, lineHeight: 17 },
-
-  // Quick wins
-  quickWinsList: { gap: SPACING.sm, marginBottom: SPACING.md },
-  quickWinRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: SPACING.sm,
-  },
-  quickWinText: { flex: 1, fontSize: 13, color: COLORS.text, lineHeight: 19 },
-});
-</file>
-
-<file path="src/screens/EducationListScreen.js">
-import { Ionicons } from "@expo/vector-icons";
-import {
-  Image,
-  Linking,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import BackgroundBubbles from "../components/BackgroundBubbles";
-import Card from "../components/Card";
-import Header from "../components/Header";
-import { ARTICLES } from "../data/articles";
-import { CAREER_ARTICLES } from "../data/careerData";
-import { styles } from "../theme/styles";
-
-export default function EducationListScreen({ navigation }) {
-  return (
-    <View style={styles.container}>
-      <BackgroundBubbles />
-      <Header title="Learn & Understand" back />
-
-      <ScrollView
-        contentContainerStyle={{ padding: 20 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View
-          style={{
-            backgroundColor: "#F3E5F5",
-            borderRadius: 16,
-            overflow: "hidden",
-            marginBottom: 25,
-            borderWidth: 1,
-            borderColor: "#E1BEE7",
-          }}
-        >
-          <Image
-            source={require("../../assets/peri.png")}
-            style={{ width: "100%", height: 180 }}
-            resizeMode="cover"
-          />
-          <View style={{ padding: 20 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                marginBottom: 10,
-              }}
-            >
-              <Ionicons name="business" size={20} color="#9C27B0" />
-              <Text
-                style={{
-                  marginLeft: 10,
-                  color: "#4A148C",
-                  fontWeight: "bold",
-                  fontSize: 16,
-                  flex: 1,
-                }}
-              >
-                About Philippine Eye Research Institute
-              </Text>
-            </View>
-            <Text
-              style={{
-                color: "#4A148C",
-                fontSize: 13,
-                lineHeight: 20,
-                marginBottom: 15,
-              }}
-            >
-              The Philippine Eye Research Institute (PERI) is the premier eye
-              research institution in the Philippines, dedicated to preventing
-              blindness.
-            </Text>
-            <Text style={{ fontSize: 13, color: "#333", lineHeight: 20 }}>
-              <Text style={{ fontWeight: "bold" }}>Our Mission:</Text> To
-              improve eye health outcomes through innovative research and
-              evidence-based clinical practices.
-            </Text>
-            <TouchableOpacity
-              style={{
-                marginTop: 20,
-                backgroundColor: "#FFF",
-                paddingVertical: 12,
-                borderRadius: 8,
-                alignItems: "center",
-                flexDirection: "row",
-                justifyContent: "center",
-                borderWidth: 1,
-                borderColor: "#D1C4E9",
-              }}
-              onPress={() => Linking.openURL("https://peri.ph/")}
-            >
-              <Text
-                style={{ color: "#4A148C", fontWeight: "bold", marginRight: 8 }}
-              >
-                Visit PERI Website
-              </Text>
-              <Ionicons name="open-outline" size={16} color="#4A148C" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* ── CVD Simulations — Bento Grid ── */}
-        <View style={{ marginBottom: 25 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginBottom: 12,
-            }}
-          >
-            <Ionicons name="eye-outline" size={22} color="#333" />
-            <Text
-              style={{
-                marginLeft: 8,
-                fontWeight: "bold",
-                fontSize: 16,
-                color: "#333",
-              }}
-            >
-              CVD Simulations
-            </Text>
-          </View>
-          <Text style={{ color: "#666", fontSize: 12, marginBottom: 14 }}>
-            Tap a type to experience how colour vision deficiency affects
-            perception.
-          </Text>
-
-          <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
-            {[
-              {
-                label: "Protanomaly",
-                sub: "Red-weak",
-                cvdType: "Protan",
-                bg: "#FFEBEE",
-                border: "#FFCDD2",
-                textColor: "#B71C1C",
-                icon: "radio-button-on",
-              },
-              {
-                label: "Deuteranomaly",
-                sub: "Green-weak",
-                cvdType: "Deutan",
-                bg: "#E8F5E9",
-                border: "#C8E6C9",
-                textColor: "#1B5E20",
-                icon: "radio-button-on",
-              },
-            ].map((item) => (
-              <TouchableOpacity
-                key={item.label}
-                style={{
-                  flex: 1,
-                  backgroundColor: item.bg,
-                  padding: 16,
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: item.border,
-                  minHeight: 110,
-                }}
-                onPress={() =>
-                  navigation.navigate("CVDSimulation", {
-                    initialCvdType: item.cvdType,
-                  })
-                }
-                activeOpacity={0.82}
-              >
-                <View
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    backgroundColor: item.textColor + "22",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 10,
-                  }}
-                >
-                  <Ionicons
-                    name="eye-outline"
-                    size={18}
-                    color={item.textColor}
-                  />
-                </View>
-                <Text
-                  style={{
-                    fontWeight: "800",
-                    color: item.textColor,
-                    fontSize: 14,
-                  }}
-                >
-                  {item.label}
-                </Text>
-                <Text
-                  style={{
-                    color: item.textColor + "AA",
-                    fontSize: 11,
-                    marginTop: 3,
-                  }}
-                >
-                  {item.sub}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <TouchableOpacity
-            style={{
-              backgroundColor: "#E3F2FD",
-              padding: 16,
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: "#BBDEFB",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 14,
-            }}
-            onPress={() =>
-              navigation.navigate("CVDSimulation", { initialCvdType: "Tritan" })
-            }
-            activeOpacity={0.82}
-          >
-            <View
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: "#0D47A122",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Ionicons name="eye-outline" size={22} color="#0D47A1" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{ fontWeight: "800", color: "#0D47A1", fontSize: 15 }}
-              >
-                Tritanomaly
-              </Text>
-              <Text style={{ color: "#0D47A1AA", fontSize: 12, marginTop: 2 }}>
-                Blue-weak vision · Simulate
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#0D47A1" />
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Career Awareness Section ── */}
-        <View style={{ marginBottom: 25 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginBottom: 12,
-            }}
-          >
-            <Ionicons name="briefcase-outline" size={22} color="#333" />
-            <Text
-              style={{
-                marginLeft: 8,
-                fontWeight: "bold",
-                fontSize: 16,
-                color: "#333",
-              }}
-            >
-              Career Awareness
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={{
-              backgroundColor: "#E8EAF6",
-              padding: 20,
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: "#C5CAE9",
-              flexDirection: "row",
-              alignItems: "center",
-            }}
-            activeOpacity={0.85}
-            onPress={() =>
-              navigation.navigate("CareerDetail", { item: CAREER_ARTICLES[0] })
-            }
-          >
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 12,
-                backgroundColor: "#3F51B522",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Ionicons name="school-outline" size={26} color="#3F51B5" />
-            </View>
-            <View style={{ flex: 1, marginLeft: 15 }}>
-              <Text
-                style={{ fontWeight: "bold", color: "#1A237E", fontSize: 16 }}
-              >
-                Occupations & CVD
-              </Text>
-              <Text style={{ color: "#1A237E99", fontSize: 12, marginTop: 2 }}>
-                Explore 9 critical career paths affected by color vision.
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#3F51B5" />
-          </TouchableOpacity>
-        </View>
-
-        <Text
-          style={{
-            fontWeight: "bold",
-            fontSize: 18,
-            marginBottom: 15,
-            color: "#333",
-          }}
-        >
-          Latest Articles
-        </Text>
-        {ARTICLES.map((article) => (
-          <Card
-            key={article.id}
-            style={{ padding: 0, overflow: "hidden", marginBottom: 20 }}
-            onPress={() => navigation.navigate("Article", { article })}
-          >
-            <Image
-              source={article.coverImage}
-              style={{ width: "100%", height: 140 }}
-              resizeMode="cover"
-            />
-            <View style={{ padding: 20 }}>
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: "bold",
-                  marginBottom: 5,
-                  color: "#333",
-                }}
-              >
-                {article.title}
-              </Text>
-              <Text style={{ fontSize: 12, color: "#666", lineHeight: 18 }}>
-                {article.summary}
-              </Text>
-            </View>
-          </Card>
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-</file>
-
 <file path="src/screens/IshiharaIntroScreen.js">
 import { Ionicons } from "@expo/vector-icons";
 import { ScrollView, Text, View } from "react-native";
@@ -4916,6 +3553,252 @@ export default function IshiharaIntroScreen({ navigation }) {
     </View>
   );
 }
+</file>
+
+<file path="src/screens/ProfileScreen.js">
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { signOut } from "firebase/auth";
+import {
+  collection,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+} from "firebase/firestore";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { auth, db } from "../../firebaseConfig";
+import BackgroundBubbles from "../components/BackgroundBubbles";
+import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
+
+const ActionRow = ({
+  icon,
+  title,
+  value,
+  onPress,
+  color = COLORS.primary,
+  isLast = false,
+}) => (
+  <TouchableOpacity
+    onPress={onPress}
+    style={[styles.actionRow, isLast && { borderBottomWidth: 0 }]}
+    activeOpacity={0.6}
+  >
+    <View style={[styles.rowIcon, { backgroundColor: color + "10" }]}>
+      <Ionicons name={icon} size={20} color={color} />
+    </View>
+    <View style={styles.rowContent}>
+      <Text style={styles.rowTitle}>{title}</Text>
+      {value && <Text style={styles.rowValue}>{value}</Text>}
+    </View>
+    <Ionicons name="chevron-forward" size={16} color={COLORS.textLight} />
+  </TouchableOpacity>
+);
+
+export default function ProfileScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
+  const [latestAssessment, setLatestAssessment] = useState(null);
+  const user = auth.currentUser;
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, "users", user.uid, "history"),
+      orderBy("date", "desc"),
+      limit(1),
+    );
+    return onSnapshot(q, (snap) => {
+      if (!snap.empty) setLatestAssessment(snap.docs[0].data());
+    });
+  }, [user]);
+
+  const handleSignOut = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Alert.alert("Sign Out", "Are you sure you want to exit your session?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: () => signOut(auth).then(() => navigation.replace("Login")),
+      },
+    ]);
+  };
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <BackgroundBubbles />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* IDENTITY CARD */}
+        <View style={styles.idSection}>
+          <View style={styles.avatarWrapper}>
+            <Image
+              source={{
+                uri: `https://ui-avatars.com/api/?name=${user?.email}&background=4F46E5&color=fff&size=256`,
+              }}
+              style={styles.mainAvatar}
+            />
+            <View style={styles.onlineIndicator} />
+          </View>
+          <Text style={styles.idName}>
+            {(user?.email || "Guest").split("@")[0]}
+          </Text>
+          <Text style={styles.idEmail}>{user?.email}</Text>
+        </View>
+
+        {/* CLINICAL STATUS MODULE */}
+        <View style={styles.moduleCard}>
+          <Text style={styles.moduleHeader}>DIAGNOSTIC SUMMARY</Text>
+          <ActionRow
+            icon="shield-checkmark-outline"
+            title="Vision Profile"
+            value={latestAssessment?.diagnosis || "Not Screened"}
+            color="#10B981"
+            onPress={() => navigation.navigate("History")}
+          />
+          <ActionRow
+            icon="refresh-outline"
+            title="Re-calibrate Vision"
+            value="Start Ishihara Test"
+            color="#6366F1"
+            onPress={() => navigation.navigate("IshiharaOnboarding")}
+            isLast
+          />
+        </View>
+
+        {/* SYSTEM CONFIGURATION MODULE */}
+        <View style={styles.moduleCard}>
+          <Text style={styles.moduleHeader}>SYSTEM & PREFERENCES</Text>
+          <ActionRow
+            icon="settings-outline"
+            title="App Settings"
+            value="Accessibility & Haptics"
+            color={COLORS.text}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              navigation.navigate("Settings"); // THIS CONNECTS TO THE NEW SCREEN
+            }}
+          />
+          <ActionRow
+            icon="help-buoy-outline"
+            title="Support Center"
+            color="#F59E0B"
+            onPress={() => Alert.alert("Support", "Documentation coming soon.")}
+            isLast
+          />
+        </View>
+
+        {/* LOGOUT ACTION */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut}>
+          <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+          <Text style={styles.logoutText}>Sign Out of ReColor</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.versionText}>Version 1.0 Beta </Text>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  scrollContent: { padding: SPACING.lg, paddingBottom: 120 },
+  idSection: { alignItems: "center", marginBottom: SPACING.xl },
+  avatarWrapper: { position: "relative" },
+  mainAvatar: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: "#E2E8F0",
+  },
+  onlineIndicator: {
+    position: "absolute",
+    bottom: 5,
+    right: 5,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#10B981",
+    borderWidth: 3,
+    borderColor: "#F8FAFC",
+  },
+  idName: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: COLORS.text,
+    marginTop: 12,
+    textTransform: "capitalize",
+  },
+  idEmail: { fontSize: 14, color: COLORS.textLight, marginTop: 2 },
+  moduleCard: {
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.xl,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
+    ...SHADOW.sm,
+  },
+  moduleHeader: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: COLORS.textLight,
+    letterSpacing: 1.5,
+    marginBottom: SPACING.md,
+    marginLeft: 4,
+  },
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  rowIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: RADIUS.md,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: SPACING.md,
+  },
+  rowContent: { flex: 1 },
+  rowTitle: { fontSize: 15, fontWeight: "700", color: COLORS.text },
+  rowValue: { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF",
+    padding: 16,
+    borderRadius: RADIUS.xl,
+    borderWidth: 1,
+    borderColor: "#FEE2E2",
+  },
+  logoutText: {
+    color: "#EF4444",
+    fontWeight: "800",
+    fontSize: 15,
+    marginLeft: 8,
+  },
+  versionText: {
+    textAlign: "center",
+    color: COLORS.textLight,
+    fontSize: 10,
+    marginTop: SPACING.xl,
+    opacity: 0.4,
+  },
+});
 </file>
 
 <file path="src/theme/styles.js">
@@ -5675,8 +4558,184 @@ export const ISHIHARA_PLATES = [
 ];
 </file>
 
-<file path="src/screens/CareerDetail.js">
+<file path="src/navigation/MainTabNavigator.js">
 import { Ionicons } from "@expo/vector-icons";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import * as Haptics from "expo-haptics";
+import {
+  Dimensions,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import HistoryScreen from "../screens/HistoryScreen";
+import HomeScreen from "../screens/HomeScreen";
+import ProfileScreen from "../screens/ProfileScreen";
+import { COLORS, SHADOW } from "../theme/colors";
+
+const Tab = createBottomTabNavigator();
+const { width } = Dimensions.get("window");
+
+const CustomTabBar = ({ state, descriptors, navigation }) => {
+  const insets = useSafeAreaInsets();
+  const TAB_COUNT = state.routes.length;
+  const TAB_WIDTH = width / TAB_COUNT;
+
+  // Animation for the active indicator bar at the top of the tab
+  const translateX = useSharedValue(0);
+  const animatedIndicatorStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateX: withSpring(state.index * TAB_WIDTH, {
+          damping: 20,
+          stiffness: 180,
+        }),
+      },
+    ],
+  }));
+
+  return (
+    <View style={[styles.tabBarContainer, { paddingBottom: insets.bottom }]}>
+      {/* Precision Active Indicator - Top Border Style */}
+      <Animated.View
+        style={[
+          styles.activeIndicator,
+          { width: TAB_WIDTH },
+          animatedIndicatorStyle,
+        ]}
+      />
+
+      <View style={styles.tabContent}>
+        {state.routes.map((route, index) => {
+          const { options } = descriptors[route.key];
+          const isFocused = state.index === index;
+
+          const onPress = () => {
+            const event = navigation.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
+
+            if (!isFocused && !event.defaultPrevented) {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              navigation.navigate(route.name);
+            }
+          };
+
+          const iconMapping = {
+            Home: isFocused ? "home" : "home-outline",
+            History: isFocused ? "analytics" : "analytics-outline",
+            Profile: isFocused ? "person" : "person-outline",
+          };
+
+          const labelMapping = {
+            Home: "Home",
+            History: "Records",
+            Profile: "Profile",
+          };
+
+          return (
+            <TouchableOpacity
+              key={route.key}
+              onPress={onPress}
+              style={styles.tabItem}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityState={isFocused ? { selected: true } : {}}
+              accessibilityLabel={labelMapping[route.name]}
+            >
+              <Ionicons
+                name={iconMapping[route.name]}
+                size={24}
+                color={isFocused ? COLORS.primary : COLORS.textLight}
+              />
+              <Text
+                style={[
+                  styles.tabLabel,
+                  {
+                    color: isFocused ? COLORS.primary : COLORS.textLight,
+                    fontWeight: isFocused ? "800" : "500",
+                  },
+                ]}
+              >
+                {labelMapping[route.name]}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
+export default function MainTabNavigator() {
+  return (
+    <Tab.Navigator
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{
+        headerShown: false,
+        lazy: true, // Performance optimization
+      }}
+    >
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="History" component={HistoryScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
+    </Tab.Navigator>
+  );
+}
+
+const styles = StyleSheet.create({
+  tabBarContainer: {
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.05)",
+    ...SHADOW.lg, // Stronger shadow for the edge-to-edge look
+  },
+  tabContent: {
+    flexDirection: "row",
+    height: 60,
+    alignItems: "center",
+    justifyContent: "space-around",
+  },
+  tabItem: {
+    flex: 1,
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 8,
+  },
+  tabLabel: {
+    fontSize: 10,
+    marginTop: 4,
+    letterSpacing: 0.3,
+  },
+  activeIndicator: {
+    position: "absolute",
+    top: -1, // Sits exactly on the top border
+    height: 3,
+    backgroundColor: COLORS.primary,
+    borderBottomLeftRadius: 2,
+    borderBottomRightRadius: 2,
+  },
+});
+</file>
+
+<file path="src/screens/ArticleScreen.js">
+import { Ionicons } from "@expo/vector-icons";
+import { MotiView } from "moti";
+import React from "react";
 import {
   Image,
   ScrollView,
@@ -5685,256 +4744,1121 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, { FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Header from "../components/Header";
+import { ARTICLES } from "../data/articles";
+import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
-export default function CareerDetail({ route, navigation }) {
-  const { item } = route.params;
-  const insets = useSafeAreaInsets();
+// --- SECTION RENDERER: PRESERVING ALL YOUR CUSTOM LOGIC ---
 
-  return (
-    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Learn & Understand</Text>
-        <Image source={require("../../assets/icon.png")} style={styles.logo} />
-      </View>
+function SectionRenderer({ section }) {
+  switch (section.type) {
+    case "heading":
+      return <Text style={styles.sectionHeading}>{section.text}</Text>;
 
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          <View style={styles.badgeRow}>
-            <View style={styles.tagBadge}>
-              <Text style={styles.tagText}>{item.tag}</Text>
+    case "paragraph":
+      return <Text style={styles.paragraph}>{section.text}</Text>;
+
+    case "dos_donts":
+      return (
+        <View style={styles.dosDontsRow}>
+          <View
+            style={[styles.dosDontsCard, { borderTopColor: COLORS.success }]}
+          >
+            <View style={styles.dosDontsHeader}>
+              <Ionicons
+                name="checkmark-circle"
+                size={16}
+                color={COLORS.success}
+              />
+              <Text style={[styles.dosDontsTitle, { color: COLORS.success }]}>
+                Do
+              </Text>
             </View>
-            <Text style={styles.readTime}>{item.readTime}</Text>
-          </View>
-          <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.introText}>{item.intro}</Text>
-
-          {/* OVERVIEW SPECIFIC CARDS (Screen 1 Logic) */}
-          {item.type === "overview" &&
-            item.cards.map((c, i) => (
-              <View
-                key={i}
-                style={[styles.overviewCard, { backgroundColor: c.color }]}
-              >
-                <Ionicons name={c.icon} size={24} color="#555" />
-                <View style={{ marginLeft: 15, flex: 1 }}>
-                  <Text style={styles.cardTitle}>{c.label}</Text>
-                  <Text style={styles.listDesc}>{c.desc}</Text>
-                </View>
-              </View>
+            {section.dos.map((d, i) => (
+              <Text key={i} style={styles.doItem}>
+                • {d}
+              </Text>
             ))}
-
-          {/* STATS ROW (Screen 2, 6, 7, 9 Logic) */}
-          {item.stats && (
-            <View style={styles.statsRow}>
-              {item.stats.map((s, i) => (
-                <View
-                  key={i}
-                  style={[styles.statCard, { backgroundColor: s.color }]}
-                >
-                  <Text style={[styles.statValue, { color: s.textColor }]}>
-                    {s.value}
-                  </Text>
-                  <Text style={styles.statLabel}>{s.label}</Text>
-                </View>
-              ))}
+          </View>
+          <View
+            style={[styles.dosDontsCard, { borderTopColor: COLORS.danger }]}
+          >
+            <View style={styles.dosDontsHeader}>
+              <Ionicons name="close-circle" size={16} color={COLORS.danger} />
+              <Text style={[styles.dosDontsTitle, { color: COLORS.danger }]}>
+                Don't
+              </Text>
             </View>
-          )}
-
-          {/* COLOR BOXES (Screen 3, 4, 8 Logic) */}
-          {item.sections &&
-            item.sections.map((section, idx) =>
-              section.type === "list" ? (
-                <View key={idx} style={styles.sectionBlock}>
-                  <Text style={styles.sectionTitle}>{section.title}</Text>
-                  {section.items.map((li, liIdx) => (
-                    <View key={liIdx} style={styles.listItem}>
-                      <View
-                        style={[styles.colorDot, { backgroundColor: li.hex }]}
-                      />
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.listLabel}>{li.label}</Text>
-                        <Text style={styles.listDesc}>{li.desc}</Text>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <View
-                  key={idx}
-                  style={[
-                    styles.colorCard,
-                    { backgroundColor: section.bgColor },
-                  ]}
-                >
-                  <Text style={styles.cardTitle}>{section.title}</Text>
-                  <Text style={styles.cardSubtitle}>{section.subtitle}</Text>
-                  <View style={styles.boxRow}>
-                    {section.colors.map((c, ci) => (
-                      <View
-                        key={ci}
-                        style={[styles.colorBox, { backgroundColor: c }]}
-                      />
-                    ))}
-                  </View>
-                  <Text style={styles.cardFooter}>{section.footer}</Text>
-                </View>
-              ),
-            )}
-
-          {/* KEY FACTS (Screen 1, 5 Logic) */}
-          {item.facts && (
-            <View style={styles.sectionBlock}>
-              <Text style={styles.sectionTitle}>Key Facts</Text>
-              {item.facts.map((f, i) => (
-                <View key={i} style={styles.factItem}>
-                  <Ionicons
-                    name="checkmark-circle-outline"
-                    size={18}
-                    color="#059669"
-                  />
-                  <Text style={styles.factText}>{f}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* ROLES CHIPS */}
-          {item.roles.length > 0 && (
-            <Text style={styles.sectionTitle}>
-              CVD-Friendly {item.tag} Roles
-            </Text>
-          )}
-          <View style={styles.rolesGrid}>
-            {item.roles.map((role, rIdx) => (
-              <View key={rIdx} style={styles.roleChip}>
-                <Text style={styles.roleText}>{role}</Text>
-              </View>
+            {section.donts.map((d, i) => (
+              <Text key={i} style={styles.dontItem}>
+                • {d}
+              </Text>
             ))}
           </View>
         </View>
+      );
+
+    case "contrast":
+      return (
+        <View style={styles.contrastList}>
+          {section.items.map((item, i) => (
+            <View key={i} style={styles.contrastRow}>
+              <View
+                style={[
+                  styles.contrastBadge,
+                  {
+                    backgroundColor: item.pass ? COLORS.success : COLORS.danger,
+                  },
+                ]}
+              >
+                <Text style={styles.contrastRatio}>{item.ratio}</Text>
+              </View>
+              <Text style={styles.contrastLabel}>{item.label}</Text>
+              <Ionicons
+                name={item.pass ? "checkmark-circle" : "close-circle"}
+                size={18}
+                color={item.pass ? COLORS.success : COLORS.danger}
+              />
+            </View>
+          ))}
+        </View>
+      );
+
+    case "palettes":
+      return (
+        <View style={styles.palettesList}>
+          {section.items.map((pal, i) => (
+            <View key={i} style={styles.paletteRow}>
+              <View style={styles.swatchRow}>
+                {pal.colors.map((c, ci) => (
+                  <View
+                    key={ci}
+                    style={[styles.swatch, { backgroundColor: c }]}
+                  />
+                ))}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.paletteName}>{pal.name}</Text>
+                <Text style={styles.paletteSafe}>{pal.safe}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      );
+
+    case "tools":
+      return (
+        <View style={styles.toolsRow}>
+          {section.items.map((tool, i) => (
+            <View key={i} style={styles.toolChip}>
+              <Text style={styles.toolText}>{tool}</Text>
+            </View>
+          ))}
+        </View>
+      );
+
+    case "severity_spectrum":
+      return (
+        <View style={styles.spectrumWrap}>
+          <View style={styles.spectrumBar} />
+          <View style={styles.spectrumLabels}>
+            <Text style={styles.spectrumLabel}>Mild</Text>
+            <Text style={styles.spectrumLabel}>Moderate</Text>
+            <Text style={styles.spectrumLabel}>Severe</Text>
+          </View>
+        </View>
+      );
+
+    case "cvd_types":
+      return (
+        <View style={styles.cvdTypesList}>
+          {section.items.map((cvd, i) => (
+            <View key={i} style={styles.cvdTypeCard}>
+              <View style={styles.cvdTypeHeader}>
+                <View style={styles.cvdSwatches}>
+                  {cvd.colors.map((c, ci) => (
+                    <View
+                      key={ci}
+                      style={[styles.cvdSwatch, { backgroundColor: c }]}
+                    />
+                  ))}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cvdTypeName}>{cvd.name}</Text>
+                  <Text style={styles.cvdTypeSub}>{cvd.sub}</Text>
+                </View>
+              </View>
+              <Text style={styles.cvdTypeDesc}>{cvd.desc}</Text>
+            </View>
+          ))}
+        </View>
+      );
+
+    case "stats":
+      return (
+        <View style={styles.statsRow}>
+          {section.items.map((s, i) => (
+            <View key={i} style={styles.statItem}>
+              <Text style={styles.statValue}>{s.value}</Text>
+              <Text style={styles.statLabel}>{s.label}</Text>
+            </View>
+          ))}
+        </View>
+      );
+
+    case "cone_diagram":
+      return (
+        <View style={styles.coneRow}>
+          {section.cones.map((cone, i) => (
+            <View key={i} style={styles.coneItem}>
+              <View
+                style={[styles.coneCircle, { backgroundColor: cone.color }]}
+              />
+              <Text style={styles.coneLabel}>{cone.label}</Text>
+              <Text style={styles.coneSub}>{cone.sub}</Text>
+            </View>
+          ))}
+        </View>
+      );
+
+    case "causes":
+      return (
+        <View style={styles.causesRow}>
+          {section.items.map((cause, i) => (
+            <View key={i} style={styles.causeChip}>
+              <Text style={styles.causeText}>{cause}</Text>
+            </View>
+          ))}
+        </View>
+      );
+
+    case "bento_grid":
+      return (
+        <View style={styles.bentoGrid}>
+          {section.items.map((item, i) => (
+            <View key={i} style={styles.bentoCell}>
+              <Ionicons
+                name={item.icon}
+                size={22}
+                color={COLORS.primary}
+                style={{ marginBottom: 6 }}
+              />
+              <Text style={styles.bentoCellTitle}>{item.title}</Text>
+              <Text style={styles.bentoCellDesc}>{item.desc}</Text>
+            </View>
+          ))}
+        </View>
+      );
+
+    case "quick_wins":
+      return (
+        <View style={styles.quickWinsList}>
+          {section.items.map((item, i) => (
+            <View key={i} style={styles.quickWinRow}>
+              <Ionicons
+                name="checkmark-circle"
+                size={18}
+                color={COLORS.success}
+              />
+              <Text style={styles.quickWinText}>{item}</Text>
+            </View>
+          ))}
+        </View>
+      );
+
+    case "list":
+      return (
+        <View style={styles.articleList}>
+          {section.items.map((item, i) => (
+            <View key={i} style={styles.listItem}>
+              <View style={styles.listDot} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.listItemTitle}>{item.title}</Text>
+                <Text style={styles.listItemDesc}>{item.desc}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      );
+
+    default:
+      return null;
+  }
+}
+
+// --- ARTICLE LIST VIEW ---
+
+function ArticleCard({ article, onPress }) {
+  return (
+    <MotiView
+      from={{ opacity: 0, translateY: 15 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{ type: "spring", damping: 20 }}
+    >
+      <TouchableOpacity
+        style={styles.articleCard}
+        onPress={onPress}
+        activeOpacity={0.9}
+      >
+        <Image source={article.coverImage} style={styles.articleCover} />
+        <View style={styles.articleCardBody}>
+          <View style={styles.metaRow}>
+            <View style={styles.categoryBadge}>
+              <Text style={styles.categoryText}>
+                {article.category.toUpperCase()}
+              </Text>
+            </View>
+            <Text style={styles.readTime}>{article.readTime}</Text>
+          </View>
+          <Text style={styles.articleTitle}>{article.title}</Text>
+          <Text style={styles.articleSummary} numberOfLines={2}>
+            {article.summary}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    </MotiView>
+  );
+}
+
+// --- ARTICLE DETAIL VIEW ---
+
+function ArticleDetail({ article, onBack }) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View style={styles.detailRoot}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <Image source={article.coverImage} style={styles.detailCover} />
+
+        <Animated.View
+          entering={FadeInUp.duration(600)}
+          style={styles.detailCard}
+        >
+          <View style={styles.metaRow}>
+            <Text style={styles.categoryTag}>{article.category}</Text>
+            <Text style={styles.readTime}>{article.readTime}</Text>
+          </View>
+          <Text style={styles.detailTitle}>{article.title}</Text>
+          <Text style={styles.detailSummary}>{article.summary}</Text>
+
+          <View style={styles.divider} />
+
+          {article.sections.map((sec, i) => (
+            <SectionRenderer key={i} section={sec} />
+          ))}
+
+          <View style={styles.clinicalDisclaimer}>
+            <Ionicons
+              name="shield-checkmark"
+              size={16}
+              color={COLORS.warning}
+            />
+            <Text style={styles.disclaimerText}>
+              SCREENING PURPOSE ONLY • NOT A MEDICAL DIAGNOSIS
+            </Text>
+          </View>
+        </Animated.View>
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      <View style={styles.warningBar}>
-        <Ionicons name="warning-outline" size={14} color="#856404" />
-        <Text style={styles.warningText}>
-          SCREENING PURPOSE ONLY. NOT A CLINICAL DIAGNOSIS.
-        </Text>
-      </View>
+      <TouchableOpacity
+        style={[styles.backFab, { top: insets.top + 10 }]}
+        onPress={onBack}
+      >
+        <Ionicons name="arrow-back" size={22} color="#FFF" />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// --- MAIN SCREEN ---
+
+export default function ArticleScreen({ navigation, route }) {
+  const [selected, setSelected] = React.useState(
+    route?.params?.article ?? null,
+  );
+
+  if (selected) {
+    return (
+      <ArticleDetail article={selected} onBack={() => setSelected(null)} />
+    );
+  }
+
+  return (
+    <View style={styles.root}>
+      <Header title="Clinical Literacy" back />
+
+      <ScrollView
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.listLabel}>LATEST DIAGNOSTIC GUIDES</Text>
+        {ARTICLES.map((article) => (
+          <ArticleCard
+            key={article.id}
+            article={article}
+            onPress={() => setSelected(article)}
+          />
+        ))}
+
+        <View style={styles.footerInfo}>
+          <Ionicons
+            name="information-circle-outline"
+            size={14}
+            color={COLORS.textLight}
+          />
+          <Text style={styles.footerInfoText}>
+            Medical content is for educational screening purposes.
+          </Text>
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#FFF" },
-  header: {
+  root: { flex: 1, backgroundColor: "#F8FAFC" },
+  listContent: { padding: SPACING.lg },
+  listLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: COLORS.textLight,
+    letterSpacing: 1.5,
+    marginBottom: 16,
+    marginLeft: 4,
+  },
+  articleCard: {
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.xl,
+    overflow: "hidden",
+    marginBottom: SPACING.lg,
+    ...SHADOW.md,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  articleCover: { width: "100%", height: 160 },
+  articleCardBody: { padding: SPACING.lg },
+  metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-  },
-  headerTitle: { fontSize: 16, fontWeight: "600" },
-  logo: { width: 60, height: 20, resizeMode: "contain" },
-  container: { flex: 1 },
-  content: { padding: 20 },
-  badgeRow: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
-  tagBadge: {
-    backgroundColor: "#D1FAE5",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    marginRight: 8,
-  },
-  tagText: { color: "#059669", fontSize: 11, fontWeight: "bold" },
-  readTime: { color: "#6B7280", fontSize: 11 },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#111827",
-    marginBottom: 10,
-  },
-  introText: {
-    fontSize: 15,
-    color: "#4B5563",
-    lineHeight: 22,
-    marginBottom: 20,
-  },
-  overviewCard: {
-    flexDirection: "row",
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 10,
-    alignItems: "center",
-  },
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 25,
-  },
-  statCard: {
-    flex: 1,
-    margin: 4,
-    padding: 12,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  statValue: { fontSize: 18, fontWeight: "bold" },
-  statLabel: {
-    fontSize: 10,
-    color: "#6B7280",
-    marginTop: 2,
-    textAlign: "center",
-  },
-  sectionBlock: { marginTop: 15, marginBottom: 20 },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#111827",
-    marginBottom: 15,
-  },
-  listItem: { flexDirection: "row", marginBottom: 15 },
-  colorDot: { width: 40, height: 40, borderRadius: 20, marginRight: 15 },
-  listLabel: { fontSize: 15, fontWeight: "600", color: "#111827" },
-  listDesc: { fontSize: 13, color: "#6B7280" },
-  colorCard: { padding: 20, borderRadius: 16, marginBottom: 15 },
-  cardTitle: { fontSize: 16, fontWeight: "bold" },
-  cardSubtitle: { fontSize: 12, color: "#6B7280", marginBottom: 12 },
-  boxRow: { flexDirection: "row", marginBottom: 12 },
-  colorBox: { width: 45, height: 45, borderRadius: 8, marginRight: 8 },
-  cardFooter: { fontSize: 11, color: "#4B5563", fontStyle: "italic" },
-  factItem: { flexDirection: "row", marginBottom: 10, alignItems: "center" },
-  factText: { fontSize: 14, color: "#4B5563", marginLeft: 10 },
-  rolesGrid: { flexDirection: "row", flexWrap: "wrap" },
-  roleChip: {
-    backgroundColor: "#F3F4F6",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginRight: 8,
+    gap: 8,
     marginBottom: 8,
   },
-  roleText: { fontSize: 13, color: "#4B5563" },
-  warningBar: {
-    position: "absolute",
-    bottom: 0,
-    width: "100%",
-    backgroundColor: "#FBBF24",
-    padding: 12,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
+  categoryBadge: {
+    backgroundColor: COLORS.primary + "10",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
-  warningText: {
+  categoryText: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: COLORS.primary,
+    letterSpacing: 0.5,
+  },
+  readTime: { fontSize: 12, color: COLORS.textLight, fontWeight: "600" },
+  articleTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: COLORS.text,
+    marginBottom: 6,
+  },
+  articleSummary: { fontSize: 13, color: COLORS.textLight, lineHeight: 20 },
+
+  // Detail view
+  detailRoot: { flex: 1, backgroundColor: "#F8FAFC" },
+  detailCover: { width: "100%", height: 300 },
+  detailCard: {
+    backgroundColor: "#F8FAFC",
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    marginTop: -40,
+    padding: SPACING.lg,
+  },
+  categoryTag: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: COLORS.primary,
+    backgroundColor: COLORS.primary + "10",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  detailTitle: {
+    fontSize: 26,
+    fontWeight: "900",
+    color: COLORS.text,
+    marginBottom: 12,
+  },
+  detailSummary: {
+    fontSize: 15,
+    color: COLORS.textLight,
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  divider: { height: 1, backgroundColor: "#E2E8F0", marginBottom: 25 },
+  sectionHeading: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: COLORS.text,
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  paragraph: {
+    fontSize: 15,
+    color: COLORS.text,
+    lineHeight: 24,
+    marginBottom: 18,
+  },
+  backFab: {
+    position: "absolute",
+    left: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // Reused Components Style
+  dosDontsRow: { flexDirection: "row", gap: 12, marginBottom: 20 },
+  dosDontsCard: {
+    flex: 1,
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.lg,
+    padding: 12,
+    borderTopWidth: 4,
+    ...SHADOW.sm,
+  },
+  dosDontsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  dosDontsTitle: { fontSize: 13, fontWeight: "800" },
+  doItem: { fontSize: 12, color: COLORS.text, lineHeight: 18, marginBottom: 4 },
+  dontItem: {
+    fontSize: 12,
+    color: COLORS.text,
+    lineHeight: 18,
+    marginBottom: 4,
+  },
+  contrastList: { gap: 10, marginBottom: 20 },
+  contrastRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#FFF",
+    padding: 12,
+    borderRadius: RADIUS.lg,
+    ...SHADOW.sm,
+  },
+  contrastBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+  contrastRatio: { fontSize: 12, fontWeight: "800", color: "#FFF" },
+  contrastLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.text,
+  },
+  palettesList: { gap: 12, marginBottom: 20 },
+  paletteRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    backgroundColor: "#FFF",
+    padding: 12,
+    borderRadius: RADIUS.xl,
+    ...SHADOW.sm,
+  },
+  swatchRow: { flexDirection: "row", gap: 4 },
+  swatch: { width: 32, height: 32, borderRadius: 16 },
+  paletteName: { fontSize: 15, fontWeight: "800", color: COLORS.text },
+  paletteSafe: { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
+  toolsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 20,
+  },
+  toolChip: {
+    backgroundColor: COLORS.primary + "08",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.primary + "20",
+  },
+  toolText: { fontSize: 13, color: COLORS.primary, fontWeight: "700" },
+  spectrumWrap: { marginBottom: 24, padding: 4 },
+  spectrumBar: {
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.primary,
+    marginBottom: 8,
+    opacity: 0.8,
+  }, // Note: Standardizing this bar
+  spectrumLabels: { flexDirection: "row", justifyContent: "space-between" },
+  spectrumLabel: { fontSize: 11, fontWeight: "700", color: COLORS.textLight },
+  cvdTypesList: { gap: 12, marginBottom: 20 },
+  cvdTypeCard: {
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.lg,
+    padding: 16,
+    ...SHADOW.sm,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  cvdTypeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 10,
+  },
+  cvdSwatches: { flexDirection: "row", gap: 4 },
+  cvdSwatch: { width: 24, height: 24, borderRadius: 12 },
+  cvdTypeName: { fontSize: 15, fontWeight: "800", color: COLORS.text },
+  cvdTypeSub: { fontSize: 11, color: COLORS.primary, fontWeight: "800" },
+  cvdTypeDesc: { fontSize: 13, color: COLORS.textLight, lineHeight: 20 },
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    backgroundColor: COLORS.primary + "05",
+    borderRadius: RADIUS.xl,
+    padding: 20,
+    marginBottom: 20,
+  },
+  statItem: { alignItems: "center" },
+  statValue: { fontSize: 24, fontWeight: "900", color: COLORS.primary },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: COLORS.textLight,
+    marginTop: 4,
+  },
+  coneRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 24,
+  },
+  coneItem: { alignItems: "center", gap: 6 },
+  coneCircle: { width: 56, height: 56, borderRadius: 28, ...SHADOW.sm },
+  coneLabel: { fontSize: 14, fontWeight: "800", color: COLORS.text },
+  coneSub: { fontSize: 11, color: COLORS.textLight },
+  causesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 24,
+  },
+  causeChip: {
+    backgroundColor: "#FFF",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  causeText: { fontSize: 13, color: COLORS.text, fontWeight: "700" },
+  bentoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 24,
+  },
+  bentoCell: {
+    width: "48%",
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.lg,
+    padding: 16,
+    ...SHADOW.sm,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  bentoCellTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: COLORS.text,
+    marginBottom: 6,
+  },
+  bentoCellDesc: { fontSize: 12, color: COLORS.textLight, lineHeight: 18 },
+  quickWinsList: { gap: 12, marginBottom: 24 },
+  quickWinRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  quickWinText: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.text,
+    lineHeight: 22,
+    fontWeight: "600",
+  },
+  articleList: { gap: 12, marginBottom: 24 },
+  listItem: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
+  listDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.primary,
+    marginTop: 7,
+  },
+  listItemTitle: { fontSize: 15, fontWeight: "800", color: COLORS.text },
+  listItemDesc: { fontSize: 13, color: COLORS.textLight, lineHeight: 20 },
+
+  clinicalDisclaimer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#FFF8E1",
+    padding: 16,
+    borderRadius: RADIUS.lg,
+    marginTop: 30,
+    borderWidth: 1,
+    borderColor: "#FFE082",
+  },
+  disclaimerText: {
     fontSize: 10,
-    fontWeight: "bold",
-    color: "#856404",
-    marginLeft: 8,
+    fontWeight: "900",
+    color: "#B45309",
+    letterSpacing: 0.5,
+  },
+  footerInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 10,
+    opacity: 0.5,
+  },
+  footerInfoText: { fontSize: 10, color: COLORS.textLight, fontWeight: "700" },
+});
+</file>
+
+<file path="src/screens/EducationListScreen.js">
+import { Ionicons } from "@expo/vector-icons";
+import {
+  Image,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import BackgroundBubbles from "../components/BackgroundBubbles";
+import Header from "../components/Header";
+import { ARTICLES } from "../data/articles";
+import { CAREER_ARTICLES } from "../data/careerData";
+import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
+
+export default function EducationListScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View style={styles.container}>
+      <BackgroundBubbles />
+      <Header title="Learn & Understand" back />
+
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollBody,
+          { paddingBottom: insets.bottom + SPACING.xl },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* --- PERI MODULE (RESTORED RIBBON & PARTNER STATUS) --- */}
+        <Animated.View
+          entering={FadeInUp.duration(600)}
+          style={styles.periCard}
+        >
+          <Image
+            source={require("../../assets/peri.png")}
+            style={styles.periImage}
+            resizeMode="cover"
+          />
+          <View style={styles.periContent}>
+            <View style={styles.badgeRow}>
+              <View style={styles.partnerBadge}>
+                <Ionicons name="ribbon" size={14} color="#9C27B0" />
+                <Text style={styles.partnerText}>RESEARCH PARTNER</Text>
+              </View>
+            </View>
+
+            <Text style={styles.periTitle}>
+              About Philippine Eye Research Institute
+            </Text>
+
+            <Text style={styles.periDesc}>
+              The Philippine Eye Research Institute (PERI) is the premier eye
+              research institution in the Philippines, dedicated to preventing
+              blindness.
+            </Text>
+
+            <Text style={styles.periMission}>
+              <Text style={{ fontWeight: "900" }}>Our Mission:</Text> To improve
+              eye health outcomes through innovative research and evidence-based
+              clinical practices.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.periButton}
+              onPress={() => Linking.openURL("https://peri.ph/")}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.periButtonText}>Visit PERI Website</Text>
+              <Ionicons name="open-outline" size={16} color="#9C27B0" />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+
+        {/* --- INTERACTIVE: CVD SIMULATIONS --- */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>CVD SIMULATIONS</Text>
+          <Text style={styles.sectionSub}>
+            Tap a type to experience how colour vision deficiency affects
+            perception.
+          </Text>
+
+          <View style={styles.gridRow}>
+            {[
+              {
+                label: "Protanomaly",
+                sub: "Red-weak",
+                type: "Protan",
+                color: "#EF4444",
+              },
+              {
+                label: "Deuteranomaly",
+                sub: "Green-weak",
+                type: "Deutan",
+                color: "#22C55E",
+              },
+            ].map((item, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={styles.simCard}
+                onPress={() =>
+                  navigation.navigate("CVDSimulation", {
+                    initialCvdType: item.type,
+                  })
+                }
+              >
+                <View
+                  style={[
+                    styles.simIcon,
+                    { backgroundColor: item.color + "15" },
+                  ]}
+                >
+                  <Ionicons name="eye-outline" size={20} color={item.color} />
+                </View>
+                <Text style={styles.simTitle}>{item.label}</Text>
+                <Text style={styles.simDesc}>{item.sub}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <TouchableOpacity
+            style={styles.tritanCard}
+            onPress={() =>
+              navigation.navigate("CVDSimulation", { initialCvdType: "Tritan" })
+            }
+          >
+            <View style={styles.tritanIcon}>
+              <Ionicons name="eye-outline" size={24} color="#0D47A1" />
+            </View>
+            <View style={styles.tritanTextGroup}>
+              <Text style={styles.tritanTitle}>Tritanomaly</Text>
+              <Text style={styles.tritanDesc}>Blue-weak vision · Simulate</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#0D47A1" />
+          </TouchableOpacity>
+        </View>
+
+        {/* --- CAREER AWARENESS --- */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>CAREER AWARENESS</Text>
+          <TouchableOpacity
+            style={styles.careerModule}
+            activeOpacity={0.9}
+            onPress={() =>
+              navigation.navigate("CareerDetail", { item: CAREER_ARTICLES[0] })
+            }
+          >
+            <View style={styles.careerIconBox}>
+              <Ionicons name="school-outline" size={24} color="#3F51B5" />
+            </View>
+            <View style={styles.careerText}>
+              <Text style={styles.careerTitle}>Occupations & CVD</Text>
+              <Text style={styles.careerDesc}>
+                Explore 9 critical career paths affected by color vision.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#3F51B5" />
+          </TouchableOpacity>
+        </View>
+
+        {/* --- LATEST ARTICLES --- */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>LATEST ARTICLES</Text>
+          {ARTICLES.map((article, index) => (
+            <Animated.View
+              key={article.id}
+              entering={FadeInDown.delay(index * 100)}
+            >
+              <TouchableOpacity
+                style={styles.articleItem}
+                onPress={() => navigation.navigate("Article", { article })}
+              >
+                <Image
+                  source={article.coverImage}
+                  style={styles.articleThumb}
+                />
+                <View style={styles.articleBody}>
+                  <Text style={styles.articleTitle} numberOfLines={1}>
+                    {article.title}
+                  </Text>
+                  <Text style={styles.articleSummary} numberOfLines={2}>
+                    {article.summary}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={COLORS.textLight}
+                />
+              </TouchableOpacity>
+            </Animated.View>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+  scrollBody: {
+    padding: SPACING.lg,
+  },
+  section: {
+    marginBottom: 32,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: COLORS.textLight,
+    letterSpacing: 1.5,
+    marginBottom: 12,
+    marginLeft: 4,
+  },
+  sectionSub: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginBottom: 16,
+    marginLeft: 4,
+    lineHeight: 18,
+  },
+  periCard: {
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.xl,
+    overflow: "hidden",
+    ...SHADOW.md,
+    marginBottom: 32,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  periImage: {
+    width: "100%",
+    height: 180,
+  },
+  periContent: {
+    padding: SPACING.lg,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    marginBottom: 12,
+  },
+  partnerBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3E5F5",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    gap: 6,
+  },
+  partnerText: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#9C27B0",
+    letterSpacing: 0.5,
+  },
+  periTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: COLORS.text,
+    marginBottom: 10,
+  },
+  periDesc: {
+    fontSize: 13,
+    color: "#4A148C",
+    lineHeight: 20,
+    marginBottom: 15,
+  },
+  periMission: {
+    fontSize: 13,
+    color: COLORS.text,
+    lineHeight: 20,
+  },
+  periButton: {
+    backgroundColor: "#FFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: RADIUS.lg,
+    marginTop: 20,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#D1C4E9",
+  },
+  periButtonText: {
+    color: "#4A148C",
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  gridRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  simCard: {
+    width: "48%",
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.xl,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    ...SHADOW.sm,
+  },
+  simIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  simTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: COLORS.text,
+  },
+  simDesc: {
+    fontSize: 11,
+    color: COLORS.textLight,
+    marginTop: 2,
+  },
+  tritanCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E3F2FD",
+    borderRadius: RADIUS.xl,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#BBDEFB",
+  },
+  tritanIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(13, 71, 161, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
+  },
+  tritanTextGroup: {
+    flex: 1,
+  },
+  tritanTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#0D47A1",
+  },
+  tritanDesc: {
+    fontSize: 12,
+    color: "rgba(13, 71, 161, 0.7)",
+    marginTop: 2,
+  },
+  careerModule: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E8EAF6",
+    padding: 20,
+    borderRadius: RADIUS.xl,
+    borderWidth: 1,
+    borderColor: "#C5CAE9",
+  },
+  careerIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: "rgba(63, 81, 181, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 15,
+  },
+  careerText: {
+    flex: 1,
+  },
+  careerTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1A237E",
+  },
+  careerDesc: {
+    fontSize: 12,
+    color: "rgba(26, 35, 126, 0.6)",
+    marginTop: 2,
+  },
+  articleItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    padding: 14,
+    borderRadius: RADIUS.xl,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    ...SHADOW.sm,
+  },
+  articleThumb: {
+    width: 60,
+    height: 60,
+    borderRadius: RADIUS.lg,
+    backgroundColor: "#F1F5F9",
+  },
+  articleBody: {
+    flex: 1,
+    paddingHorizontal: 15,
+  },
+  articleTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: COLORS.text,
+  },
+  articleSummary: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    lineHeight: 18,
+    marginTop: 4,
   },
 });
 </file>
@@ -6829,33 +6753,404 @@ const styles = StyleSheet.create({
 });
 </file>
 
+<file path="src/screens/CareerDetail.js">
+import { Ionicons } from "@expo/vector-icons";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  View
+} from "react-native";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Header from "../components/Header";
+import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
+
+export default function CareerDetail({ route, navigation }) {
+  const { item } = route.params;
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View style={styles.safeArea}>
+      <Header title="Career Awareness" back />
+
+      {/* Integrated Utility Banner */}
+      <View style={styles.disclaimer}>
+        <Ionicons name="shield-checkmark" size={12} color="#B45309" />
+        <Text style={styles.disclaimerText}>
+          SCREENING PURPOSE ONLY • NOT A MEDICAL DIAGNOSIS
+        </Text>
+      </View>
+
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View entering={FadeInUp.duration(600)} style={styles.content}>
+          {/* Header Section */}
+          <View style={styles.badgeRow}>
+            <View
+              style={[
+                styles.tagBadge,
+                { backgroundColor: COLORS.primary + "10" },
+              ]}
+            >
+              <Text style={[styles.tagText, { color: COLORS.primary }]}>
+                {item.tag}
+              </Text>
+            </View>
+            <Text style={styles.readTime}>{item.readTime}</Text>
+          </View>
+
+          <Text style={styles.title}>{item.title}</Text>
+          <Text style={styles.introText}>{item.intro}</Text>
+
+          {/* OVERVIEW MODULES */}
+          {item.type === "overview" &&
+            item.cards.map((c, i) => (
+              <Animated.View
+                key={i}
+                entering={FadeInDown.delay(i * 100)}
+                style={[
+                  styles.overviewCard,
+                  { borderLeftColor: c.color || COLORS.primary },
+                ]}
+              >
+                <View style={styles.cardIconBox}>
+                  <Ionicons name={c.icon} size={22} color={COLORS.text} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>{c.label}</Text>
+                  <Text style={styles.cardDesc}>{c.desc}</Text>
+                </View>
+              </Animated.View>
+            ))}
+
+          {/* STATS MODULE */}
+          {item.stats && (
+            <View style={styles.statsContainer}>
+              <Text style={styles.sectionLabel}>INDUSTRY DATA</Text>
+              <View style={styles.statsRow}>
+                {item.stats.map((s, i) => (
+                  <View key={i} style={styles.statCard}>
+                    <Text
+                      style={[
+                        styles.statValue,
+                        { color: s.textColor || COLORS.primary },
+                      ]}
+                    >
+                      {s.value}
+                    </Text>
+                    <Text style={styles.statLabel}>{s.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* DYNAMIC CONTENT SECTIONS (Color boxes / Lists) */}
+          {item.sections &&
+            item.sections.map((section, idx) =>
+              section.type === "list" ? (
+                <View key={idx} style={styles.sectionBlock}>
+                  <Text style={styles.sectionLabel}>
+                    {section.title.toUpperCase()}
+                  </Text>
+                  <View style={styles.listModule}>
+                    {section.items.map((li, liIdx) => (
+                      <View
+                        key={liIdx}
+                        style={[
+                          styles.listItem,
+                          liIdx === section.items.length - 1 && {
+                            borderBottomWidth: 0,
+                          },
+                        ]}
+                      >
+                        <View
+                          style={[styles.colorDot, { backgroundColor: li.hex }]}
+                        />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.listLabel}>{li.label}</Text>
+                          <Text style={styles.listDesc}>{li.desc}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ) : (
+                <View key={idx} style={styles.sectionBlock}>
+                  <Text style={styles.sectionLabel}>VISUAL REQUIREMENTS</Text>
+                  <View
+                    style={[
+                      styles.colorCard,
+                      { backgroundColor: section.bgColor || "#FFF" },
+                    ]}
+                  >
+                    <Text style={styles.cardTitle}>{section.title}</Text>
+                    <Text style={styles.cardSubtitle}>{section.subtitle}</Text>
+                    <View style={styles.boxRow}>
+                      {section.colors.map((c, ci) => (
+                        <View
+                          key={ci}
+                          style={[styles.colorBox, { backgroundColor: c }]}
+                        />
+                      ))}
+                    </View>
+                    <View style={styles.cardFooterRow}>
+                      <Ionicons
+                        name="information-circle-outline"
+                        size={12}
+                        color={COLORS.textLight}
+                      />
+                      <Text style={styles.cardFooter}>{section.footer}</Text>
+                    </View>
+                  </View>
+                </View>
+              ),
+            )}
+
+          {/* KEY FACTS MODULE */}
+          {item.facts && (
+            <View style={styles.sectionBlock}>
+              <Text style={styles.sectionLabel}>CRITICAL OBSERVATIONS</Text>
+              <View style={styles.factsModule}>
+                {item.facts.map((f, i) => (
+                  <View key={i} style={styles.factItem}>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color={COLORS.success}
+                    />
+                    <Text style={styles.factText}>{f}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* ROLES CHIPS */}
+          {item.roles && item.roles.length > 0 && (
+            <View style={styles.sectionBlock}>
+              <Text style={styles.sectionLabel}>CVD-FRIENDLY ROLES</Text>
+              <View style={styles.rolesGrid}>
+                {item.roles.map((role, rIdx) => (
+                  <View key={rIdx} style={styles.roleChip}>
+                    <Text style={styles.roleText}>{role}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+        </Animated.View>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: "#F8FAFC" },
+  container: { flex: 1 },
+  disclaimer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#FFF8E1",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#FFE082",
+  },
+  disclaimerText: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#B45309",
+    letterSpacing: 1,
+  },
+  content: { padding: SPACING.lg },
+  badgeRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  tagBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  tagText: { fontSize: 10, fontWeight: "900", letterSpacing: 0.5 },
+  readTime: { color: COLORS.textLight, fontSize: 12, fontWeight: "600" },
+  title: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: COLORS.text,
+    marginBottom: 12,
+    letterSpacing: -0.5,
+  },
+  introText: {
+    fontSize: 15,
+    color: COLORS.textLight,
+    lineHeight: 24,
+    marginBottom: 25,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: COLORS.textLight,
+    letterSpacing: 1.5,
+    marginBottom: 12,
+    marginLeft: 4,
+  },
+  overviewCard: {
+    flexDirection: "row",
+    padding: 16,
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.xl,
+    marginBottom: 12,
+    alignItems: "center",
+    ...SHADOW.sm,
+    borderLeftWidth: 4,
+  },
+  cardIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 15,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  cardDesc: { fontSize: 13, color: COLORS.textLight, lineHeight: 18 },
+  statsContainer: { marginBottom: 25 },
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  statCard: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.xl,
+    alignItems: "center",
+    ...SHADOW.sm,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  statValue: { fontSize: 20, fontWeight: "900" },
+  statLabel: {
+    fontSize: 10,
+    color: COLORS.textLight,
+    fontWeight: "700",
+    marginTop: 4,
+    textAlign: "center",
+  },
+  sectionBlock: { marginBottom: 30 },
+  listModule: {
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.xl,
+    padding: 16,
+    ...SHADOW.sm,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  listItem: {
+    flexDirection: "row",
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  colorDot: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 15,
+    ...SHADOW.sm,
+  },
+  listLabel: { fontSize: 15, fontWeight: "800", color: COLORS.text },
+  colorCard: {
+    padding: 20,
+    borderRadius: RADIUS.xl,
+    ...SHADOW.md,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    color: COLORS.textLight,
+    marginBottom: 15,
+    lineHeight: 18,
+  },
+  boxRow: { flexDirection: "row", marginBottom: 15, gap: 8 },
+  colorBox: { width: 45, height: 45, borderRadius: RADIUS.md, ...SHADOW.sm },
+  cardFooterRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  cardFooter: { fontSize: 11, color: COLORS.textLight, fontStyle: "italic" },
+  factsModule: {
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.xl,
+    padding: 16,
+    ...SHADOW.sm,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  factItem: {
+    flexDirection: "row",
+    marginBottom: 12,
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  factText: {
+    fontSize: 14,
+    color: COLORS.text,
+    lineHeight: 20,
+    flex: 1,
+    fontWeight: "600",
+  },
+  rolesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  roleChip: {
+    backgroundColor: "#FFF",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    ...SHADOW.xs,
+  },
+  roleText: { fontSize: 13, color: COLORS.text, fontWeight: "700" },
+});
+</file>
+
 <file path="src/screens/SignUp.js">
 import { Ionicons } from "@expo/vector-icons";
 import { doc, setDoc } from "firebase/firestore"; // ADDED THIS
 import { MotiView } from "moti";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import {
-  auth, // ADDED THIS
-  createUserWithEmailAndPassword,
-  db,
-  sendEmailVerification,
+    auth, // ADDED THIS
+    createUserWithEmailAndPassword,
+    db,
+    sendEmailVerification,
 } from "../../firebaseConfig";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
-const APP_VERSION = "v1.0.5-thesis";
+const APP_VERSION = "v1.0.0-beta";
 
 export default function SignUp({ navigation }) {
   const [email, setEmail] = useState("");
@@ -7151,16 +7446,16 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { auth, db } from "../../firebaseConfig";
 import BackgroundBubbles from "../components/BackgroundBubbles";
-import Card from "../components/Card";
 import Header from "../components/Header";
-import { COLORS } from "../theme/colors";
-import { styles } from "../theme/styles";
+import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
 const CAUSES = ["Medical Intake", "Genetics", "Ageing", "Others"];
 
@@ -7177,27 +7472,22 @@ export default function SurveyScreen({ navigation }) {
       setChecking(false);
       return;
     }
+    // Check if the user has already contributed to the research
     getDocs(query(collection(db, "surveys"), where("userId", "==", uid)))
       .then((snap) => setAlreadySubmitted(!snap.empty))
-      .catch(() => {})
+      .catch((err) => console.error("Survey check error:", err))
       .finally(() => setChecking(false));
   }, []);
 
   const handleSubmit = async () => {
-    if (alreadySubmitted) {
-      Alert.alert(
-        "Already Submitted",
-        "You have already completed this survey. Thank you for your contribution!",
-      );
-      return;
-    }
     if (selectedCause === null || !selectedSex) {
       Alert.alert(
-        "Incomplete",
-        "Please answer all questions before submitting.",
+        "Incomplete Form",
+        "Please provide all details to help our clinical research.",
       );
       return;
     }
+
     setSubmitting(true);
     try {
       const surveyData = {
@@ -7206,16 +7496,22 @@ export default function SurveyScreen({ navigation }) {
         userId: auth.currentUser?.uid || "anonymous",
         timestamp: serverTimestamp(),
       };
+
+      // Save to global research collection
       await addDoc(collection(db, "surveys"), surveyData);
+
+      // Save to user's private history
       if (auth.currentUser) {
         await addDoc(
           collection(db, "users", auth.currentUser.uid, "surveys"),
           surveyData,
         );
       }
+
       navigation.replace("SurveySuccess");
     } catch (e) {
       console.warn("[Survey] save failed:", e);
+      // Fallback for demo/offline purposes
       navigation.replace("SurveySuccess");
     } finally {
       setSubmitting(false);
@@ -7225,395 +7521,266 @@ export default function SurveyScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <BackgroundBubbles />
-      <Header title="Quick Survey" back />
-      <ScrollView
-        contentContainerStyle={{ padding: 20 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text
-          style={{
-            textAlign: "center",
-            fontWeight: "bold",
-            fontSize: 18,
-            marginBottom: 5,
-          }}
-        >
-          Help Us Understand
-        </Text>
-        <Text style={{ textAlign: "center", color: "#777", marginBottom: 25 }}>
-          What do you think are the causes of your CVD?
-        </Text>
+      <Header title="Patient Survey" back />
 
-        {checking ? (
-          <ActivityIndicator style={{ marginTop: 30 }} color={COLORS.primary} />
-        ) : alreadySubmitted ? (
-          <View
-            style={{
-              marginTop: 30,
-              backgroundColor: "#E8F5E9",
-              padding: 16,
-              borderRadius: 12,
-              alignItems: "center",
-              borderWidth: 1,
-              borderColor: "#C8E6C9",
-            }}
-          >
-            <Ionicons
-              name="checkmark-circle"
-              size={28}
-              color={COLORS.success}
-            />
-            <Text style={{ color: "#2E7D32", fontWeight: "700", marginTop: 8 }}>
-              Survey Already Submitted
-            </Text>
-            <Text
-              style={{
-                color: "#555",
-                fontSize: 12,
-                marginTop: 4,
-                textAlign: "center",
-              }}
-            >
-              Thank you for your contribution to the research.
-            </Text>
+      {checking ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={COLORS.primary} size="large" />
+        </View>
+      ) : alreadySubmitted ? (
+        <Animated.View entering={FadeInUp.duration(600)} style={styles.center}>
+          <View style={styles.iconBox}>
+            <Ionicons name="checkmark-done" size={50} color={COLORS.success} />
           </View>
-        ) : (
-          <>
-            {/* Moved interactive UI inside the else block */}
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                justifyContent: "space-between",
-                marginBottom: 20,
-              }}
-            >
-              {CAUSES.map((item, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  onPress={() => setSelectedCause(idx)}
-                  style={[
-                    styles.surveyOption,
-                    selectedCause === idx && {
-                      borderColor: COLORS.primary,
-                      borderWidth: 2,
-                      backgroundColor: "#F3E5F5",
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={
-                      selectedCause === idx
-                        ? "checkmark-circle"
-                        : "radio-button-off"
-                    }
-                    size={24}
-                    color={selectedCause === idx ? COLORS.primary : "#CCC"}
-                  />
-                  <Text style={{ fontWeight: "bold", marginTop: 10 }}>
-                    {item}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Card>
-              <Text style={{ fontWeight: "bold", marginBottom: 15 }}>Sex</Text>
-              <View
-                style={{ flexDirection: "row", justifyContent: "space-around" }}
-              >
-                {["Male", "Female"].map((sex) => (
+          <Text style={styles.completeTitle}>Contribution Received</Text>
+          <Text style={styles.completeDesc}>
+            Thank you for participating. Your data helps improve clinical
+            outcomes for color vision deficiency research.
+          </Text>
+          <TouchableOpacity
+            style={styles.doneBtn}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.doneBtnText}>Return to Knowledge Base</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+        >
+          <Animated.View entering={FadeInDown.duration(500)}>
+            <Text style={styles.sectionLabel}>CVD ORIGIN RESEARCH</Text>
+            <View style={styles.moduleCard}>
+              <Text style={styles.question}>
+                What do you believe is the primary cause of your condition?
+              </Text>
+              <View style={styles.optionsGrid}>
+                {CAUSES.map((item, idx) => (
                   <TouchableOpacity
-                    key={sex}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      padding: 10,
-                      borderWidth: 1,
-                      borderColor:
-                        selectedSex === sex ? COLORS.primary : "#EEE",
-                      borderRadius: 8,
-                      width: "45%",
-                      justifyContent: "center",
-                    }}
-                    onPress={() => setSelectedSex(sex)}
+                    key={idx}
+                    style={[
+                      styles.option,
+                      selectedCause === idx && styles.optionSelected,
+                    ]}
+                    onPress={() => setSelectedCause(idx)}
                   >
                     <Ionicons
                       name={
-                        selectedSex === sex
+                        selectedCause === idx
                           ? "radio-button-on"
                           : "radio-button-off"
                       }
                       size={20}
-                      color={selectedSex === sex ? COLORS.primary : "#999"}
+                      color={
+                        selectedCause === idx
+                          ? COLORS.primary
+                          : COLORS.textLight
+                      }
                     />
                     <Text
-                      style={{
-                        marginLeft: 10,
-                        fontWeight: selectedSex === sex ? "bold" : "normal",
-                      }}
+                      style={[
+                        styles.optionText,
+                        selectedCause === idx && styles.textSelected,
+                      ]}
+                    >
+                      {item}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <Text style={styles.sectionLabel}>DEMOGRAPHIC DATA</Text>
+            <View style={styles.moduleCard}>
+              <Text style={styles.question}>Biological Sex</Text>
+              <View style={styles.row}>
+                {["Male", "Female"].map((sex) => (
+                  <TouchableOpacity
+                    key={sex}
+                    style={[
+                      styles.sexBtn,
+                      selectedSex === sex && styles.sexSelected,
+                    ]}
+                    onPress={() => setSelectedSex(sex)}
+                  >
+                    <Text
+                      style={[
+                        styles.sexText,
+                        selectedSex === sex && styles.textSelected,
+                      ]}
                     >
                       {sex}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
-            </Card>
+            </View>
 
             <TouchableOpacity
-              style={[
-                styles.btnPrimary,
-                { marginTop: 30, backgroundColor: "#111" },
-              ]}
+              style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
               onPress={handleSubmit}
               disabled={submitting}
             >
               {submitting ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.btnText}>Submit Survey</Text>
+                <Text style={styles.submitText}>Submit Clinical Data</Text>
               )}
             </TouchableOpacity>
-          </>
-        )}
-      </ScrollView>
-    </View>
-  );
-}
-</file>
 
-<file path="src/screens/HistoryScreen.js">
-import { Ionicons } from "@expo/vector-icons";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
-import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { auth, db, onAuthStateChanged } from "../../firebaseConfig";
-import BackgroundBubbles from "../components/BackgroundBubbles";
-import Card from "../components/Card";
-import Header from "../components/Header";
-import { COLORS } from "../theme/colors";
-import { styles } from "../theme/styles";
-
-export default function HistoryScreen({ navigation }) {
-  const [historyData, setHistoryData] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let unsubFirestore = null;
-
-    const unsubAuth = onAuthStateChanged(auth, (user) => {
-      if (unsubFirestore) {
-        unsubFirestore();
-        unsubFirestore = null;
-      }
-      if (!user) {
-        setHistoryData([]);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      const q = query(
-        collection(db, "users", user.uid, "history"),
-        orderBy("date", "desc"),
-      );
-      unsubFirestore = onSnapshot(
-        q,
-        (snap) => {
-          setHistoryData(
-            snap.docs.map((doc) => {
-              const d = doc.data();
-              return {
-                id: doc.id,
-                type: d.diagnosis || "Unknown",
-                score: d.score !== undefined ? d.score : "?",
-                total: d.total || 14,
-                severity: d.severity || "N/A",
-                date: d.date?.toDate
-                  ? d.date.toDate().toLocaleDateString()
-                  : "Just now",
-              };
-            }),
-          );
-          setLoading(false);
-        },
-        (err) => {
-          console.error("History fetch error:", err);
-          setLoading(false);
-        },
-      );
-    });
-
-    return () => {
-      unsubAuth();
-      if (unsubFirestore) unsubFirestore();
-    };
-  }, []);
-
-  return (
-    <View style={styles.container}>
-      <BackgroundBubbles />
-      <Header title="Your History" back />
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 3,
-          backgroundColor: "#FFF8E1",
-          paddingVertical: 10,
-          paddingHorizontal: 8,
-          borderBottomWidth: 1,
-          borderBottomColor: "#FFE082",
-        }}
-      >
-        <Ionicons name="warning-outline" size={12} color="#F59E0B" />
-        <Text style={{ fontSize: 10, fontWeight: "700", color: "#F59E0B" }}>
-          NOT A MEDICAL DIAGNOSIS — SCREENING PURPOSE ONLY
-        </Text>
-      </View>
-      {loading ? (
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      ) : historyData.length === 0 ? (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            padding: 30,
-          }}
-        >
-          {/* Approachable Illustration  */}
-          <View
-            style={{
-              backgroundColor: "#F0F2FF",
-              padding: 25,
-              borderRadius: 100,
-              marginBottom: 20,
-            }}
-          >
-            <Ionicons name="stats-chart" size={60} color={COLORS.primary} />
-          </View>
-
-          {/* Human Labels & Conversational Copy  */}
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "800",
-              color: "#1A1A2E",
-              textAlign: "center",
-            }}
-          >
-            Ready for your first screening?
-          </Text>
-
-          <Text
-            style={{
-              fontSize: 14,
-              color: "#4A4A4A",
-              textAlign: "center",
-              marginTop: 10,
-              lineHeight: 20,
-            }}
-          >
-            Take a 5-minute test to start tracking your color perception
-            journey. Your history will appear here after your first screening.
-          </Text>
-
-          {/* Call to Action Button  */}
-          <TouchableOpacity
-            style={[
-              styles.btnPrimary,
-              { marginTop: 30, width: "100%", paddingVertical: 16 },
-            ]}
-            onPress={() => navigation.navigate("IshiharaIntro")}
-          >
-            <Text style={[styles.btnText, { fontSize: 16 }]}>
-              Take the test{" "}
+            <Text style={styles.footerInfo}>
+              Your response is anonymized and used strictly for educational
+              research purposes.
             </Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <ScrollView contentContainerStyle={{ padding: 20 }}>
-          {historyData.map((item, index) => (
-            <Card key={index} style={{ marginBottom: 15, paddingVertical: 18 }}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <View style={{ flex: 1 }}>
-                  {/* Improved Color Contrast for Accessibility  */}
-                  <Text
-                    style={{
-                      fontSize: 17,
-                      fontWeight: "bold",
-                      color: "#1A1A2E",
-                    }}
-                  >
-                    {item.type}
-                  </Text>
-                  <Text
-                    style={{ fontSize: 13, color: "#4A4A4A", marginTop: 2 }}
-                  >
-                    Completed on {item.date}
-                  </Text>
-                </View>
-
-                <View style={{ alignItems: "flex-end", marginLeft: 10 }}>
-                  <Text
-                    style={{
-                      fontSize: 22,
-                      fontWeight: "800",
-                      color: COLORS.primary,
-                    }}
-                  >
-                    {item.score}/{item.total}
-                  </Text>
-                  <View
-                    style={{
-                      backgroundColor:
-                        item.severity === "Severe" ? "#FFEBEE" : "#FFF3E0",
-                      paddingHorizontal: 8,
-                      paddingVertical: 2,
-                      borderRadius: 6,
-                      marginTop: 4,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        fontWeight: "800",
-                        color:
-                          item.severity === "Severe"
-                            ? COLORS.danger
-                            : "#E65100",
-                      }}
-                    >
-                      {item.severity.toUpperCase()}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </Card>
-          ))}
+          </Animated.View>
         </ScrollView>
       )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+  scroll: {
+    padding: SPACING.lg,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: COLORS.textLight,
+    letterSpacing: 1.5,
+    marginBottom: 12,
+    marginLeft: 4,
+  },
+  moduleCard: {
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    marginBottom: 25,
+    ...SHADOW.sm,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  question: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: COLORS.text,
+    marginBottom: 20,
+    lineHeight: 22,
+  },
+  optionsGrid: {
+    gap: 12,
+  },
+  option: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    gap: 12,
+  },
+  optionSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + "05",
+  },
+  optionText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: COLORS.text,
+  },
+  textSelected: {
+    color: COLORS.primary,
+    fontWeight: "800",
+  },
+  row: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  sexBtn: {
+    flex: 1,
+    padding: 16,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    alignItems: "center",
+  },
+  sexSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + "05",
+  },
+  sexText: {
+    fontWeight: "700",
+    color: COLORS.textLight,
+  },
+  submitBtn: {
+    backgroundColor: COLORS.text,
+    padding: 20,
+    borderRadius: RADIUS.xl,
+    alignItems: "center",
+    marginTop: 10,
+    ...SHADOW.md,
+  },
+  submitText: {
+    color: "#FFF",
+    fontWeight: "800",
+    fontSize: 16,
+    letterSpacing: 0.5,
+  },
+  iconBox: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: COLORS.success + "15",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 25,
+  },
+  completeTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: COLORS.text,
+    textAlign: "center",
+  },
+  completeDesc: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    textAlign: "center",
+    marginTop: 12,
+    lineHeight: 22,
+  },
+  doneBtn: {
+    marginTop: 30,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  doneBtnText: {
+    color: COLORS.text,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  footerInfo: {
+    textAlign: "center",
+    color: COLORS.textLight,
+    fontSize: 11,
+    marginTop: 25,
+    opacity: 0.6,
+    lineHeight: 16,
+  },
+});
 </file>
 
 <file path="src/screens/CVDGalleryScreen.js">
@@ -7881,6 +8048,324 @@ export default function CVDGalleryScreen({ navigation }) {
     </View>
   );
 }
+</file>
+
+<file path="src/screens/HistoryScreen.js">
+import { Ionicons } from "@expo/vector-icons";
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { auth, db, onAuthStateChanged } from "../../firebaseConfig";
+import BackgroundBubbles from "../components/BackgroundBubbles";
+import Header from "../components/Header";
+import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
+
+export default function HistoryScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
+  const [historyData, setHistoryData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let unsubFirestore = null;
+
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (unsubFirestore) {
+        unsubFirestore();
+        unsubFirestore = null;
+      }
+      if (!user) {
+        setHistoryData([]);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      const q = query(
+        collection(db, "users", user.uid, "history"),
+        orderBy("date", "desc"),
+      );
+      unsubFirestore = onSnapshot(
+        q,
+        (snap) => {
+          setHistoryData(
+            snap.docs.map((doc) => {
+              const d = doc.data();
+              return {
+                id: doc.id,
+                type: d.diagnosis || "Unknown",
+                score: d.score !== undefined ? d.score : "?",
+                total: d.total || 14,
+                severity: d.severity || "N/A",
+                date: d.date?.toDate
+                  ? d.date.toDate().toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "Just now",
+              };
+            }),
+          );
+          setLoading(false);
+        },
+        (err) => {
+          console.error("History fetch error:", err);
+          setLoading(false);
+        },
+      );
+    });
+
+    return () => {
+      unsubAuth();
+      if (unsubFirestore) unsubFirestore();
+    };
+  }, []);
+
+  return (
+    <View style={styles.container}>
+      <BackgroundBubbles />
+      <Header title="Clinical History" back />
+
+      {/* Utility Disclaimer Banner */}
+      <View style={styles.disclaimer}>
+        <Ionicons name="shield-checkmark" size={12} color="#B45309" />
+        <Text style={styles.disclaimerText}>
+          OFFICIAL SCREENING LOG • NOT A MEDICAL DIAGNOSIS
+        </Text>
+      </View>
+
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : historyData.length === 0 ? (
+        <Animated.View entering={FadeInUp} style={styles.emptyContainer}>
+          <View style={styles.emptyIconBox}>
+            <Ionicons name="stats-chart" size={60} color={COLORS.primary} />
+          </View>
+          <Text style={styles.emptyTitle}>No Assessments Yet</Text>
+          <Text style={styles.emptyDesc}>
+            Your color perception journey starts here. Take your first Ishihara
+            test to generate your clinical profile.
+          </Text>
+          <TouchableOpacity
+            style={styles.ctaButton}
+            onPress={() => navigation.navigate("IshiharaIntro")}
+          >
+            <Text style={styles.ctaText}>Begin Initial Screening</Text>
+            <Ionicons name="arrow-forward" size={18} color="#FFF" />
+          </TouchableOpacity>
+        </Animated.View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: insets.bottom + 20 },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.sectionLabel}>RECENT DIAGNOSTICS</Text>
+          {historyData.map((item, index) => (
+            <Animated.View
+              key={item.id}
+              entering={FadeInDown.delay(index * 100).duration(500)}
+              style={styles.historyCard}
+            >
+              <View style={styles.cardHeader}>
+                <View style={styles.typeBadge}>
+                  <Text style={styles.typeText}>{item.type}</Text>
+                </View>
+                <Text style={styles.dateText}>{item.date}</Text>
+              </View>
+
+              <View style={styles.cardBody}>
+                <View>
+                  <Text style={styles.scoreLabel}>Accuracy Score</Text>
+                  <Text style={styles.scoreValue}>
+                    {item.score}
+                    <Text style={styles.scoreTotal}>/{item.total}</Text>
+                  </Text>
+                </View>
+
+                <View style={styles.severityContainer}>
+                  <Text style={styles.severityLabel}>SEVERITY</Text>
+                  <View
+                    style={[
+                      styles.severityBadge,
+                      {
+                        backgroundColor:
+                          item.severity === "Severe" ? "#FEF2F2" : "#FFF7ED",
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.severityText,
+                        {
+                          color:
+                            item.severity === "Severe" ? "#EF4444" : "#F59E0B",
+                        },
+                      ]}
+                    >
+                      {item.severity.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </Animated.View>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  disclaimer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#FFF8E1",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#FFE082",
+  },
+  disclaimerText: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#B45309",
+    letterSpacing: 1,
+  },
+  listContent: { padding: SPACING.lg },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: COLORS.textLight,
+    letterSpacing: 1.5,
+    marginBottom: SPACING.md,
+    opacity: 0.7,
+  },
+  historyCard: {
+    backgroundColor: "#FFF",
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    marginBottom: SPACING.md,
+    ...SHADOW.sm,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  typeBadge: {
+    backgroundColor: COLORS.primary + "10",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: RADIUS.md,
+  },
+  typeText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: COLORS.primary,
+  },
+  dateText: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    fontWeight: "600",
+  },
+  cardBody: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+  },
+  scoreLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: COLORS.textLight,
+    marginBottom: 2,
+  },
+  scoreValue: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: COLORS.text,
+  },
+  scoreTotal: {
+    fontSize: 16,
+    color: COLORS.textLight,
+  },
+  severityContainer: { alignItems: "flex-end" },
+  severityLabel: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: COLORS.textLight,
+    marginBottom: 4,
+  },
+  severityBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: RADIUS.md,
+  },
+  severityText: {
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+  emptyIconBox: {
+    backgroundColor: "#EEF2FF",
+    padding: 30,
+    borderRadius: 50,
+    marginBottom: 24,
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: COLORS.text,
+    textAlign: "center",
+  },
+  emptyDesc: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    textAlign: "center",
+    marginTop: 12,
+    lineHeight: 22,
+  },
+  ctaButton: {
+    backgroundColor: COLORS.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: RADIUS.lg,
+    marginTop: 32,
+    gap: 10,
+    ...SHADOW.md,
+  },
+  ctaText: {
+    color: "#FFF",
+    fontWeight: "800",
+    fontSize: 16,
+  },
+});
 </file>
 
 <file path="src/utils/colorLogic.js">
@@ -8993,6 +9478,385 @@ export default function CVDSimulationScreen(props) {
 }
 </file>
 
+<file path="src/screens/ColorIdentifierScreen.js">
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useIsFocused } from "@react-navigation/native";
+import * as ImageManipulator from "expo-image-manipulator";
+import * as Speech from "expo-speech";
+import { useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  Dimensions,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import {
+  Camera,
+  useCameraDevice,
+  useCameraPermission,
+} from "react-native-vision-camera";
+import { decodeJpegBase64, identifyColor } from "../../tensorHelper";
+import ModeSelector from "../components/ModeSelector";
+import { styles } from "../theme/styles";
+import {
+  applyCalibrationToRGB,
+  resolveCalibration,
+} from "../utils/cameraCalibration";
+import { ScreenErrorBoundary } from "../utils/logger";
+
+const { width, height: screenHeight } = Dimensions.get("window");
+
+function ColorIdentifierScreenInner({ navigation }) {
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const isFocused = useIsFocused();
+  const [cameraPosition, setCameraPosition] = useState("back");
+  const [audio, setAudio] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState({
+    x: width / 2,
+    y: screenHeight / 2,
+  });
+  const [identifiedColor, setIdentifiedColor] = useState({
+    name: "Ready to Scan",
+    hex: "#333",
+    conf: "",
+  });
+  const [isDetecting, setIsDetecting] = useState(false);
+
+  const cameraRef = useRef(null);
+  const isProcessingRef = useRef(false);
+  const isMountedRef = useRef(true);
+  const viewSizeRef = useRef({ width, height: screenHeight });
+  const device = useCameraDevice(cameraPosition);
+
+  const handleResponderLayout = (e) => {
+    const { width: vw, height: vh } = e.nativeEvent.layout;
+    if (vw > 0 && vh > 0) viewSizeRef.current = { width: vw, height: vh };
+  };
+
+  useEffect(() => {
+    const syncAudio = async () => {
+      const saved = await AsyncStorage.getItem("audio_feedback_enabled");
+      setAudio(saved === "true");
+    };
+    syncAudio();
+  }, [isFocused]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    const timer = setTimeout(() => {
+      if (isMountedRef.current) setCameraReady(true);
+    }, 700);
+    return () => {
+      isMountedRef.current = false;
+      clearTimeout(timer);
+    };
+  }, []);
+
+  if (!hasPermission) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <Text style={{ marginBottom: 20 }}>Camera access is needed.</Text>
+        <TouchableOpacity style={styles.btnPrimary} onPress={requestPermission}>
+          <Text style={styles.btnText}>Grant Permission</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const runDetection = async (cx, cy) => {
+    if (!cameraRef.current || isProcessingRef.current) return;
+    isProcessingRef.current = true;
+    setIsDetecting(true);
+
+    try {
+      const photo = await cameraRef.current.takePhoto({
+        qualityPrioritization: "speed",
+        enableShutterSound: false,
+      });
+      const fileUri = `file://${photo.path}`;
+
+      const resized = await ImageManipulator.manipulateAsync(
+        fileUri,
+        [{ resize: { width: 640 } }],
+        {
+          base64: true,
+          format: ImageManipulator.SaveFormat.JPEG,
+          compress: 0.95,
+        },
+      );
+
+      const decoded = decodeJpegBase64(resized.base64);
+      const imgW = resized.width;
+      const imgH = resized.height;
+
+      const { width: viewW, height: viewH } = viewSizeRef.current;
+      const screenAspect = viewW / viewH;
+      const photoAspect = imgW / imgH;
+      let pixX, pixY;
+
+      if (photoAspect > screenAspect) {
+        const visibleW = screenAspect * imgH;
+        const offsetX = (imgW - visibleW) / 2;
+        pixX = Math.round(offsetX + (cx / viewW) * visibleW);
+        pixY = Math.round((cy / viewH) * imgH);
+      } else {
+        const visibleH = imgW / screenAspect;
+        const offsetY = (imgH - visibleH) / 2;
+        pixX = Math.round((cx / viewW) * imgW);
+        pixY = Math.round(offsetY + (cy / viewH) * visibleH);
+      }
+
+      const half = 5;
+      const x0 = Math.max(0, pixX - half),
+        y0 = Math.max(0, pixY - half);
+      const x1 = Math.min(imgW, pixX + half),
+        y1 = Math.min(imgH, pixY + half);
+      let avgR = 0,
+        avgG = 0,
+        avgB = 0,
+        count = 0;
+
+      for (let py = y0; py < y1; py++) {
+        for (let px = x0; px < x1; px++) {
+          const idx = (py * imgW + px) * 4;
+          avgR += decoded.data[idx];
+          avgG += decoded.data[idx + 1];
+          avgB += decoded.data[idx + 2];
+          count++;
+        }
+      }
+      avgR = Math.round(avgR / count);
+      avgG = Math.round(avgG / count);
+      avgB = Math.round(avgB / count);
+
+      const calib = await resolveCalibration(decoded.data);
+      const [calR, calG, calB] = applyCalibrationToRGB(avgR, avgG, avgB, calib);
+
+      const result = identifyColor(calR, calG, calB);
+      const sampledHex =
+        "#" +
+        [calR, calG, calB].map((c) => c.toString(16).padStart(2, "0")).join("");
+
+      if (isMountedRef.current) {
+        const displayName =
+          result.class && result.class !== result.name
+            ? `${result.name} (${result.class})`
+            : result.name;
+        setIdentifiedColor({
+          name: displayName,
+          hex: sampledHex,
+          conf: `${result.confidence}%`,
+        });
+
+        if (audio) {
+          Speech.stop();
+          const spoken =
+            result.class && result.class !== result.name
+              ? `${result.name}, in the ${result.class.toLowerCase()} family`
+              : result.name;
+          Speech.speak(spoken, { rate: 1.0 });
+        }
+      }
+    } catch (e) {
+      console.log("[ColorID] detection error:", e);
+    } finally {
+      isProcessingRef.current = false;
+      if (isMountedRef.current) setIsDetecting(false);
+    }
+  };
+
+  const toggleAudio = async () => {
+    const newVal = !audio;
+    setAudio(newVal);
+    await AsyncStorage.setItem("audio_feedback_enabled", newVal.toString());
+  };
+
+  const showInfo = () => {
+    Alert.alert(
+      "How to use Identifier",
+      "Point the camera at any object and tap the screen to freeze the frame. The app will identify the color exactly at the crosshair.",
+    );
+  };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: "#000" }}>
+      {device && cameraReady && (
+        <Camera
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          device={device}
+          isActive={isFocused}
+          photo
+          enableShutterSound={false}
+        />
+      )}
+      <View
+        style={StyleSheet.absoluteFill}
+        onLayout={handleResponderLayout}
+        onStartShouldSetResponder={() => true}
+        onResponderMove={(evt) =>
+          setCursorPosition({
+            x: evt.nativeEvent.locationX,
+            y: evt.nativeEvent.locationY,
+          })
+        }
+        onResponderRelease={(evt) => {
+          setCursorPosition({
+            x: evt.nativeEvent.locationX,
+            y: evt.nativeEvent.locationY,
+          });
+          runDetection(evt.nativeEvent.locationX, evt.nativeEvent.locationY);
+        }}
+      />
+
+      <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
+        <View style={styles.camTopBar}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={{ marginRight: 10 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
+            <View style={styles.camPill}>
+              <Text style={{ color: "#FFF", fontSize: 12, fontWeight: "bold" }}>
+                Color Identifier
+              </Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity onPress={showInfo} style={{ marginRight: 15 }}>
+              <Ionicons
+                name="information-circle-outline"
+                size={26}
+                color="#FFF"
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={toggleAudio} style={{ marginRight: 15 }}>
+              <Ionicons
+                name={audio ? "volume-high" : "volume-mute"}
+                size={24}
+                color="#FFF"
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowModal(true)}>
+              <Ionicons name="menu" size={28} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Reticle */}
+        <View
+          pointerEvents="none"
+          style={[
+            localStyles.cursor,
+            { top: cursorPosition.y - 50, left: cursorPosition.x - 50 },
+          ]}
+        >
+          <View style={localStyles.reticleLineV} />
+          <View style={localStyles.reticleLineH} />
+          <View style={localStyles.reticleCircle} />
+        </View>
+
+        {/* Result Card */}
+        <View style={localStyles.resultCardContainer}>
+          <View style={localStyles.resultCard}>
+            <View
+              style={[
+                localStyles.colorPreview,
+                { backgroundColor: identifiedColor.hex },
+              ]}
+            />
+            <Text style={localStyles.colorName}>{identifiedColor.name}</Text>
+            <Text style={localStyles.calculatingText}>
+              {isDetecting ? "Calculating..." : ""}
+            </Text>
+          </View>
+        </View>
+
+        <ModeSelector
+          visible={showModal}
+          onClose={() => setShowModal(false)}
+          navigation={navigation}
+          currentMode="Identifier"
+        />
+      </SafeAreaView>
+    </View>
+  );
+}
+
+const localStyles = StyleSheet.create({
+  cursor: {
+    position: "absolute",
+    width: 100,
+    height: 100,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  reticleLineV: {
+    width: 2,
+    height: 50,
+    backgroundColor: "rgba(255,255,255,0.8)",
+    position: "absolute",
+  },
+  reticleLineH: {
+    width: 50,
+    height: 2,
+    backgroundColor: "rgba(255,255,255,0.8)",
+    position: "absolute",
+  },
+  reticleCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#FFF",
+  },
+  resultCardContainer: {
+    position: "absolute",
+    top: "60%",
+    alignSelf: "center",
+    pointerEvents: "none",
+  },
+  resultCard: {
+    backgroundColor: "rgba(0,0,0,0.85)",
+    padding: 15,
+    borderRadius: 12,
+    alignItems: "center",
+    minWidth: 150,
+  },
+  colorPreview: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    marginBottom: 5,
+    borderWidth: 2,
+    borderColor: "#FFF",
+  },
+  colorName: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
+  calculatingText: { color: "#CCC", fontSize: 12 },
+});
+
+export default function ColorIdentifierScreen(props) {
+  return (
+    <ScreenErrorBoundary navigation={props.navigation}>
+      <ColorIdentifierScreenInner {...props} />
+    </ScreenErrorBoundary>
+  );
+}
+</file>
+
 <file path="src/screens/HomeScreen.js">
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -9017,6 +9881,8 @@ import Animated, {
   FadeInRight,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
+  withSequence,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
@@ -9027,8 +9893,6 @@ import BackgroundBubbles from "../components/BackgroundBubbles";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
 const { width } = Dimensions.get("window");
-
-// --- REUSABLE PREMIUM COMPONENTS ---
 
 const ActionCard = ({
   title,
@@ -9048,12 +9912,12 @@ const ActionCard = ({
   }));
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.97, { damping: 15, stiffness: 200 });
+    scale.value = withSpring(0.97);
     opacity.value = withTiming(0.9);
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 200 });
+    scale.value = withSpring(1);
     opacity.value = withTiming(1);
   };
 
@@ -9078,7 +9942,6 @@ const ActionCard = ({
           <View style={[styles.iconBox, { backgroundColor: color + "15" }]}>
             <Ionicons name={icon} size={isDominant ? 32 : 24} color={color} />
           </View>
-
           <View
             style={isDominant ? styles.textGroup : styles.secondaryTextGroup}
           >
@@ -9088,7 +9951,6 @@ const ActionCard = ({
             <Text style={styles.cardTitle}>{title}</Text>
             {isDominant && <Text style={styles.cardDesc}>{desc}</Text>}
           </View>
-
           {isDominant && (
             <Ionicons
               name="chevron-forward"
@@ -9107,20 +9969,47 @@ export default function HomeScreen({ navigation }) {
   const [visionProfile, setVisionProfile] = useState("Unscreened");
   const userName = (auth.currentUser?.email || "Guest").split("@")[0];
 
+  // LOGO PULSE ANIMATION
+  const logoScale = useSharedValue(1);
+  const glowOpacity = useSharedValue(0.2);
+
+  useEffect(() => {
+    // Continuous Breathing Pulse
+    logoScale.value = withRepeat(
+      withSequence(
+        withTiming(1.06, { duration: 2500 }),
+        withTiming(1, { duration: 2500 }),
+      ),
+      -1,
+      true,
+    );
+
+    glowOpacity.value = withRepeat(
+      withSequence(
+        withTiming(0.5, { duration: 2500 }),
+        withTiming(0.2, { duration: 2500 }),
+      ),
+      -1,
+      true,
+    );
+  }, []);
+
+  const animatedLogoStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: logoScale.value }],
+    shadowOpacity: glowOpacity.value,
+  }));
+
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) return;
-
     const q = query(
       collection(db, "users", user.uid, "history"),
       orderBy("date", "desc"),
       limit(1),
     );
-
     return onSnapshot(q, (snap) => {
-      if (!snap.empty) {
+      if (!snap.empty)
         setVisionProfile(snap.docs[0].data().diagnosis || "Normal Vision");
-      }
     });
   }, []);
 
@@ -9129,7 +10018,6 @@ export default function HomeScreen({ navigation }) {
       <StatusBar barStyle="dark-content" />
       <BackgroundBubbles />
 
-      {/* FIXED: Disclaimer is now an integrated, non-intrusive utility banner */}
       <View
         style={[styles.disclaimer, { paddingTop: insets.top + SPACING.xs }]}
       >
@@ -9146,7 +10034,6 @@ export default function HomeScreen({ navigation }) {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* WELCOME SECTION: Improved hierarchy and spatial balance */}
         <Animated.View
           entering={FadeInDown.duration(800)}
           style={styles.header}
@@ -9154,7 +10041,6 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.headerText}>
             <Text style={styles.greeting}>Good day, {userName}</Text>
             <Text style={styles.mainTitle}>Welcome to{"\n"}ReColor</Text>
-
             <View style={styles.profileBadge}>
               <View style={styles.pulseDot} />
               <Text style={styles.profileText}>Status: {visionProfile}</Text>
@@ -9164,35 +10050,31 @@ export default function HomeScreen({ navigation }) {
           <Animated.Image
             entering={FadeInRight.delay(300).springify()}
             source={require("../../assets/icon.png")}
-            style={styles.heroLogo}
+            style={[styles.heroLogo, animatedLogoStyle]}
           />
         </Animated.View>
 
-        {/* PRIMARY ACTIONS: Choreographed entry */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>CLINICAL TOOLS</Text>
-
           <ActionCard
             isDominant
             title="Vision Assessment"
-            desc="Standardized Ishihara screening to identify specific color sensitivities with clinical accuracy."
+            desc="Standardized Ishihara screening to identify specific color sensitivities."
             icon="eye-outline"
             color={COLORS.primary}
             badge="RECOMMENDED"
             onPress={() => navigation.navigate("IshiharaIntro")}
           />
-
           <ActionCard
             isDominant
-            title="Cameras and ColorBlind Simulation"
-            desc="Apply adaptive enhancement filters and identify colors via live camera processing."
+            title="Cameras and Simulation"
+            desc="Apply adaptive enhancement filters via live camera processing."
             icon="camera-outline"
             color="#9C27B0"
             onPress={() => navigation.navigate("CameraEnhance")}
           />
         </View>
 
-        {/* SECONDARY ACTIONS: Clean grid alignment */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>KNOWLEDGE BASE</Text>
           <View style={styles.gridRow}>
@@ -9216,13 +10098,8 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollBody: {
-    paddingHorizontal: SPACING.lg,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  scrollBody: { paddingHorizontal: SPACING.lg },
   disclaimer: {
     flexDirection: "row",
     alignItems: "center",
@@ -9243,13 +10120,11 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-end",
+    alignItems: "center",
     marginTop: SPACING.lg,
     marginBottom: SPACING.xl,
   },
-  headerText: {
-    flex: 1,
-  },
+  headerText: { flex: 1 },
   greeting: {
     fontSize: 14,
     fontWeight: "600",
@@ -9281,19 +10156,16 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.success,
     marginRight: 8,
   },
-  profileText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: COLORS.text,
-  },
+  profileText: { fontSize: 12, fontWeight: "700", color: COLORS.text },
   heroLogo: {
-    width: 100,
-    height: 100,
+    width: 135,
+    height: 135,
     resizeMode: "contain",
+    ...SHADOW.lg,
+    shadowColor: COLORS.primary,
+    shadowRadius: 15,
   },
-  section: {
-    marginBottom: SPACING.xl,
-  },
+  section: { marginBottom: SPACING.xl },
   sectionLabel: {
     fontSize: 11,
     fontWeight: "800",
@@ -9308,22 +10180,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     ...SHADOW.md,
   },
-  dominantCard: {
-    padding: SPACING.lg,
-    marginBottom: SPACING.md,
-  },
-  secondaryCard: {
-    padding: SPACING.md,
-    height: 120,
-    justifyContent: "center",
-  },
-  dominantContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  secondaryContent: {
-    alignItems: "center",
-  },
+  dominantCard: { padding: SPACING.lg, marginBottom: SPACING.md },
+  secondaryCard: { padding: SPACING.md, height: 120, justifyContent: "center" },
+  dominantContent: { flexDirection: "row", alignItems: "center" },
+  secondaryContent: { alignItems: "center" },
   iconBox: {
     width: 56,
     height: 56,
@@ -9331,36 +10191,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  textGroup: {
-    flex: 1,
-    marginLeft: SPACING.md,
-    marginRight: SPACING.sm,
-  },
-  secondaryTextGroup: {
-    marginTop: SPACING.sm,
-    alignItems: "center",
-  },
+  textGroup: { flex: 1, marginLeft: SPACING.md, marginRight: SPACING.sm },
+  secondaryTextGroup: { marginTop: SPACING.sm, alignItems: "center" },
   cardBadge: {
     fontSize: 9,
     fontWeight: "900",
     letterSpacing: 1,
     marginBottom: 2,
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: COLORS.text,
-  },
+  cardTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text },
   cardDesc: {
     fontSize: 13,
     color: COLORS.textLight,
     lineHeight: 18,
     marginTop: 4,
   },
-  gridRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
+  gridRow: { flexDirection: "row", justifyContent: "space-between" },
 });
 </file>
 
@@ -9371,12 +10217,12 @@ import * as Sharing from "expo-sharing";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { db } from "../../firebaseConfig";
 import BackgroundBubbles from "../components/BackgroundBubbles";
@@ -9826,7 +10672,7 @@ export default function SettingsScreen({ navigation }) {
               // Clear the local flag that bypasses onboarding
               await AsyncStorage.removeItem("hasSeenOnboarding");
               // Force navigation back to the start of the clinical flow
-              navigation.replace("IshiharaOnboarding");
+              navigation.replace("AppOnboarding");
             } catch (error) {
               console.error("Failed to reset onboarding:", error);
             }
@@ -9895,7 +10741,7 @@ export default function SettingsScreen({ navigation }) {
                     size={20}
                     color={COLORS.primary}
                   />
-                  <Text style={styles.label}>Filter Intensity</Text>
+                  <Text style={styles.label}>Enhancement Intensity</Text>
                 </View>
                 <Text style={styles.valueText}>
                   {Math.round(intensity * 100)}%
@@ -9919,7 +10765,7 @@ export default function SettingsScreen({ navigation }) {
                     size={20}
                     color={COLORS.primary}
                   />
-                  <Text style={styles.label}>Audio Guidance</Text>
+                  <Text style={styles.label}>Audio Feedback</Text>
                 </View>
                 <Switch
                   value={audioEnabled}
@@ -9981,12 +10827,6 @@ export default function SettingsScreen({ navigation }) {
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Total Assessments</Text>
                 <Text style={styles.infoValue}>{testCount}</Text>
-              </View>
-              <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
-                <Text style={styles.infoLabel}>Cloud Sync Status</Text>
-                <Text style={[styles.infoValue, { color: COLORS.success }]}>
-                  ENCRYPTED
-                </Text>
               </View>
 
               {expertRole && (
@@ -10050,8 +10890,6 @@ export default function SettingsScreen({ navigation }) {
               </TouchableOpacity>
             </View>
           </View>
-
-          <Text style={styles.footerVersion}>ReColor Clinical • v1.0.4</Text>
         </Animated.View>
       </ScrollView>
     </View>
@@ -10166,457 +11004,6 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 });
-</file>
-
-<file path="src/screens/ColorIdentifierScreen.js">
-import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useIsFocused } from "@react-navigation/native";
-import * as ImageManipulator from "expo-image-manipulator";
-import * as Speech from "expo-speech";
-import { useEffect, useRef, useState } from "react";
-import {
-  Alert,
-  Dimensions,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import {
-  Camera,
-  useCameraDevice,
-  useCameraPermission,
-} from "react-native-vision-camera";
-import { decodeJpegBase64, identifyColor } from "../../tensorHelper";
-import ModeSelector from "../components/ModeSelector";
-import { styles } from "../theme/styles";
-import {
-  applyCalibrationToRGB,
-  resolveCalibration,
-} from "../utils/cameraCalibration";
-import { ScreenErrorBoundary } from "../utils/logger";
-
-const { width, height: screenHeight } = Dimensions.get("window");
-
-function ColorIdentifierScreenInner({ navigation }) {
-  const { hasPermission, requestPermission } = useCameraPermission();
-  const isFocused = useIsFocused();
-  const [cameraPosition, setCameraPosition] = useState("back");
-  const [audio, setAudio] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [cameraReady, setCameraReady] = useState(false);
-  const [cursorPosition, setCursorPosition] = useState({
-    x: width / 2,
-    y: screenHeight / 2,
-  });
-  const [identifiedColor, setIdentifiedColor] = useState({
-    name: "Ready to Scan",
-    hex: "#333",
-    conf: "",
-  });
-  const [isDetecting, setIsDetecting] = useState(false);
-
-  const cameraRef = useRef(null);
-  const isProcessingRef = useRef(false);
-  const isMountedRef = useRef(true);
-  const viewSizeRef = useRef({ width, height: screenHeight });
-  const device = useCameraDevice(cameraPosition);
-
-  const handleResponderLayout = (e) => {
-    const { width: vw, height: vh } = e.nativeEvent.layout;
-    if (vw > 0 && vh > 0) viewSizeRef.current = { width: vw, height: vh };
-  };
-
-  useEffect(() => {
-    const syncAudio = async () => {
-      const saved = await AsyncStorage.getItem("audio_feedback_enabled");
-      setAudio(saved === "true");
-    };
-    syncAudio();
-  }, [isFocused]);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    const timer = setTimeout(() => {
-      if (isMountedRef.current) setCameraReady(true);
-    }, 700);
-    return () => {
-      isMountedRef.current = false;
-      clearTimeout(timer);
-    };
-  }, []);
-
-  if (!hasPermission) {
-    return (
-      <View
-        style={[
-          styles.container,
-          { justifyContent: "center", alignItems: "center" },
-        ]}
-      >
-        <Text style={{ marginBottom: 20 }}>Camera access is needed.</Text>
-        <TouchableOpacity style={styles.btnPrimary} onPress={requestPermission}>
-          <Text style={styles.btnText}>Grant Permission</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const runDetection = async (cx, cy) => {
-    if (!cameraRef.current || isProcessingRef.current) return;
-    isProcessingRef.current = true;
-    setIsDetecting(true);
-
-    try {
-      const photo = await cameraRef.current.takePhoto({
-        qualityPrioritization: "speed",
-        enableShutterSound: false,
-      });
-      const fileUri = `file://${photo.path}`;
-
-      const resized = await ImageManipulator.manipulateAsync(
-        fileUri,
-        [{ resize: { width: 640 } }],
-        {
-          base64: true,
-          format: ImageManipulator.SaveFormat.JPEG,
-          compress: 0.95,
-        },
-      );
-
-      const decoded = decodeJpegBase64(resized.base64);
-      const imgW = resized.width;
-      const imgH = resized.height;
-
-      const { width: viewW, height: viewH } = viewSizeRef.current;
-      const screenAspect = viewW / viewH;
-      const photoAspect = imgW / imgH;
-      let pixX, pixY;
-
-      if (photoAspect > screenAspect) {
-        const visibleW = screenAspect * imgH;
-        const offsetX = (imgW - visibleW) / 2;
-        pixX = Math.round(offsetX + (cx / viewW) * visibleW);
-        pixY = Math.round((cy / viewH) * imgH);
-      } else {
-        const visibleH = imgW / screenAspect;
-        const offsetY = (imgH - visibleH) / 2;
-        pixX = Math.round((cx / viewW) * imgW);
-        pixY = Math.round(offsetY + (cy / viewH) * visibleH);
-      }
-
-      const half = 5;
-      const x0 = Math.max(0, pixX - half),
-        y0 = Math.max(0, pixY - half);
-      const x1 = Math.min(imgW, pixX + half),
-        y1 = Math.min(imgH, pixY + half);
-      let avgR = 0,
-        avgG = 0,
-        avgB = 0,
-        count = 0;
-
-      for (let py = y0; py < y1; py++) {
-        for (let px = x0; px < x1; px++) {
-          const idx = (py * imgW + px) * 4;
-          avgR += decoded.data[idx];
-          avgG += decoded.data[idx + 1];
-          avgB += decoded.data[idx + 2];
-          count++;
-        }
-      }
-      avgR = Math.round(avgR / count);
-      avgG = Math.round(avgG / count);
-      avgB = Math.round(avgB / count);
-
-      const calib = await resolveCalibration(decoded.data);
-      const [calR, calG, calB] = applyCalibrationToRGB(avgR, avgG, avgB, calib);
-
-      const result = identifyColor(calR, calG, calB);
-      const sampledHex =
-        "#" +
-        [calR, calG, calB].map((c) => c.toString(16).padStart(2, "0")).join("");
-
-      if (isMountedRef.current) {
-        const displayName =
-          result.class && result.class !== result.name
-            ? `${result.name} (${result.class})`
-            : result.name;
-        setIdentifiedColor({
-          name: displayName,
-          hex: sampledHex,
-          conf: `${result.confidence}%`,
-        });
-
-        if (audio) {
-          Speech.stop();
-          const spoken =
-            result.class && result.class !== result.name
-              ? `${result.name}, in the ${result.class.toLowerCase()} family`
-              : result.name;
-          Speech.speak(spoken, { rate: 1.0 });
-        }
-      }
-    } catch (e) {
-      console.log("[ColorID] detection error:", e);
-    } finally {
-      isProcessingRef.current = false;
-      if (isMountedRef.current) setIsDetecting(false);
-    }
-  };
-
-  const toggleAudio = async () => {
-    const newVal = !audio;
-    setAudio(newVal);
-    await AsyncStorage.setItem("audio_feedback_enabled", newVal.toString());
-  };
-
-  const showInfo = () => {
-    Alert.alert(
-      "How to use Identifier",
-      "Point the camera at any object and tap the screen to freeze the frame. The app will identify the color exactly at the crosshair.",
-    );
-  };
-
-  return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
-      {device && cameraReady && (
-        <Camera
-          ref={cameraRef}
-          style={StyleSheet.absoluteFill}
-          device={device}
-          isActive={isFocused}
-          photo
-          enableShutterSound={false}
-        />
-      )}
-      <View
-        style={StyleSheet.absoluteFill}
-        onLayout={handleResponderLayout}
-        onStartShouldSetResponder={() => true}
-        onResponderMove={(evt) =>
-          setCursorPosition({
-            x: evt.nativeEvent.locationX,
-            y: evt.nativeEvent.locationY,
-          })
-        }
-        onResponderRelease={(evt) => {
-          setCursorPosition({
-            x: evt.nativeEvent.locationX,
-            y: evt.nativeEvent.locationY,
-          });
-          runDetection(evt.nativeEvent.locationX, evt.nativeEvent.locationY);
-        }}
-      />
-
-      <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
-        <View style={styles.camTopBar}>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={{ marginRight: 10 }}
-            >
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
-            </TouchableOpacity>
-            <View style={styles.camPill}>
-              <Text style={{ color: "#FFF", fontSize: 12, fontWeight: "bold" }}>
-                Color Identifier
-              </Text>
-            </View>
-          </View>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <TouchableOpacity onPress={showInfo} style={{ marginRight: 15 }}>
-              <Ionicons
-                name="information-circle-outline"
-                size={26}
-                color="#FFF"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={toggleAudio} style={{ marginRight: 15 }}>
-              <Ionicons
-                name={audio ? "volume-high" : "volume-mute"}
-                size={24}
-                color="#FFF"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowModal(true)}>
-              <Ionicons name="menu" size={28} color="#FFF" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Reticle */}
-        <View
-          pointerEvents="none"
-          style={[
-            localStyles.cursor,
-            { top: cursorPosition.y - 50, left: cursorPosition.x - 50 },
-          ]}
-        >
-          <View style={localStyles.reticleLineV} />
-          <View style={localStyles.reticleLineH} />
-          <View style={localStyles.reticleCircle} />
-        </View>
-
-        {/* Result Card */}
-        <View style={localStyles.resultCardContainer}>
-          <View style={localStyles.resultCard}>
-            <View
-              style={[
-                localStyles.colorPreview,
-                { backgroundColor: identifiedColor.hex },
-              ]}
-            />
-            <Text style={localStyles.colorName}>{identifiedColor.name}</Text>
-            <Text style={localStyles.calculatingText}>
-              {isDetecting ? "Calculating..." : ""}
-            </Text>
-          </View>
-        </View>
-
-        <ModeSelector
-          visible={showModal}
-          onClose={() => setShowModal(false)}
-          navigation={navigation}
-          currentMode="Identifier"
-        />
-      </SafeAreaView>
-    </View>
-  );
-}
-
-const localStyles = StyleSheet.create({
-  cursor: {
-    position: "absolute",
-    width: 100,
-    height: 100,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  reticleLineV: {
-    width: 2,
-    height: 50,
-    backgroundColor: "rgba(255,255,255,0.8)",
-    position: "absolute",
-  },
-  reticleLineH: {
-    width: 50,
-    height: 2,
-    backgroundColor: "rgba(255,255,255,0.8)",
-    position: "absolute",
-  },
-  reticleCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#FFF",
-  },
-  resultCardContainer: {
-    position: "absolute",
-    top: "60%",
-    alignSelf: "center",
-    pointerEvents: "none",
-  },
-  resultCard: {
-    backgroundColor: "rgba(0,0,0,0.85)",
-    padding: 15,
-    borderRadius: 12,
-    alignItems: "center",
-    minWidth: 150,
-  },
-  colorPreview: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    marginBottom: 5,
-    borderWidth: 2,
-    borderColor: "#FFF",
-  },
-  colorName: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
-  calculatingText: { color: "#CCC", fontSize: 12 },
-});
-
-export default function ColorIdentifierScreen(props) {
-  return (
-    <ScreenErrorBoundary navigation={props.navigation}>
-      <ColorIdentifierScreenInner {...props} />
-    </ScreenErrorBoundary>
-  );
-}
-</file>
-
-<file path="package.json">
-{
-  "name": "recolor",
-  "main": "node_modules/expo/AppEntry.js",
-  "version": "1.0.0",
-  "scripts": {
-    "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
-    "web": "expo start --web",
-    "lint": "expo lint"
-  },
-  "dependencies": {
-    "@expo/vector-icons": "^15.0.3",
-    "@react-native-async-storage/async-storage": "2.2.0",
-    "@react-native-community/slider": "5.0.1",
-    "@react-navigation/bottom-tabs": "^7.8.11",
-    "@react-navigation/elements": "^2.6.3",
-    "@react-navigation/native": "^7.1.24",
-    "@react-navigation/native-stack": "^7.8.5",
-    "@react-navigation/stack": "^7.6.11",
-    "@shopify/react-native-skia": "2.2.12",
-    "base64-arraybuffer": "^1.0.2",
-    "buffer": "^6.0.3",
-    "expo": "~54.0.27",
-    "expo-auth-session": "~7.0.10",
-    "expo-brightness": "~14.0.8",
-    "expo-constants": "~18.0.11",
-    "expo-dev-client": "~6.0.20",
-    "expo-file-system": "~19.0.20",
-    "expo-font": "~14.0.10",
-    "expo-haptics": "~15.0.8",
-    "expo-image": "~3.0.11",
-    "expo-image-manipulator": "~14.0.8",
-    "expo-image-picker": "~17.0.9",
-    "expo-linking": "~8.0.10",
-    "expo-media-library": "~18.2.1",
-    "expo-router": "~6.0.17",
-    "expo-sharing": "~14.0.8",
-    "expo-speech": "~14.0.8",
-    "expo-splash-screen": "~31.0.12",
-    "expo-status-bar": "~3.0.9",
-    "expo-symbols": "~1.0.8",
-    "expo-system-ui": "~6.0.9",
-    "expo-web-browser": "~15.0.10",
-    "firebase": "^12.12.1",
-    "jpeg-js": "^0.4.4",
-    "moti": "^0.30.0",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "react-native": "0.81.5",
-    "react-native-fast-tflite": "^1.5.1",
-    "react-native-gesture-handler": "~2.28.0",
-    "react-native-reanimated": "~4.1.1",
-    "react-native-safe-area-context": "~5.6.0",
-    "react-native-screens": "~4.16.0",
-    "react-native-vision-camera": "^4.7.3",
-    "react-native-web": "~0.21.0",
-    "react-native-worklets": "^0.8.0",
-    "react-native-worklets-core": "^1.6.3"
-  },
-  "devDependencies": {
-    "@types/react": "~19.1.0",
-    "eslint": "^9.25.0",
-    "eslint-config-expo": "~10.0.0",
-    "typescript": "~5.9.2"
-  },
-  "private": true
-}
 </file>
 
 <file path="src/screens/CameraEnhanceScreen.js">
@@ -11469,6 +11856,79 @@ const styles = StyleSheet.create({
   },
   versionText: { fontSize: 11, color: COLORS.primary, fontWeight: "600" },
 });
+</file>
+
+<file path="package.json">
+{
+  "name": "recolor",
+  "main": "node_modules/expo/AppEntry.js",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "expo start",
+    "reset-project": "node ./scripts/reset-project.js",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "lint": "expo lint"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.3",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/slider": "5.0.1",
+    "@react-navigation/bottom-tabs": "^7.8.11",
+    "@react-navigation/elements": "^2.6.3",
+    "@react-navigation/native": "^7.1.24",
+    "@react-navigation/native-stack": "^7.8.5",
+    "@react-navigation/stack": "^7.6.11",
+    "@shopify/react-native-skia": "2.2.12",
+    "base64-arraybuffer": "^1.0.2",
+    "buffer": "^6.0.3",
+    "expo": "~54.0.27",
+    "expo-auth-session": "~7.0.10",
+    "expo-brightness": "~14.0.8",
+    "expo-constants": "~18.0.11",
+    "expo-dev-client": "~6.0.20",
+    "expo-file-system": "~19.0.20",
+    "expo-font": "~14.0.10",
+    "expo-haptics": "~15.0.8",
+    "expo-image": "~3.0.11",
+    "expo-image-manipulator": "~14.0.8",
+    "expo-image-picker": "~17.0.9",
+    "expo-linear-gradient": "~15.0.8",
+    "expo-linking": "~8.0.10",
+    "expo-media-library": "~18.2.1",
+    "expo-router": "~6.0.17",
+    "expo-sharing": "~14.0.8",
+    "expo-speech": "~14.0.8",
+    "expo-splash-screen": "~31.0.12",
+    "expo-status-bar": "~3.0.9",
+    "expo-symbols": "~1.0.8",
+    "expo-system-ui": "~6.0.9",
+    "expo-web-browser": "~15.0.10",
+    "firebase": "^12.12.1",
+    "jpeg-js": "^0.4.4",
+    "moti": "^0.30.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-fast-tflite": "^1.5.1",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0",
+    "react-native-vision-camera": "^4.7.3",
+    "react-native-web": "~0.21.0",
+    "react-native-worklets": "^0.8.0",
+    "react-native-worklets-core": "^1.6.3"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.0",
+    "eslint": "^9.25.0",
+    "eslint-config-expo": "~10.0.0",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}
 </file>
 
 <file path="src/screens/TestScreen.js">
