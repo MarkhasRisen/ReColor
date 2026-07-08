@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import {
@@ -16,6 +17,77 @@ import BackgroundBubbles from "../components/BackgroundBubbles";
 import Header from "../components/Header";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
+const getDiagnosisColors = (type) => {
+  const t = type ? type.toLowerCase() : "";
+  if (t.includes("normal")) {
+    return {
+      text: "#1E293B",
+      bg: "#F1F5F9",
+      border: "#E2E8F0",
+    };
+  } else if (t.includes("prot")) {
+    return {
+      text: "#991B1B",
+      bg: "#FEF2F2",
+      border: "#FEE2E2",
+    };
+  } else if (t.includes("deut")) {
+    return {
+      text: "#166534",
+      bg: "#F0FDF4",
+      border: "#DCFCE7",
+    };
+  } else if (t.includes("trit")) {
+    return {
+      text: "#0D47A1",
+      bg: "#E3F2FD",
+      border: "#BBDEFB",
+    };
+  } else {
+    return {
+      text: "#B45309",
+      bg: "#FEF3C7",
+      border: "#FDE68A",
+    };
+  }
+};
+
+const getSeverityColors = (severity) => {
+  const s = severity ? severity.toLowerCase() : "";
+  if (s.includes("severe")) {
+    return {
+      text: "#EF4444", // Red
+      bg: "#FEF2F2",
+      border: "#FEE2E2",
+    };
+  } else if (s.includes("moderate")) {
+    return {
+      text: "#F97316", // Orange
+      bg: "#FFF7ED",
+      border: "#FFEDD5",
+    };
+  } else if (s.includes("mild")) {
+    return {
+      text: "#22C55E", // Green
+      bg: "#F0FDF4",
+      border: "#DCFCE7",
+    };
+  } else if (s.includes("borderline")) {
+    return {
+      text: "#D97706", // Amber
+      bg: "#FEF3C7",
+      border: "#FDE68A",
+    };
+  } else {
+    // None / N/A
+    return {
+      text: "#64748B", // Gray
+      bg: "#F1F5F9",
+      border: "#E2E8F0",
+    };
+  }
+};
+
 export default function HistoryScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [historyData, setHistoryData] = useState([]);
@@ -30,8 +102,34 @@ export default function HistoryScreen({ navigation }) {
         unsubFirestore = null;
       }
       if (!user) {
-        setHistoryData([]);
-        setLoading(false);
+        AsyncStorage.getItem("@recolor_local_history")
+          .then((localData) => {
+            if (localData) {
+              try {
+                const parsed = JSON.parse(localData);
+                const mapped = (Array.isArray(parsed) ? parsed : []).map((item) => ({
+                  id: item.id || Date.now().toString(),
+                  type: item.diagnosis || item.type || "Unknown",
+                  score: item.score !== undefined ? item.score : "?",
+                  total: item.total || 14,
+                  severity: item.severity || "N/A",
+                  date: item.date || "Just now",
+                }));
+                setHistoryData(mapped);
+              } catch (_e) {
+                setHistoryData([]);
+              }
+            } else {
+              setHistoryData([]);
+            }
+          })
+          .catch((err) => {
+            console.error("Local history fetch error:", err);
+            setHistoryData([]);
+          })
+          .finally(() => {
+            setLoading(false);
+          });
         return;
       }
 
@@ -121,18 +219,39 @@ export default function HistoryScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.sectionLabel}>RECENT DIAGNOSTICS</Text>
-          {historyData.map((item, index) => (
-            <Animated.View
-              key={item.id}
-              entering={FadeInDown.delay(index * 100).duration(500)}
-              style={styles.historyCard}
-            >
-              <View style={styles.cardHeader}>
-                <View style={styles.typeBadge}>
-                  <Text style={styles.typeText}>{item.type}</Text>
+          {historyData.map((item, index) => {
+            const colors = getDiagnosisColors(item.type);
+            const sevColors = getSeverityColors(item.severity);
+            return (
+              <Animated.View
+                key={item.id}
+                entering={FadeInDown.delay(index * 100).duration(500)}
+                style={[
+                  styles.historyCard,
+                  {
+                    borderLeftWidth: 6,
+                    borderLeftColor: colors.text,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <View style={styles.cardHeader}>
+                  <View
+                    style={[
+                      styles.typeBadge,
+                      {
+                        backgroundColor: colors.bg,
+                        borderColor: colors.border,
+                        borderWidth: 1,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.typeText, { color: colors.text }]}>
+                      {item.type}
+                    </Text>
+                  </View>
+                  <Text style={styles.dateText}>{item.date}</Text>
                 </View>
-                <Text style={styles.dateText}>{item.date}</Text>
-              </View>
 
               <View style={styles.cardBody}>
                 <View>
@@ -149,8 +268,9 @@ export default function HistoryScreen({ navigation }) {
                     style={[
                       styles.severityBadge,
                       {
-                        backgroundColor:
-                          item.severity === "Severe" ? "#FEF2F2" : "#FFF7ED",
+                        backgroundColor: sevColors.bg,
+                        borderColor: sevColors.border,
+                        borderWidth: 1,
                       },
                     ]}
                   >
@@ -158,8 +278,7 @@ export default function HistoryScreen({ navigation }) {
                       style={[
                         styles.severityText,
                         {
-                          color:
-                            item.severity === "Severe" ? "#EF4444" : "#F59E0B",
+                          color: sevColors.text,
                         },
                       ]}
                     >
@@ -169,7 +288,8 @@ export default function HistoryScreen({ navigation }) {
                 </View>
               </View>
             </Animated.View>
-          ))}
+          );
+        })}
         </ScrollView>
       )}
     </View>

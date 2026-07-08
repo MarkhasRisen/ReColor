@@ -25,7 +25,6 @@ import { COLORS, SHADOW } from "../theme/colors";
 export default function AdminHubScreen({ route, navigation }) {
   const { role } = route.params || { role: "researcher" };
   const [recordCount, setRecordCount] = useState(0);
-  const [userCount, setUserCount] = useState(0);
   const [liveActivity, setLiveActivity] = useState([]);
 
   useEffect(() => {
@@ -35,12 +34,12 @@ export default function AdminHubScreen({ route, navigation }) {
       (snap) => {
         setRecordCount(snap.size);
       },
+      (err) => {
+        console.error("AdminHub unsubResearch error:", err);
+      }
     );
 
-    // 2. Live Registered User Count
-    const unsubUsers = onSnapshot(query(collection(db, "users")), (snap) => {
-      setUserCount(snap.size);
-    });
+
 
     // 3. Live Data Ingress Feed (Last 5 events)
     const qActivity = query(
@@ -49,32 +48,37 @@ export default function AdminHubScreen({ route, navigation }) {
       limit(5),
     );
 
-    const unsubActivity = onSnapshot(qActivity, (snap) => {
-      setLiveActivity(
-        snap.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            event: `${data.diagnosis || "New"} Record Synced`,
-            time: data.timestamp?.toDate()
-              ? data.timestamp.toDate().toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : "Just now",
-            icon: "analytics-outline",
-            color:
-              data.diagnosis === "Normal Vision"
-                ? COLORS.success
-                : COLORS.warning,
-          };
-        }),
-      );
-    });
+    const unsubActivity = onSnapshot(
+      qActivity,
+      (snap) => {
+        setLiveActivity(
+          snap.docs.map((doc) => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              event: `${data.diagnosis || "New"} Record Synced`,
+              time: data.timestamp?.toDate()
+                ? data.timestamp.toDate().toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "Just now",
+              icon: "analytics-outline",
+              color:
+                data.diagnosis === "Normal Vision"
+                  ? COLORS.success
+                  : COLORS.warning,
+            };
+          }),
+        );
+      },
+      (err) => {
+        console.error("AdminHub unsubActivity error:", err);
+      }
+    );
 
     return () => {
       unsubResearch();
-      unsubUsers();
       unsubActivity();
     };
   }, []);

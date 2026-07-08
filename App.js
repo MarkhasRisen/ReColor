@@ -10,6 +10,7 @@ import { useEffect, useRef } from "react";
 import { View } from "react-native";
 
 import { auth, onAuthStateChanged } from "./firebaseConfig";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   installGlobalErrorHandlers,
   ScreenErrorBoundary,
@@ -61,7 +62,12 @@ export default function App() {
         return;
       }
       if (!user && navigationRef.isReady()) {
-        navigationRef.reset({ index: 0, routes: [{ name: "Login" }] });
+        AsyncStorage.getItem("@recolor_onboarded").then((onboarded) => {
+          navigationRef.reset({
+            index: 0,
+            routes: [{ name: onboarded === "1" ? "Login" : "AppOnboarding" }],
+          });
+        });
       }
     });
     return unsub;

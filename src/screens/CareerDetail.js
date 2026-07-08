@@ -3,12 +3,103 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View
 } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Header from "../components/Header";
+import BackgroundBubbles from "../components/BackgroundBubbles";
+import { CAREER_ARTICLES } from "../data/careerData";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
+
+const getCategoryColors = (tag) => {
+  const t = tag ? tag.toLowerCase() : "";
+  if (t.includes("aviation") || t.includes("pilot")) {
+    return { primary: "#EF4444", bg: "#FEF2F2" }; // Red
+  }
+  if (t.includes("electric") || t.includes("wire") || t.includes("trade")) {
+    return { primary: "#F59E0B", bg: "#FFFBEB" }; // Amber
+  }
+  if (t.includes("health") || t.includes("clinical") || t.includes("med")) {
+    return { primary: "#8B5CF6", bg: "#F5F3FF" }; // Purple
+  }
+  if (t.includes("sport") || t.includes("athlet")) {
+    return { primary: "#10B981", bg: "#F0FDF4" }; // Green
+  }
+  if (t.includes("road") || t.includes("traffic") || t.includes("car")) {
+    return { primary: "#EC4899", bg: "#FDF2F8" }; // Pink
+  }
+  if (t.includes("art") || t.includes("design") || t.includes("creative")) {
+    return { primary: "#F43F5E", bg: "#FFF1F2" }; // Rose
+  }
+  if (t.includes("food") || t.includes("culinary")) {
+    return { primary: "#D97706", bg: "#FFFBEB" }; // Orange/Brown
+  }
+  if (t.includes("tech") || t.includes("ui") || t.includes("desktop")) {
+    return { primary: "#3B82F6", bg: "#EFF6FF" }; // Blue
+  }
+  return { primary: COLORS.primary, bg: COLORS.primary + "10" };
+};
+
+const CAREER_CARDS = [
+  {
+    articleId: "2",
+    label: "Piloting & Aviation",
+    desc: "Navigation lights and weather radar require color discrimination.",
+    icon: "airplane-outline",
+    tag: "Aviation",
+  },
+  {
+    articleId: "3",
+    label: "Electrical Work",
+    desc: "Wire color codes are mandatory safety standards in electrical trades.",
+    icon: "flash-outline",
+    tag: "Trades",
+  },
+  {
+    articleId: "4",
+    label: "Medical Professions",
+    desc: "Tissue, specimen, and surgical color assessment in clinical work.",
+    icon: "heart-outline",
+    tag: "Medicine",
+  },
+  {
+    articleId: "5",
+    label: "Sports & Athletics",
+    desc: "Color contrast requirements for jerseys, lines, and gear in sports.",
+    icon: "football-outline",
+    tag: "Sports",
+  },
+  {
+    articleId: "6",
+    label: "Traffic & Road Safety",
+    desc: "Signage, signal lights, and braking indicators on the road.",
+    icon: "car-outline",
+    tag: "Road Safety",
+  },
+  {
+    articleId: "7",
+    label: "Art & Creative Design",
+    desc: "Color theory, palette compliance, and visual branding in design.",
+    icon: "brush-outline",
+    tag: "Creative",
+  },
+  {
+    articleId: "8",
+    label: "Food & Culinary Arts",
+    desc: "Visual freshness checks, ripeness levels, and cook completion cues.",
+    icon: "restaurant-outline",
+    tag: "Culinary",
+  },
+  {
+    articleId: "9",
+    label: "Technology & UI Design",
+    desc: "Digital accessibility, contrast checkers, and color-friendly UI wireframes.",
+    icon: "desktop-outline",
+    tag: "Tech",
+  },
+];
 
 export default function CareerDetail({ route, navigation }) {
   const { item } = route.params;
@@ -16,6 +107,7 @@ export default function CareerDetail({ route, navigation }) {
 
   return (
     <View style={styles.safeArea}>
+      <BackgroundBubbles />
       <Header title="Career Awareness" back />
 
       {/* Integrated Utility Banner */}
@@ -52,24 +144,38 @@ export default function CareerDetail({ route, navigation }) {
 
           {/* OVERVIEW MODULES */}
           {item.type === "overview" &&
-            item.cards.map((c, i) => (
-              <Animated.View
-                key={i}
-                entering={FadeInDown.delay(i * 100)}
-                style={[
-                  styles.overviewCard,
-                  { borderLeftColor: c.color || COLORS.primary },
-                ]}
-              >
-                <View style={styles.cardIconBox}>
-                  <Ionicons name={c.icon} size={22} color={COLORS.text} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle}>{c.label}</Text>
-                  <Text style={styles.cardDesc}>{c.desc}</Text>
-                </View>
-              </Animated.View>
-            ))}
+            CAREER_CARDS.map((card, i) => {
+              const catColors = getCategoryColors(card.tag);
+              const targetArticle = CAREER_ARTICLES.find(art => art.id === card.articleId);
+
+              return (
+                <TouchableOpacity
+                  key={i}
+                  activeOpacity={0.8}
+                  disabled={!targetArticle}
+                  style={[
+                    styles.overviewCard,
+                    { borderLeftColor: catColors.primary },
+                  ]}
+                  onPress={() => {
+                    if (targetArticle) {
+                      navigation.push("CareerDetail", { item: targetArticle });
+                    }
+                  }}
+                >
+                  <View style={[styles.cardIconBox, { backgroundColor: catColors.bg }]}>
+                    <Ionicons name={card.icon} size={22} color={catColors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>{card.label}</Text>
+                    <Text style={styles.cardDesc}>{card.desc}</Text>
+                  </View>
+                  {targetArticle && (
+                    <Ionicons name="chevron-forward" size={16} color={COLORS.textLight} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
 
           {/* STATS MODULE */}
           {item.stats && (
@@ -316,6 +422,17 @@ const styles = StyleSheet.create({
     ...SHADOW.sm,
   },
   listLabel: { fontSize: 15, fontWeight: "800", color: COLORS.text },
+  listTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: COLORS.text,
+  },
+  listDesc: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    lineHeight: 18,
+    marginTop: 4,
+  },
   colorCard: {
     padding: 20,
     borderRadius: RADIUS.xl,

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MotiView } from "moti";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
@@ -10,7 +10,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Camera } from "react-native-vision-camera";
+import * as ImagePicker from "expo-image-picker";
+import * as Haptics from "expo-haptics";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
@@ -48,7 +52,7 @@ const SLIDES = [
     badge: "LIVE PREVIEW",
     title: "See the difference,\nright now.",
     subtitle:
-      "Point your camera anywhere. ReColor identifies colors and applies adaptive enhancement filters in real-time.",
+      "ReColor identifies colors and applies adaptive enhancement filters to assist your color perception.",
     cta: "Next",
   },
   {
@@ -83,8 +87,58 @@ const getOptionColor = (opt) => {
   return COLORS.primary; // Default Purple
 };
 
-function SlideItem({ item, onNext, isLast, onFinish }) {
+const getColorBandColor = (band, cvd) => {
+  if (cvd === "Normal") {
+    if (band === "Red") return "#EF4444";
+    if (band === "Green") return "#10B981";
+    if (band === "Blue") return "#3B82F6";
+    return "#FBBF24"; // Yellow
+  }
+  if (cvd === "Protan") {
+    if (band === "Red") return "#8A7320"; // Olive-brown
+    if (band === "Green") return "#C0A830"; // Yellowish
+    if (band === "Blue") return "#3B82F6";
+    return "#CA8A04"; // Soft gold/dark ochre
+  }
+  if (cvd === "Deutan") {
+    if (band === "Red") return "#A56B24"; // Orange-brown
+    if (band === "Green") return "#8C8C24"; // Olive-yellow
+    if (band === "Blue") return "#3B82F6";
+    return "#E2E8F0"; // Yellow-gray/light grey
+  }
+  if (cvd === "Tritan") {
+    if (band === "Red") return "#EF4444"; // Preserved
+    if (band === "Green") return "#10B981"; // Preserved
+    if (band === "Blue") return "#06B6D4"; // Blue looks greenish-cyan
+    return "#F472B6"; // Yellow looks pink under Tritan!
+  }
+  return "#777";
+};
+
+function SlideItem({ item, currentIndex, onNext, onPrev, isLast, onFinish }) {
   const [selected, setSelected] = useState(null);
+  const [mockCvd, setMockCvd] = useState("Normal");
+  const [camStatus, setCamStatus] = useState("undetermined");
+  const [galleryStatus, setGalleryStatus] = useState("undetermined");
+
+  useEffect(() => {
+    if (item.perms) {
+      const status = Camera.getCameraPermissionStatus();
+      setCamStatus(status);
+      ImagePicker.getMediaLibraryPermissionsAsync().then((res) => setGalleryStatus(res.status));
+    }
+  }, [item.perms]);
+
+  const requestPerm = async (type) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (type === "camera") {
+      const status = await Camera.requestCameraPermission();
+      setCamStatus(status);
+    } else {
+      const res = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      setGalleryStatus(res.status);
+    }
+  };
 
   return (
     <View style={[styles.slide, { width }]}>
@@ -147,6 +201,53 @@ function SlideItem({ item, onNext, isLast, onFinish }) {
         </MotiView>
       )}
 
+      {/* Slide 3: Interactive Color Band Simulator mockup */}
+      {item.id === "3" && (
+        <MotiView
+          from={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "timing", duration: 500, delay: 300 }}
+          style={styles.simulatorCard}
+        >
+          <Text style={styles.simCardTitle}>INTERACTIVE COLOR WHEEL BAND</Text>
+          <View style={styles.colorBandRow}>
+            <View style={styles.bandCell}>
+              <View style={[styles.colorBand, { backgroundColor: getColorBandColor("Red", mockCvd) }]} />
+              <Text style={styles.bandLabel}>Red</Text>
+            </View>
+            <View style={styles.bandCell}>
+              <View style={[styles.colorBand, { backgroundColor: getColorBandColor("Green", mockCvd) }]} />
+              <Text style={styles.bandLabel}>Green</Text>
+            </View>
+            <View style={styles.bandCell}>
+              <View style={[styles.colorBand, { backgroundColor: getColorBandColor("Blue", mockCvd) }]} />
+              <Text style={styles.bandLabel}>Blue</Text>
+            </View>
+            <View style={styles.bandCell}>
+              <View style={[styles.colorBand, { backgroundColor: getColorBandColor("Yellow", mockCvd) }]} />
+              <Text style={styles.bandLabel}>Yellow</Text>
+            </View>
+          </View>
+
+          <View style={styles.tabsRow}>
+            {["Normal", "Protan", "Deutan", "Tritan"].map((mode) => (
+              <TouchableOpacity
+                key={mode}
+                style={[styles.tabBtn, mockCvd === mode && styles.tabBtnActive]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setMockCvd(mode);
+                }}
+              >
+                <Text style={[styles.tabText, mockCvd === mode && styles.tabTextActive]}>
+                  {mode}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </MotiView>
+      )}
+
       {item.perms && (
         <MotiView
           from={{ opacity: 0 }}
@@ -154,16 +255,55 @@ function SlideItem({ item, onNext, isLast, onFinish }) {
           transition={{ type: "timing", duration: 500, delay: 350 }}
           style={styles.permsWrap}
         >
-          {item.perms.map((perm) => (
-            <View key={perm} style={styles.permRow}>
-              <Ionicons
-                name="checkmark-circle"
-                size={20}
-                color={COLORS.success}
-              />
-              <Text style={styles.permText}>{perm}</Text>
+          {/* Camera row */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={[
+              styles.permRow,
+              camStatus === "granted" && { borderColor: COLORS.success, borderWidth: 1.5 }
+            ]}
+            onPress={() => requestPerm("camera")}
+          >
+            <Ionicons
+              name={camStatus === "granted" ? "checkmark-circle" : "ellipse-outline"}
+              size={20}
+              color={camStatus === "granted" ? COLORS.success : COLORS.textLight}
+            />
+            <View style={{ flex: 1, marginLeft: 8 }}>
+              <Text style={styles.permText}>Camera Access</Text>
+              <Text style={styles.permSub}>
+                {camStatus === "granted" ? "Permission active" : "Tap to authorize camera access"}
+              </Text>
             </View>
-          ))}
+            {camStatus !== "granted" && (
+              <Ionicons name="chevron-forward" size={16} color={COLORS.textLight} />
+            )}
+          </TouchableOpacity>
+
+          {/* Photo Library row */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={[
+              styles.permRow,
+              galleryStatus === "granted" && { borderColor: COLORS.success, borderWidth: 1.5 }
+            ]}
+            onPress={() => requestPerm("gallery")}
+          >
+            <Ionicons
+              name={galleryStatus === "granted" ? "checkmark-circle" : "ellipse-outline"}
+              size={20}
+              color={galleryStatus === "granted" ? COLORS.success : COLORS.textLight}
+            />
+            <View style={{ flex: 1, marginLeft: 8 }}>
+              <Text style={styles.permText}>Photo Storage</Text>
+              <Text style={styles.permSub}>
+                {galleryStatus === "granted" ? "Permission active" : "Tap to authorize library access"}
+              </Text>
+            </View>
+            {galleryStatus !== "granted" && (
+              <Ionicons name="chevron-forward" size={16} color={COLORS.textLight} />
+            )}
+          </TouchableOpacity>
         </MotiView>
       )}
 
@@ -174,13 +314,25 @@ function SlideItem({ item, onNext, isLast, onFinish }) {
         transition={{ type: "timing", duration: 500, delay: 450 }}
         style={styles.ctaWrap}
       >
-        <TouchableOpacity
-          style={styles.ctaBtn}
-          onPress={isLast ? onFinish : onNext}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.ctaText}>{item.cta}</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
+          {currentIndex > 0 && (
+            <TouchableOpacity
+              style={styles.backCtaBtn}
+              onPress={onPrev}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="arrow-back" size={18} color={COLORS.primary} />
+              <Text style={styles.backCtaText}>Back</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.ctaBtn, { flex: 1 }]}
+            onPress={isLast ? onFinish : onNext}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.ctaText}>{item.cta}</Text>
+          </TouchableOpacity>
+        </View>
       </MotiView>
     </View>
   );
@@ -189,6 +341,7 @@ function SlideItem({ item, onNext, isLast, onFinish }) {
 export default function AppOnboarding({ navigation }) {
   const flatRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const insets = useSafeAreaInsets();
 
   const goNext = () => {
     if (currentIndex < SLIDES.length - 1) {
@@ -197,6 +350,16 @@ export default function AppOnboarding({ navigation }) {
         animated: true,
       });
       setCurrentIndex(currentIndex + 1);
+    }
+  };
+
+  const goPrev = () => {
+    if (currentIndex > 0) {
+      flatRef.current?.scrollToIndex({
+        index: currentIndex - 1,
+        animated: true,
+      });
+      setCurrentIndex(currentIndex - 1);
     }
   };
 
@@ -218,7 +381,9 @@ export default function AppOnboarding({ navigation }) {
         renderItem={({ item, index }) => (
           <SlideItem
             item={item}
+            currentIndex={index}
             onNext={goNext}
+            onPrev={goPrev}
             isLast={index === SLIDES.length - 1}
             onFinish={finish}
           />
@@ -240,7 +405,7 @@ export default function AppOnboarding({ navigation }) {
         ))}
       </View>
 
-      <TouchableOpacity style={styles.skipBtn} onPress={finish}>
+      <TouchableOpacity style={[styles.skipBtn, { top: insets.top + 10 }]} onPress={finish}>
         <Text style={styles.skipText}>Skip</Text>
       </TouchableOpacity>
     </View>
@@ -323,8 +488,15 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     borderRadius: RADIUS.md,
     ...SHADOW.sm,
+    borderWidth: 1.5,
+    borderColor: "transparent",
   },
   permText: { fontSize: 14, color: COLORS.text, fontWeight: "500" },
+  permSub: {
+    fontSize: 11,
+    color: COLORS.textLight,
+    marginTop: 2,
+  },
   ctaWrap: {
     position: "absolute",
     bottom: SPACING.xxl,
@@ -360,4 +532,88 @@ const styles = StyleSheet.create({
     padding: SPACING.sm,
   },
   skipText: { color: COLORS.textLight, fontSize: 14, fontWeight: "500" },
+
+  backCtaBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.card,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary + "30",
+    borderRadius: RADIUS.lg,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    gap: 6,
+    ...SHADOW.sm,
+  },
+  backCtaText: {
+    color: COLORS.primary,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+
+  simulatorCard: {
+    backgroundColor: "#FFF",
+    padding: 16,
+    borderRadius: RADIUS.xl,
+    marginTop: SPACING.md,
+    width: "100%",
+    ...SHADOW.sm,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  simCardTitle: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: COLORS.textLight,
+    textAlign: "center",
+    marginBottom: 12,
+    letterSpacing: 1.5,
+  },
+  colorBandRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 15,
+  },
+  bandCell: {
+    alignItems: "center",
+    gap: 4,
+  },
+  colorBand: {
+    width: 58,
+    height: 18,
+    borderRadius: 9,
+    ...SHADOW.sm,
+  },
+  bandLabel: {
+    fontSize: 11,
+    color: COLORS.text,
+    fontWeight: "700",
+  },
+  tabsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    backgroundColor: "#F1F5F9",
+    borderRadius: RADIUS.lg,
+    padding: 3,
+    gap: 2,
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  tabBtnActive: {
+    backgroundColor: "#FFF",
+    ...SHADOW.xs,
+  },
+  tabText: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    fontWeight: "700",
+  },
+  tabTextActive: {
+    color: COLORS.primary,
+  },
 });

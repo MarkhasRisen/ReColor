@@ -75,7 +75,7 @@ const FloatingBubble = ({
   );
 };
 
-export default function BackgroundBubbles() {
+export default function BackgroundBubbles({ heavy = false }) {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {/* Top Cluster */}
@@ -173,6 +173,126 @@ export default function BackgroundBubbles() {
         left={width * 0.3}
         duration={2800}
       />
+
+      {/* 6 New Layered Orbs */}
+      <FloatingBubble
+        size={50}
+        color="#E1BEE7"
+        top={height * 0.18}
+        left={width * 0.8}
+        duration={3200}
+        delay={400}
+      />
+      <FloatingBubble
+        size={30}
+        color="#C8E6C9"
+        top={height * 0.45}
+        left={width * 0.25}
+        duration={2400}
+        delay={100}
+      />
+      <FloatingBubble
+        size={90}
+        color="#FFF9C4"
+        top={height * 0.68}
+        left={width * 0.15}
+        duration={4800}
+        delay={700}
+      />
+      <FloatingBubble
+        size={40}
+        color="#FFCDD2"
+        top={height * 0.35}
+        left={width * 0.5}
+        duration={2600}
+        delay={300}
+      />
+      <FloatingBubble
+        size={160}
+        color="#BBDEFB"
+        top={height * 0.2}
+        left={width * 0.4}
+        duration={5200}
+        opacity={0.25}
+      />
+      <FloatingBubble
+        size={18}
+        color="#BBDEFB"
+        top={height * 0.8}
+        left={width * 0.9}
+        duration={2100}
+        delay={50}
+      />
+
+      {/* Dynamic Extra Heavy Orbs (Exclusive to Splash) */}
+      {heavy && (
+        <>
+          <FloatingBubble
+            size={70}
+            color="#FFCDD2"
+            top={height * 0.15}
+            left={width * 0.45}
+            duration={3400}
+            opacity={0.35}
+          />
+          <FloatingBubble
+            size={110}
+            color="#E1BEE7"
+            top={height * 0.32}
+            left={width * -0.05}
+            duration={4200}
+            opacity={0.25}
+          />
+          <FloatingBubble
+            size={85}
+            color="#FFF9C4"
+            top={height * 0.5}
+            left={width * 0.4}
+            duration={3800}
+            opacity={0.4}
+          />
+          <FloatingBubble
+            size={140}
+            color="#C8E6C9"
+            top={height * 0.08}
+            left={width * 0.8}
+            duration={5200}
+            opacity={0.3}
+          />
+          <FloatingBubble
+            size={55}
+            color="#BBDEFB"
+            top={height * 0.72}
+            left={width * 0.65}
+            duration={3100}
+            opacity={0.35}
+          />
+          <FloatingBubble
+            size={95}
+            color="#E1BEE7"
+            top={height * 0.28}
+            left={width * 0.6}
+            duration={4600}
+            opacity={0.25}
+          />
+          <FloatingBubble
+            size={45}
+            color="#FFCDD2"
+            top={height * 0.85}
+            left={width * 0.45}
+            duration={2900}
+            opacity={0.4}
+          />
+          <FloatingBubble
+            size={60}
+            color="#FFF9C4"
+            top={height * 0.45}
+            left={width * 0.9}
+            duration={3500}
+            opacity={0.35}
+          />
+        </>
+      )}
     </View>
   );
 }

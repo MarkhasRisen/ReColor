@@ -19,12 +19,16 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Share,
+  Linking,
 } from "react-native";
+import * as WebBrowser from "expo-web-browser";
+import Constants from "expo-constants";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BackgroundBubbles from "../components/BackgroundBubbles";
 
-import { auth, db } from "../../firebaseConfig";
+import { auth, db, signOut } from "../../firebaseConfig";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 import { loadCalibration } from "../utils/cameraCalibration";
 
@@ -47,15 +51,26 @@ export default function SettingsScreen({ navigation }) {
   }, [navigation]);
 
   const loadSettings = async () => {
-    const savedIntensity = await AsyncStorage.getItem("filterIntensity");
+    let savedIntensity = await AsyncStorage.getItem("@recolor_intensity");
+    if (!savedIntensity) {
+      const oldVal = await AsyncStorage.getItem("filterIntensity");
+      if (oldVal) {
+        savedIntensity = (parseFloat(oldVal) * 100).toString();
+        await AsyncStorage.setItem("@recolor_intensity", savedIntensity);
+      }
+    }
     const savedAudio = await AsyncStorage.getItem("audio_feedback_enabled");
-    if (savedIntensity) setIntensity(parseFloat(savedIntensity));
+    if (savedIntensity) {
+      setIntensity(parseFloat(savedIntensity));
+    } else {
+      setIntensity(100);
+    }
     if (savedAudio) setAudioEnabled(savedAudio === "true");
   };
 
   const saveIntensity = async (val) => {
     setIntensity(val);
-    await AsyncStorage.setItem("filterIntensity", val.toString());
+    await AsyncStorage.setItem("@recolor_intensity", val.toString());
   };
 
   const checkExpertStatus = async () => {
@@ -66,10 +81,27 @@ export default function SettingsScreen({ navigation }) {
   };
 
   const fetchTestCount = async () => {
-    if (!user) return;
-    const q = collection(db, "users", user.uid, "history");
-    const snap = await getDocs(q);
-    setTestCount(snap.size);
+    if (!user) {
+      try {
+        const localHistoryRaw = await AsyncStorage.getItem("@recolor_local_history");
+        if (localHistoryRaw) {
+          const parsed = JSON.parse(localHistoryRaw);
+          if (Array.isArray(parsed)) {
+            setTestCount(parsed.length);
+            return;
+          }
+        }
+      } catch (_) {}
+      setTestCount(0);
+      return;
+    }
+    try {
+      const q = collection(db, "users", user.uid, "history");
+      const snap = await getDocs(q);
+      setTestCount(snap.size);
+    } catch (error) {
+      console.error("Failed to fetch test count from cloud", error);
+    }
   };
 
   const refreshCalibration = async () => {
@@ -88,10 +120,19 @@ export default function SettingsScreen({ navigation }) {
           style: "default",
           onPress: async () => {
             try {
-              // Clear the local flag that bypasses onboarding
-              await AsyncStorage.removeItem("hasSeenOnboarding");
-              // Force navigation back to the start of the clinical flow
-              navigation.replace("AppOnboarding");
+              // Clear both walkthrough and Ishihara onboarding flags
+              await AsyncStorage.removeItem("@recolor_onboarded");
+              await AsyncStorage.removeItem("@seen_ishihara_onboard");
+
+              // Log out the user if authenticated to trigger navigation flow
+              if (auth.currentUser) {
+                await signOut(auth);
+              } else {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: "AppOnboarding" }],
+                });
+              }
             } catch (error) {
               console.error("Failed to reset onboarding:", error);
             }
@@ -125,6 +166,67 @@ export default function SettingsScreen({ navigation }) {
         },
       ],
     );
+  };
+
+  const handleOpenPrivacyPolicy = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const privacyUrl = "https://recolor-dev.firebaseapp.com/privacy";
+    try {
+      await WebBrowser.openBrowserAsync(privacyUrl);
+    } catch (error) {
+      Linking.openURL(privacyUrl).catch(() => {
+        Alert.alert("Error", "Could not open Privacy Policy.");
+      });
+    }
+  };
+
+  const handleOpenTermsOfService = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const termsUrl = "https://recolor-dev.firebaseapp.com/terms";
+    try {
+      await WebBrowser.openBrowserAsync(termsUrl);
+    } catch (error) {
+      Linking.openURL(termsUrl).catch(() => {
+        Alert.alert("Error", "Could not open Terms of Service.");
+      });
+    }
+  };
+
+  const handleSendFeedback = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const version = Constants.expoConfig?.version || "1.0.0";
+    const build = Platform.select({
+      ios: Constants.expoConfig?.ios?.buildNumber || "1",
+      android: Constants.expoConfig?.android?.versionCode?.toString() || "1",
+    });
+    const email = "support@recolor.app";
+    const subject = encodeURIComponent(`ReColor App Feedback - v${version} (${build})`);
+    const body = encodeURIComponent(
+      `Device OS: ${Platform.OS} v${Platform.Version}\nApp Version: v${version} (${build})\n\nFeedback:\n`,
+    );
+    const mailtoUrl = `mailto:${email}?subject=${subject}&body=${body}`;
+    Linking.openURL(mailtoUrl).catch(() => {
+      Alert.alert(
+        "Mail client not found",
+        "You can email us at support@recolor.app to provide your feedback.",
+      );
+    });
+  };
+
+  const handleShareApp = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const appUrl = Platform.select({
+      ios: "https://apps.apple.com/app/recolor",
+      android: `https://play.google.com/store/apps/details?id=${Constants.expoConfig?.android?.package || "com.recolor.app"}`,
+    });
+    try {
+      await Share.share({
+        message: `Check out ReColor, a color vision enhancement app! Download here: ${appUrl}`,
+        url: appUrl,
+      });
+    } catch (error) {
+      console.error("Error sharing app:", error);
+    }
   };
 
   return (
@@ -163,13 +265,13 @@ export default function SettingsScreen({ navigation }) {
                   <Text style={styles.label}>Enhancement Intensity</Text>
                 </View>
                 <Text style={styles.valueText}>
-                  {Math.round(intensity * 100)}%
+                  {Math.round(intensity)}%
                 </Text>
               </View>
               <Slider
                 style={styles.slider}
                 minimumValue={0}
-                maximumValue={1}
+                maximumValue={100}
                 value={intensity}
                 onSlidingComplete={saveIntensity}
                 minimumTrackTintColor={COLORS.primary}
@@ -268,7 +370,7 @@ export default function SettingsScreen({ navigation }) {
             <Text style={styles.sectionTitle}>SUPPORT & UTILITIES</Text>
             <View style={styles.card}>
               <TouchableOpacity
-                style={[styles.infoRow, { borderBottomWidth: 0 }]}
+                style={styles.infoRow}
                 onPress={handleResetOnboarding}
               >
                 <View style={styles.rowLabelGroup}>
@@ -285,31 +387,124 @@ export default function SettingsScreen({ navigation }) {
                   color={COLORS.textLight}
                 />
               </TouchableOpacity>
-            </View>
-          </View>
-          {/* ACCOUNT DESTRUCTION */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>ACCOUNT MANAGEMENT</Text>
-            <View
-              style={[styles.card, { borderColor: "#FEE2E2", borderWidth: 1 }]}
-            >
-              <Text style={styles.dangerTitle}>Danger Zone</Text>
-              <Text style={styles.subtext}>
-                Deleting your account will purge all Ishihara results and custom
-                color calibration parameters.
-              </Text>
+
               <TouchableOpacity
-                style={styles.deleteBtn}
-                onPress={handleDeleteAccount}
+                style={styles.infoRow}
+                onPress={handleSendFeedback}
               >
-                <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                <Text style={styles.deleteBtnText}>
-                  Delete Account Permanently
-                </Text>
+                <View style={styles.rowLabelGroup}>
+                  <Ionicons
+                    name="mail-outline"
+                    size={20}
+                    color={COLORS.primary}
+                  />
+                  <Text style={styles.label}>Submit Feedback</Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={COLORS.textLight}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.infoRow, { borderBottomWidth: 0 }]}
+                onPress={handleShareApp}
+              >
+                <View style={styles.rowLabelGroup}>
+                  <Ionicons
+                    name="share-social-outline"
+                    size={20}
+                    color={COLORS.primary}
+                  />
+                  <Text style={styles.label}>Share App</Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={COLORS.textLight}
+                />
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* LEGAL & COMPLIANCE */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>LEGAL & COMPLIANCE</Text>
+            <View style={styles.card}>
+              <TouchableOpacity
+                style={styles.infoRow}
+                onPress={handleOpenPrivacyPolicy}
+              >
+                <View style={styles.rowLabelGroup}>
+                  <Ionicons
+                    name="shield-checkmark-outline"
+                    size={20}
+                    color={COLORS.primary}
+                  />
+                  <Text style={styles.label}>Privacy Policy</Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={COLORS.textLight}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.infoRow, { borderBottomWidth: 0 }]}
+                onPress={handleOpenTermsOfService}
+              >
+                <View style={styles.rowLabelGroup}>
+                  <Ionicons
+                    name="document-text-outline"
+                    size={20}
+                    color={COLORS.primary}
+                  />
+                  <Text style={styles.label}>Terms of Service</Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={COLORS.textLight}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* ACCOUNT DESTRUCTION */}
+          {user && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>ACCOUNT MANAGEMENT</Text>
+              <View
+                style={[styles.card, { borderColor: "#FEE2E2", borderWidth: 1 }]}
+              >
+                <Text style={styles.dangerTitle}>Danger Zone</Text>
+                <Text style={styles.subtext}>
+                  Deleting your account will purge all clinical history and custom
+                  color calibration parameters.
+                </Text>
+                <TouchableOpacity
+                  style={styles.deleteBtn}
+                  onPress={handleDeleteAccount}
+                >
+                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                  <Text style={styles.deleteBtnText}>
+                    Delete Account Permanently
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </Animated.View>
+        <Text style={styles.footerVersion}>
+          ReColor v{Constants.expoConfig?.version || "1.0.0"} ({
+            Platform.select({
+              ios: Constants.expoConfig?.ios?.buildNumber || "1",
+              android: Constants.expoConfig?.android?.versionCode?.toString() || "1",
+            })
+          })
+        </Text>
       </ScrollView>
     </View>
   );

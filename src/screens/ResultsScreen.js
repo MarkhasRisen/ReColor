@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
+import BackgroundBubbles from "../components/BackgroundBubbles";
 
 function ScoreRing({ percentage, color }) {
   return (
@@ -98,7 +99,9 @@ export default function ResultsScreen({ route, navigation }) {
   };
 
   return (
-    <ScrollView style={styles.root} showsVerticalScrollIndicator={false}>
+    <View style={styles.rootView}>
+      <BackgroundBubbles />
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
       {/* ── HERO BANNER ── */}
       <MotiView
         from={{ opacity: 0, scale: 0.95 }}
@@ -244,13 +247,15 @@ export default function ResultsScreen({ route, navigation }) {
             care professionals for a comprehensive assessment.
           </Text>
         </View>
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.background },
+  rootView: { flex: 1, backgroundColor: COLORS.background },
+  scroll: { flex: 1 },
 
   heroBanner: {
     padding: SPACING.xl,

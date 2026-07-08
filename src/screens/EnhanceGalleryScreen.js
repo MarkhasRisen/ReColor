@@ -122,7 +122,7 @@ export default function EnhanceGalleryScreen({ navigation }) {
       });
 
       const asset = await MediaLibrary.createAssetAsync(savePath);
-      const albumName = `ReColor_${auth.currentUser?.email.split("@")[0] || "Guest"}`;
+      const albumName = `ReColor_${auth.currentUser?.email?.split("@")[0] || "Guest"}`;
       const album = await MediaLibrary.getAlbumAsync(albumName);
 
       if (!album) await MediaLibrary.createAlbumAsync(albumName, asset, false);

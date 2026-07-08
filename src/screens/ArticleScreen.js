@@ -12,6 +12,7 @@ import {
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Header from "../components/Header";
+import BackgroundBubbles from "../components/BackgroundBubbles";
 import { ARTICLES } from "../data/articles";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
@@ -53,7 +54,7 @@ function SectionRenderer({ section }) {
             <View style={styles.dosDontsHeader}>
               <Ionicons name="close-circle" size={16} color={COLORS.danger} />
               <Text style={[styles.dosDontsTitle, { color: COLORS.danger }]}>
-                Don't
+                {"Don't"}
               </Text>
             </View>
             {section.donts.map((d, i) => (
@@ -294,6 +295,7 @@ function ArticleDetail({ article, onBack }) {
 
   return (
     <View style={styles.detailRoot}>
+      <BackgroundBubbles />
       <ScrollView showsVerticalScrollIndicator={false}>
         <Image source={article.coverImage} style={styles.detailCover} />
 
@@ -353,6 +355,7 @@ export default function ArticleScreen({ navigation, route }) {
 
   return (
     <View style={styles.root}>
+      <BackgroundBubbles />
       <Header title="Clinical Literacy" back />
 
       <ScrollView
@@ -436,11 +439,12 @@ const styles = StyleSheet.create({
   detailRoot: { flex: 1, backgroundColor: "#F8FAFC" },
   detailCover: { width: "100%", height: 300 },
   detailCard: {
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: RADIUS.xl,
     borderTopRightRadius: RADIUS.xl,
     marginTop: -40,
     padding: SPACING.lg,
+    ...SHADOW.md,
   },
   categoryTag: {
     fontSize: 11,
@@ -492,10 +496,12 @@ const styles = StyleSheet.create({
   dosDontsRow: { flexDirection: "row", gap: 12, marginBottom: 20 },
   dosDontsCard: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: "#F8FAFC",
     borderRadius: RADIUS.lg,
     padding: 12,
     borderTopWidth: 4,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     ...SHADOW.sm,
   },
   dosDontsHeader: {

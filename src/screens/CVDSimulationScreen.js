@@ -205,10 +205,17 @@ function CVDSimulationScreenInner({ navigation, route }) {
   }, []);
 
   const showInfo = () => {
-    Alert.alert(
-      "How to use Simulation",
-      "BEFORE CAPTURE:\nFrame your subject and tap the shutter button.\n\nAFTER CAPTURE:\nYour diagnosed condition is simulated automatically. You can select other types to see how different color vision deficiencies perceive the image.",
-    );
+    if (frozen) {
+      Alert.alert(
+        "CVD Simulation Guide",
+        "• PROTAN (Red-Blindness):\nSimulates reduced red-cone sensitivity. Reds appear darker and blend with greens; warm colors look olive-brown.\n\n• DEUTAN (Green-Blindness):\nSimulates reduced green-cone sensitivity. Reds and greens blend; colors shift to a yellow-brown spectrum.\n\n• TRITAN (Blue-Blindness):\nSimulates blue-cone deficiency (rare). Blues look greenish, and yellows blend with pinks/violets.\n\n• OFF:\nDisplays the original un-simulated color spectrum.",
+      );
+    } else {
+      Alert.alert(
+        "How to use Simulation",
+        "BEFORE CAPTURE:\nFrame your subject and tap the shutter button.\n\nAFTER CAPTURE:\nYour diagnosed condition is simulated automatically. You can select other types to see how different color vision deficiencies perceive the image.",
+      );
+    }
   };
 
   if (!hasPermission) {
@@ -308,6 +315,22 @@ function CVDSimulationScreenInner({ navigation, route }) {
               </TouchableOpacity>
             )}
           </View>
+        </View>
+
+        {/* Safety Disclaimer overlay */}
+        <View style={{
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          paddingVertical: 6,
+          paddingHorizontal: 12,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'row',
+          gap: 6
+        }}>
+          <Ionicons name="warning" size={11} color="#FFF5F5" style={{ opacity: 0.8 }} />
+          <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '700', letterSpacing: 0.5, opacity: 0.8 }}>
+            SIMULATION ONLY • ACCURACY DEPENDS ON DEVICE SENSOR
+          </Text>
         </View>
 
         {/* CVD TYPE BUTTONS (Visible ONLY after capture) */}

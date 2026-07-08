@@ -274,6 +274,22 @@ function CameraEnhanceScreenInner({ navigation }) {
   // ─────────────────────────────────────────────────────────────────
   const showShader = !showOriginal && cvdType !== "Off" && shaderEffect;
 
+  if (!hasPermission) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <Text style={{ marginBottom: 20 }}>Camera access is needed.</Text>
+        <TouchableOpacity style={styles.btnPrimary} onPress={requestPermission}>
+          <Text style={styles.btnText}>Grant Permission</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: "#000" }}>
       {!frozen ? (
@@ -379,6 +395,22 @@ function CameraEnhanceScreenInner({ navigation }) {
               </TouchableOpacity>
             )}
           </View>
+        </View>
+
+        {/* Safety Disclaimer overlay */}
+        <View style={{
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          paddingVertical: 6,
+          paddingHorizontal: 12,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'row',
+          gap: 6
+        }}>
+          <Ionicons name="warning" size={11} color="#FFF5F5" style={{ opacity: 0.8 }} />
+          <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '700', letterSpacing: 0.5, opacity: 0.8 }}>
+            ASSISTED VIEW ONLY • NOT FOR CRITICAL SAFETY USE
+          </Text>
         </View>
 
         {/* Algorithm selector (visible after capture). Switching now just

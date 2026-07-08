@@ -12,6 +12,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Brightness from "expo-brightness";
+import * as Haptics from "expo-haptics";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
 const { width } = Dimensions.get("window");
@@ -206,7 +209,7 @@ const INSTRUCTIONS = [
   },
 ];
 
-function InstructionSlide({ item, onNext, isFinal, onBegin }) {
+function InstructionSlide({ item, currentIndex, onNext, onPrev, isFinal, onBegin, brightness, boostBrightness, testType }) {
   return (
     <View style={[styles.slide, { width }]}>
       <ScrollView
@@ -217,7 +220,7 @@ function InstructionSlide({ item, onNext, isFinal, onBegin }) {
         <MotiView
           from={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", damping: 18 }}
+          transition={{ type: "timing", duration: 300 }}
           style={styles.headerCard}
         >
           <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
@@ -245,12 +248,44 @@ function InstructionSlide({ item, onNext, isFinal, onBegin }) {
           </View>
         </MotiView>
 
+        {/* Live Brightness Checking (Only shows on Step 1) */}
+        {item.id === "1" && (
+          <MotiView
+            from={{ opacity: 0, translateY: 10 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: "timing", duration: 300, delay: 100 }}
+            style={styles.brightnessWidget}
+          >
+            <View style={styles.widgetHeader}>
+              <Ionicons
+                name={brightness >= 0.8 ? "checkmark-circle" : "warning"}
+                size={20}
+                color={brightness >= 0.8 ? COLORS.success : COLORS.warning}
+              />
+              <Text style={styles.widgetTitle}>
+                Current Brightness: {Math.round(brightness * 100)}%
+              </Text>
+            </View>
+            <Text style={styles.widgetText}>
+              {brightness >= 0.8
+                ? "Luminosity is optimal. Your display contrast is high enough for accurate testing."
+                : "Your screen is too dim. Dim screens can distort diagnostic results."}
+            </Text>
+            {brightness < 0.8 && (
+              <TouchableOpacity style={styles.boostBtn} onPress={boostBrightness}>
+                <Ionicons name="flash" size={16} color="#FFF" />
+                <Text style={styles.boostBtnText}>Auto-Boost to 80%</Text>
+              </TouchableOpacity>
+            )}
+          </MotiView>
+        )}
+
         {/* Visual Distance Diagram (Only shows on Step 3) */}
         {item.id === "3" && (
           <MotiView
             from={{ opacity: 0, translateY: 10 }}
             animate={{ opacity: 1, translateY: 0 }}
-            transition={{ type: "spring", damping: 18, delay: 100 }}
+            transition={{ type: "timing", duration: 300, delay: 100 }}
             style={styles.distanceDiagram}
           >
             <View style={styles.diagramContent}>
@@ -264,7 +299,7 @@ function InstructionSlide({ item, onNext, isFinal, onBegin }) {
 
               {/* Extended Arm Graphic */}
               <View style={styles.armContainer}>
-                <Text style={styles.armLabel}>Arm's Length</Text>
+                <Text style={styles.armLabel}>{"Arm's Length"}</Text>
                 <Text style={styles.armMeasurement}>35 - 75 cm</Text>
                 <View style={styles.armBar} />
               </View>
@@ -281,7 +316,7 @@ function InstructionSlide({ item, onNext, isFinal, onBegin }) {
         <MotiView
           from={{ opacity: 0, translateY: 16 }}
           animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: "spring", damping: 18, delay: 150 }}
+          transition={{ type: "timing", duration: 300, delay: 150 }}
           style={styles.checklistCard}
         >
           <View style={styles.checklistHeader}>
@@ -321,15 +356,27 @@ function InstructionSlide({ item, onNext, isFinal, onBegin }) {
 
       {/* CTA */}
       <View style={styles.ctaContainer}>
-        <TouchableOpacity
-          style={styles.ctaBtn}
-          onPress={isFinal ? onBegin : onNext}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.ctaText}>{item.cta}</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", gap: 12, alignItems: "center", width: "100%" }}>
+          {currentIndex > 0 && (
+            <TouchableOpacity
+              style={styles.backCtaBtn}
+              onPress={onPrev}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="arrow-back" size={18} color={COLORS.primary} />
+              <Text style={styles.backCtaText}>Back</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.ctaBtn, { flex: 1 }]}
+            onPress={isFinal ? onBegin : onNext}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.ctaText}>{item.cta}</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.ctaHint}>
-          The test takes approximately 3–5 minutes
+          The test takes approximately {testType === "quick" ? "2–3 minutes" : "5–8 minutes"}
         </Text>
       </View>
     </View>
@@ -338,9 +385,51 @@ function InstructionSlide({ item, onNext, isFinal, onBegin }) {
 
 export default function IshiharaOnboarding({ navigation, route }) {
   const { testType = "comprehensive" } = route?.params || {};
+  const insets = useSafeAreaInsets();
   const scrollRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [hasSeen, setHasSeen] = useState(false);
+  const [brightness, setBrightness] = useState(1.0);
+  const [hasBrightnessPerm, setHasBrightnessPerm] = useState(false);
+
+  const checkBrightness = async () => {
+    try {
+      const { status } = await Brightness.requestPermissionsAsync();
+      if (status === "granted") {
+        setHasBrightnessPerm(true);
+        const val = await Brightness.getBrightnessAsync();
+        setBrightness(val);
+      }
+    } catch (e) {
+      console.log("Error checking brightness", e);
+    }
+  };
+
+  const boostBrightness = async () => {
+    try {
+      if (hasBrightnessPerm) {
+        await Brightness.setBrightnessAsync(0.8);
+        setBrightness(0.8);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        const { status } = await Brightness.requestPermissionsAsync();
+        if (status === "granted") {
+          setHasBrightnessPerm(true);
+          await Brightness.setBrightnessAsync(0.8);
+          setBrightness(0.8);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      }
+    } catch (e) {
+      Alert.alert("Permission Needed", "Please enable screen brightness permissions in settings to auto-boost.");
+    }
+  };
+
+  useEffect(() => {
+    checkBrightness();
+    const timer = setInterval(checkBrightness, 1500);
+    return () => clearInterval(timer);
+  }, [hasBrightnessPerm]);
 
   useEffect(() => {
     AsyncStorage.getItem("@seen_ishihara_onboard").then((val) => {
@@ -356,15 +445,31 @@ export default function IshiharaOnboarding({ navigation, route }) {
     }
   };
 
-  const begin = () => {
-    AsyncStorage.setItem("@seen_ishihara_onboard", "1");
+  const goPrev = () => {
+    if (currentIndex > 0) {
+      const prev = currentIndex - 1;
+      scrollRef.current?.scrollTo({ x: prev * width, animated: true });
+      setCurrentIndex(prev);
+    }
+  };
+
+  const begin = async () => {
+    try {
+      const { status } = await Brightness.requestPermissionsAsync();
+      if (status === "granted") {
+        await Brightness.setBrightnessAsync(0.8);
+      }
+    } catch (e) {
+      console.log("Error checking brightness before test", e);
+    }
+    await AsyncStorage.setItem("@seen_ishihara_onboard", "1");
     navigation.replace("IshiharaTest", { testType });
   };
 
   return (
     <View style={styles.container}>
       {/* Top bar */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
@@ -395,7 +500,7 @@ export default function IshiharaOnboarding({ navigation, route }) {
               width: i === currentIndex ? 20 : 6,
               opacity: i === currentIndex ? 1 : 0.3,
             }}
-            transition={{ type: "spring", damping: 18 }}
+            transition={{ type: "timing", duration: 250 }}
             style={[styles.dot, { backgroundColor: COLORS.primary }]}
           />
         ))}
@@ -420,9 +525,14 @@ export default function IshiharaOnboarding({ navigation, route }) {
           <InstructionSlide
             key={item.id}
             item={item}
+            currentIndex={index}
             onNext={goNext}
+            onPrev={goPrev}
             isFinal={index === INSTRUCTIONS.length - 1}
             onBegin={begin}
+            brightness={brightness}
+            boostBrightness={boostBrightness}
+            testType={testType}
           />
         ))}
       </ScrollView>
@@ -437,7 +547,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: SPACING.md,
-    paddingTop: 52,
     paddingBottom: SPACING.sm,
     backgroundColor: COLORS.card,
     borderBottomWidth: 1,
@@ -599,4 +708,65 @@ const styles = StyleSheet.create({
   },
   ctaText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
   ctaHint: { fontSize: 12, color: COLORS.textLight, textAlign: "center" },
+
+  brightnessWidget: {
+    backgroundColor: "#FFF",
+    padding: 16,
+    borderRadius: RADIUS.xl,
+    marginVertical: 12,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    ...SHADOW.sm,
+  },
+  widgetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  widgetTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: COLORS.text,
+  },
+  widgetText: {
+    fontSize: 13,
+    color: COLORS.textLight,
+    lineHeight: 18,
+  },
+  boostBtn: {
+    backgroundColor: COLORS.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    borderRadius: RADIUS.lg,
+    marginTop: 12,
+    gap: 6,
+    ...SHADOW.sm,
+  },
+  boostBtnText: {
+    color: "#FFF",
+    fontWeight: "800",
+    fontSize: 13,
+  },
+
+  backCtaBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.card,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary + "30",
+    borderRadius: RADIUS.lg,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    gap: 6,
+    ...SHADOW.sm,
+  },
+  backCtaText: {
+    color: COLORS.primary,
+    fontSize: 15,
+    fontWeight: "700",
+  },
 });

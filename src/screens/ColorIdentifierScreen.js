@@ -275,6 +275,22 @@ function ColorIdentifierScreenInner({ navigation }) {
           </View>
         </View>
 
+        {/* Safety Disclaimer overlay */}
+        <View style={{
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          paddingVertical: 6,
+          paddingHorizontal: 12,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'row',
+          gap: 6
+        }}>
+          <Ionicons name="warning" size={11} color="#FFF5F5" style={{ opacity: 0.8 }} />
+          <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '700', letterSpacing: 0.5, opacity: 0.8 }}>
+            ESTIMATED READOUT ONLY • NOT FOR CRITICAL SAFETY USE
+          </Text>
+        </View>
+
         {/* Reticle */}
         <View
           pointerEvents="none"

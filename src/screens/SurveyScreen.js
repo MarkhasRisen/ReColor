@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   addDoc,
   collection,
@@ -35,7 +36,12 @@ export default function SurveyScreen({ navigation }) {
   useEffect(() => {
     const uid = auth.currentUser?.uid;
     if (!uid) {
-      setChecking(false);
+      AsyncStorage.getItem("@recolor_survey_submitted")
+        .then((submitted) => {
+          setAlreadySubmitted(submitted === "true");
+        })
+        .catch((err) => console.error("Survey check local error:", err))
+        .finally(() => setChecking(false));
       return;
     }
     // Check if the user has already contributed to the research
@@ -72,12 +78,19 @@ export default function SurveyScreen({ navigation }) {
           collection(db, "users", auth.currentUser.uid, "surveys"),
           surveyData,
         );
+      } else {
+        await AsyncStorage.setItem("@recolor_survey_submitted", "true");
       }
 
       navigation.replace("SurveySuccess");
     } catch (e) {
       console.warn("[Survey] save failed:", e);
       // Fallback for demo/offline purposes
+      if (!auth.currentUser) {
+        try {
+          await AsyncStorage.setItem("@recolor_survey_submitted", "true");
+        } catch (_) {}
+      }
       navigation.replace("SurveySuccess");
     } finally {
       setSubmitting(false);

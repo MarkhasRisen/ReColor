@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { doc, getDoc } from "firebase/firestore";
 import { MotiView } from "moti";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import BackgroundBubbles from "../components/BackgroundBubbles";
 import {
   ActivityIndicator,
   Alert,
@@ -32,6 +34,29 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
+  const [showAdminPortal, setShowAdminPortal] = useState(false);
+  const [localDiagnosis, setLocalDiagnosis] = useState("Unscreened");
+  const [localCount, setLocalCount] = useState(0);
+  const [focusedField, setFocusedField] = useState(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem("@recolor_latest_diagnosis")
+      .then((diag) => {
+        if (diag) setLocalDiagnosis(diag);
+      })
+      .catch(() => {});
+
+    AsyncStorage.getItem("@recolor_local_history")
+      .then((historyRaw) => {
+        if (historyRaw) {
+          const parsed = JSON.parse(historyRaw);
+          if (Array.isArray(parsed)) {
+            setLocalCount(parsed.length);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleForgotPassword = async () => {
     const target = email.trim();
@@ -111,9 +136,7 @@ export default function LoginScreen({ navigation }) {
       style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={styles.blob1} />
-      <View style={styles.blob2} />
-      <View style={styles.blob3} />
+      <BackgroundBubbles />
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -131,78 +154,158 @@ export default function LoginScreen({ navigation }) {
             resizeMode="contain"
           />
         </MotiView>
+
+        {/* GUEST ACCESS CARD */}
         <MotiView
           from={{ opacity: 0, translateY: 30 }}
           animate={{ opacity: 1, translateY: 0 }}
           transition={{ type: "timing", duration: 800, delay: 150 }}
           style={styles.card}
         >
-          <Text style={styles.welcomeTitle}>Welcome Back</Text>
-          <Text style={styles.welcomeSub}>
-            Sign in to enhance your color perception
+          <Text style={styles.welcomeTitle}>
+            Welcome to <Text style={{ color: "#EF4444" }}>R</Text>e<Text style={{ color: "#10B981" }}>C</Text>olo<Text style={{ color: "#3B82F6" }}>r</Text>
           </Text>
-          <View style={styles.inputRow}>
-            <Ionicons
-              name="person-outline"
-              size={18}
-              color={COLORS.textLight}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Email Address"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-          </View>
-          <View style={styles.inputRow}>
-            <Ionicons name="key-outline" size={18} color={COLORS.textLight} />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPass}
-              autoCapitalize="none"
-            />
-            <TouchableOpacity onPress={() => setShowPass(!showPass)}>
-              <Ionicons
-                name={showPass ? "eye-off-outline" : "eye-outline"}
-                size={18}
-                color={COLORS.textLight}
-              />
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity
-            onPress={handleForgotPassword}
-            style={styles.forgotBtn}
-          >
-            <Text style={styles.forgotText}>Forgot password?</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.loginBtn}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.loginBtnText}>Login</Text>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.createAccountLink}
-            onPress={() => navigation.navigate("SignUp")}
-          >
-            <Text style={styles.createAccountText}>
-              New here?{" "}
-              <Text style={{ color: COLORS.primary, fontWeight: "700" }}>
-                Create an account
-              </Text>
+          <Text style={styles.welcomeSub}>
+            Take Ishihara tests, calibrate camera colors, and apply color vision enhancement filters.
+          </Text>
+
+
+          <View style={styles.localSessionBadge}>
+            <View style={styles.pulseDot} />
+            <Text style={styles.localSessionBadgeText}>
+              {localCount > 0
+                ? `Active Session • ${localDiagnosis} (${localCount} local logs)`
+                : "New Session • Guest Mode"}
             </Text>
+          </View>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={[styles.guestLauncherCard, { backgroundColor: COLORS.primary }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+              navigation.replace("MainTabs");
+            }}
+          >
+            <View style={styles.launcherIconWrapper}>
+              <Ionicons name="color-palette" size={24} color={COLORS.primary} />
+            </View>
+            <View style={styles.launcherTextWrapper}>
+              <Text style={styles.launcherTitle}>Begin Guest Session</Text>
+              <Text style={styles.launcherDesc}>Launch Ishihara tests, camera tools & color identifier</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#FFF" />
           </TouchableOpacity>
         </MotiView>
+
+        {/* PERI CLINICAL DRAWER TOGGLE */}
+        <TouchableOpacity
+          style={styles.portalToggle}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            setShowAdminPortal(!showAdminPortal);
+          }}
+        >
+          <Text style={styles.portalToggleText}>
+            PERI Clinical Portal
+          </Text>
+          <Ionicons
+            name={showAdminPortal ? "chevron-up-outline" : "chevron-down-outline"}
+            size={16}
+            color={COLORS.primary}
+          />
+        </TouchableOpacity>
+
+        {/* CLINICAL LOGIN FORM */}
+        {showAdminPortal && (
+          <MotiView
+            from={{ opacity: 0, translateY: -10, scale: 0.97 }}
+            animate={{ opacity: 1, translateY: 0, scale: 1 }}
+            transition={{ type: "timing", duration: 250 }}
+            style={[styles.card, { marginTop: SPACING.md }]}
+          >
+            <Text style={styles.welcomeTitle}>Clinical Sign-In</Text>
+            <Text style={styles.welcomeSub}>
+              Access research dashboards and collection logs.
+            </Text>
+            <View style={[
+              styles.inputRow,
+              focusedField === "email" && { borderColor: COLORS.primary }
+            ]}>
+              <Ionicons
+                name="person-outline"
+                size={18}
+                color={focusedField === "email" ? COLORS.primary : COLORS.textLight}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Email Address"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                onFocus={() => setFocusedField("email")}
+                onBlur={() => setFocusedField(null)}
+              />
+            </View>
+            <View style={[
+              styles.inputRow,
+              focusedField === "password" && { borderColor: COLORS.primary }
+            ]}>
+              <Ionicons
+                name="key-outline"
+                size={18}
+                color={focusedField === "password" ? COLORS.primary : COLORS.textLight}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPass}
+                autoCapitalize="none"
+                onFocus={() => setFocusedField("password")}
+                onBlur={() => setFocusedField(null)}
+              />
+              <TouchableOpacity onPress={() => setShowPass(!showPass)}>
+                <Ionicons
+                  name={showPass ? "eye-off-outline" : "eye-outline"}
+                  size={18}
+                  color={focusedField === "password" ? COLORS.primary : COLORS.textLight}
+                />
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              onPress={handleForgotPassword}
+              style={styles.forgotBtn}
+            >
+              <Text style={styles.forgotText}>Forgot password?</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.loginBtn}
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={COLORS.primary} />
+              ) : (
+                <Text style={styles.loginBtnText}>Login</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.createAccountLink}
+              onPress={() => navigation.navigate("SignUp")}
+            >
+              <Text style={styles.createAccountText}>
+                PERI Researcher / Admin?{" "}
+                <Text style={{ color: COLORS.primary, fontWeight: "700" }}>
+                  Create an account
+                </Text>
+              </Text>
+            </TouchableOpacity>
+          </MotiView>
+        )}
+
         <View style={styles.versionBadge}>
           <Text style={styles.versionText}>{APP_VERSION}</Text>
         </View>
@@ -213,36 +316,6 @@ export default function LoginScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background },
-  blob1: {
-    position: "absolute",
-    top: -60,
-    left: -60,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: "#FFCDD2",
-    opacity: 0.45,
-  },
-  blob2: {
-    position: "absolute",
-    bottom: -80,
-    right: -60,
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: "#BBDEFB",
-    opacity: 0.4,
-  },
-  blob3: {
-    position: "absolute",
-    top: "40%",
-    right: -40,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: "#E1BEE7",
-    opacity: 0.35,
-  },
   scroll: {
     flexGrow: 1,
     justifyContent: "center",
@@ -269,6 +342,7 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     textAlign: "center",
     marginBottom: SPACING.lg,
+    lineHeight: 18,
   },
   inputRow: {
     flexDirection: "row",
@@ -291,20 +365,83 @@ const styles = StyleSheet.create({
   },
   forgotText: { fontSize: 13, color: COLORS.primary, fontWeight: "600" },
   loginBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.surfaceAlt,
     borderRadius: RADIUS.md,
     paddingVertical: 14,
     alignItems: "center",
     marginTop: SPACING.md,
     ...SHADOW.sm,
   },
-  loginBtnText: { color: "#FFF", fontWeight: "700", fontSize: 16 },
+  loginBtnText: { color: COLORS.primary, fontWeight: "700", fontSize: 16 },
   createAccountLink: {
     alignItems: "center",
     marginTop: SPACING.md,
     padding: SPACING.sm,
   },
   createAccountText: { fontSize: 14, color: COLORS.textLight },
+  guestLauncherCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    marginTop: SPACING.md,
+    ...SHADOW.md,
+  },
+  launcherIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: SPACING.md,
+    ...SHADOW.sm,
+  },
+  launcherTextWrapper: {
+    flex: 1,
+    marginRight: 8,
+  },
+  launcherTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#FFFFFF",
+  },
+  launcherDesc: {
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.85)",
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  localSessionBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: COLORS.surfaceAlt,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    marginTop: SPACING.sm,
+    gap: 6,
+  },
+  localSessionBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: COLORS.primary,
+  },
+  portalToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: SPACING.lg,
+    paddingVertical: SPACING.sm,
+  },
+  portalToggleText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
   versionBadge: {
     alignSelf: "center",
     marginTop: SPACING.lg,
@@ -314,4 +451,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surfaceAlt,
   },
   versionText: { fontSize: 11, color: COLORS.primary, fontWeight: "600" },
+  pulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.success,
+  },
 });

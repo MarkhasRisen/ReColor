@@ -91,17 +91,31 @@ export default function EducationListScreen({ navigation }) {
                 sub: "Red-weak",
                 type: "Protan",
                 color: "#EF4444",
+                bgColor: "#FEF2F2",
+                borderColor: "#FEE2E2",
+                titleColor: "#991B1B",
+                descColor: "rgba(153, 27, 27, 0.7)",
               },
               {
                 label: "Deuteranomaly",
                 sub: "Green-weak",
                 type: "Deutan",
                 color: "#22C55E",
+                bgColor: "#F0FDF4",
+                borderColor: "#DCFCE7",
+                titleColor: "#166534",
+                descColor: "rgba(22, 101, 52, 0.7)",
               },
             ].map((item, idx) => (
               <TouchableOpacity
                 key={idx}
-                style={styles.simCard}
+                style={[
+                  styles.simCard,
+                  {
+                    backgroundColor: item.bgColor,
+                    borderColor: item.borderColor,
+                  },
+                ]}
                 onPress={() =>
                   navigation.navigate("CVDSimulation", {
                     initialCvdType: item.type,
@@ -111,13 +125,17 @@ export default function EducationListScreen({ navigation }) {
                 <View
                   style={[
                     styles.simIcon,
-                    { backgroundColor: item.color + "15" },
+                    { backgroundColor: item.color + "20" },
                   ]}
                 >
                   <Ionicons name="eye-outline" size={20} color={item.color} />
                 </View>
-                <Text style={styles.simTitle}>{item.label}</Text>
-                <Text style={styles.simDesc}>{item.sub}</Text>
+                <Text style={[styles.simTitle, { color: item.titleColor }]}>
+                  {item.label}
+                </Text>
+                <Text style={[styles.simDesc, { color: item.descColor }]}>
+                  {item.sub}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -269,7 +287,7 @@ const styles = StyleSheet.create({
   },
   periDesc: {
     fontSize: 13,
-    color: "#4A148C",
+    color: COLORS.textLight,
     lineHeight: 20,
     marginBottom: 15,
   },
@@ -279,7 +297,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   periButton: {
-    backgroundColor: "#FFF",
+    backgroundColor: COLORS.primary + "0A",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -288,10 +306,10 @@ const styles = StyleSheet.create({
     marginTop: 20,
     gap: 8,
     borderWidth: 1,
-    borderColor: "#D1C4E9",
+    borderColor: COLORS.primary + "25",
   },
   periButtonText: {
-    color: "#4A148C",
+    color: COLORS.primary,
     fontWeight: "800",
     fontSize: 14,
   },
@@ -330,17 +348,17 @@ const styles = StyleSheet.create({
   tritanCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#E3F2FD",
+    backgroundColor: "#F0F9FF",
     borderRadius: RADIUS.xl,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#BBDEFB",
+    borderColor: "#E0F2FE",
   },
   tritanIcon: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(13, 71, 161, 0.1)",
+    backgroundColor: "rgba(3, 105, 161, 0.1)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 14,
@@ -351,27 +369,27 @@ const styles = StyleSheet.create({
   tritanTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#0D47A1",
+    color: "#0369A1",
   },
   tritanDesc: {
     fontSize: 12,
-    color: "rgba(13, 71, 161, 0.7)",
+    color: "#0284C7",
     marginTop: 2,
   },
   careerModule: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#E8EAF6",
+    backgroundColor: COLORS.surfaceAlt,
     padding: 20,
     borderRadius: RADIUS.xl,
     borderWidth: 1,
-    borderColor: "#C5CAE9",
+    borderColor: COLORS.primary + "20",
   },
   careerIconBox: {
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: "rgba(63, 81, 181, 0.1)",
+    backgroundColor: COLORS.primary + "15",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 15,
@@ -382,11 +400,11 @@ const styles = StyleSheet.create({
   careerTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#1A237E",
+    color: COLORS.text,
   },
   careerDesc: {
     fontSize: 12,
-    color: "rgba(26, 35, 126, 0.6)",
+    color: COLORS.textLight,
     marginTop: 2,
   },
   articleItem: {

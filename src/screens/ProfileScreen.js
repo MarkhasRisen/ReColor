@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { signOut } from "firebase/auth";
 import {
@@ -53,7 +54,30 @@ export default function ProfileScreen({ navigation }) {
   const user = auth.currentUser;
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      AsyncStorage.getItem("@recolor_local_history")
+        .then((localData) => {
+          if (localData) {
+            try {
+              const parsed = JSON.parse(localData);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setLatestAssessment(parsed[0]);
+              } else {
+                setLatestAssessment(null);
+              }
+            } catch (_e) {
+              setLatestAssessment(null);
+            }
+          } else {
+            setLatestAssessment(null);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to read local history:", err);
+          setLatestAssessment(null);
+        });
+      return;
+    }
     const q = query(
       collection(db, "users", user.uid, "history"),
       orderBy("date", "desc"),
@@ -88,7 +112,7 @@ export default function ProfileScreen({ navigation }) {
           <View style={styles.avatarWrapper}>
             <Image
               source={{
-                uri: `https://ui-avatars.com/api/?name=${user?.email}&background=4F46E5&color=fff&size=256`,
+                uri: `https://ui-avatars.com/api/?name=${user?.email || "Guest"}&background=4F46E5&color=fff&size=256`,
               }}
               style={styles.mainAvatar}
             />
@@ -97,7 +121,7 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.idName}>
             {(user?.email || "Guest").split("@")[0]}
           </Text>
-          <Text style={styles.idEmail}>{user?.email}</Text>
+          <Text style={styles.idEmail}>{user?.email || "Guest User"}</Text>
         </View>
 
         {/* CLINICAL STATUS MODULE */}

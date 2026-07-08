@@ -56,13 +56,47 @@ export const saveExamResult = async (
   total = 14,
 ) => {
   try {
-    await addDoc(collection(db, "users", userId, "history"), {
-      score,
-      total,
-      diagnosis,
-      severity,
-      date: serverTimestamp(),
-    });
+    if (userId) {
+      await addDoc(collection(db, "users", userId, "history"), {
+        score,
+        total,
+        diagnosis,
+        severity,
+        date: serverTimestamp(),
+      });
+    } else {
+      const dateString = new Date().toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      const newRecord = {
+        id: Date.now().toString(),
+        score,
+        total,
+        diagnosis,
+        severity,
+        date: dateString,
+      };
+
+      const localHistoryRaw = await AsyncStorage.getItem("@recolor_local_history");
+      let localHistory = [];
+      if (localHistoryRaw) {
+        try {
+          localHistory = JSON.parse(localHistoryRaw);
+          if (!Array.isArray(localHistory)) {
+            localHistory = [];
+          }
+        } catch (e) {
+          localHistory = [];
+        }
+      }
+      localHistory.unshift(newRecord);
+      if (localHistory.length > 50) {
+        localHistory = localHistory.slice(0, 50);
+      }
+      await AsyncStorage.setItem("@recolor_local_history", JSON.stringify(localHistory));
+    }
 
     await addDoc(collection(db, "research_data_anonymized"), {
       diagnosis,

@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { auth, saveExamResult } from "../../firebaseConfig";
+import BackgroundBubbles from "../components/BackgroundBubbles";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 import {
   buildTestQueue,
@@ -73,11 +74,25 @@ export default function TestScreen({ route, navigation }) {
 
   const current = queue[index];
 
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [showLoader, setShowLoader] = useState(false);
+
   useEffect(() => {
     setTimeLeft(DISPLAY_TIME);
     setShowImage(true);
+    setImageLoaded(false);
+    setShowLoader(false);
 
+    const loaderTimer = setTimeout(() => {
+      setShowLoader(true);
+    }, 150);
+
+    return () => clearTimeout(loaderTimer);
+  }, [index]);
+
+  useEffect(() => {
     if (index === 0) return;
+    if (!imageLoaded) return;
 
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
@@ -91,7 +106,7 @@ export default function TestScreen({ route, navigation }) {
     }, 1000);
 
     return () => clearInterval(timerRef.current);
-  }, [index]);
+  }, [index, imageLoaded]);
 
   const handleInput = useCallback((num) => {
     setUserInput((prev) => (prev.length < 3 ? prev + num : prev));
@@ -144,15 +159,13 @@ export default function TestScreen({ route, navigation }) {
             result.diagnosis,
           );
 
-          if (auth.currentUser) {
-            await saveExamResult(
-              auth.currentUser.uid,
-              stage1Result.correctCount,
-              result.diagnosis,
-              result.severity,
-              stage1Result.totalStage1,
-            );
-          }
+          await saveExamResult(
+            auth.currentUser?.uid || null,
+            stage1Result.correctCount,
+            result.diagnosis,
+            result.severity,
+            stage1Result.totalStage1,
+          );
 
           setTimeout(() => {
             AsyncStorage.removeItem(`@recolor_test_progress_${testType}`);
@@ -195,15 +208,13 @@ export default function TestScreen({ route, navigation }) {
           result.diagnosis,
         );
 
-        if (auth.currentUser) {
-          await saveExamResult(
-            auth.currentUser.uid,
-            result.score,
-            result.diagnosis,
-            result.severity,
-            queue.length,
-          );
-        }
+        await saveExamResult(
+          auth.currentUser?.uid || null,
+          result.score,
+          result.diagnosis,
+          result.severity,
+          queue.length,
+        );
 
         setTimeout(() => {
           AsyncStorage.removeItem(`@recolor_test_progress_${testType}`);
@@ -242,6 +253,7 @@ export default function TestScreen({ route, navigation }) {
   if (calculating) {
     return (
       <View style={styles.calculatingOverlay}>
+        <BackgroundBubbles />
         <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.calculatingText}>Analysing your results…</Text>
         <Text style={styles.calculatingHint}>Please wait</Text>
@@ -303,11 +315,20 @@ export default function TestScreen({ route, navigation }) {
 
         <View key={index} style={styles.plateCard}>
           {showImage ? (
-            <Image
-              source={current.img}
-              style={styles.plateImage}
-              resizeMode="contain"
-            />
+            <>
+              <Image
+                source={current.img}
+                style={[styles.plateImage, !imageLoaded && { position: "absolute", opacity: 0 }]}
+                resizeMode="cover"
+                onLoad={() => setImageLoaded(true)}
+              />
+              {!imageLoaded && showLoader && (
+                <View style={styles.hiddenState}>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                  <Text style={[styles.hiddenLabel, { marginTop: 10 }]}>Loading Plate...</Text>
+                </View>
+              )}
+            </>
           ) : (
             <View style={styles.hiddenState}>
               <Ionicons name="eye-off-outline" size={56} color="#CCC" />
@@ -317,6 +338,14 @@ export default function TestScreen({ route, navigation }) {
           )}
         </View>
       </View>
+
+      {/* Background Preloader for the next plate */}
+      {index < queue.length - 1 && (
+        <Image
+          source={queue[index + 1].img}
+          style={{ position: "absolute", width: 1, height: 1, opacity: 0.01 }}
+        />
+      )}
 
       {isTracingYesNo ? (
         <View
@@ -517,23 +546,26 @@ const styles = StyleSheet.create({
     flex: 1, // Allows it to shrink and grow dynamically
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: SPACING.sm,
-    gap: SPACING.sm,
+    paddingVertical: 6,
+    gap: 6,
   },
   plateCard: {
     flexShrink: 1, // CRITICAL: Allows the card to shrink on small screens to prevent overlap
     width: width * 0.95,
-    maxWidth: 380,
-    maxHeight: "88%", // Ensures it leaves room for the timer above it
+    maxWidth: 390,
+    maxHeight: "90%", // Ensures it leaves room for the timer above it
     aspectRatio: 1,
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.xl,
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
+    overflow: "hidden", // Crops the scaled image margins cleanly
     ...SHADOW.lg,
   },
-  plateImage: { width: "100%", height: "100%" },
+  plateImage: {
+    width: "108%",
+    height: "108%",
+  },
   hiddenState: { alignItems: "center", gap: SPACING.sm },
   hiddenLabel: { fontSize: 16, fontWeight: "700", color: "#AAA" },
   hiddenSub: { fontSize: 12, color: "#CCC" },

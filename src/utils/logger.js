@@ -3,6 +3,7 @@ import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TouchableOpacity, View } from 'react-native';
 
+// eslint-disable-next-line import/namespace
 const LOG_FILE = `${FileSystem.documentDirectory}recolor_debug.log`;
 const MAX_LOG_LINES = 200;
 

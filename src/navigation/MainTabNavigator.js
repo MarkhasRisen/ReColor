@@ -10,8 +10,7 @@ import {
 } from "react-native";
 import Animated, {
   useAnimatedStyle,
-  useSharedValue,
-  withSpring,
+  withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -29,13 +28,11 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
   const TAB_WIDTH = width / TAB_COUNT;
 
   // Animation for the active indicator bar at the top of the tab
-  const translateX = useSharedValue(0);
   const animatedIndicatorStyle = useAnimatedStyle(() => ({
     transform: [
       {
-        translateX: withSpring(state.index * TAB_WIDTH, {
-          damping: 20,
-          stiffness: 180,
+        translateX: withTiming(state.index * TAB_WIDTH, {
+          duration: 180,
         }),
       },
     ],
@@ -54,7 +51,6 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 
       <View style={styles.tabContent}>
         {state.routes.map((route, index) => {
-          const { options } = descriptors[route.key];
           const isFocused = state.index === index;
 
           const onPress = () => {

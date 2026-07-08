@@ -1,25 +1,26 @@
 import { Ionicons } from "@expo/vector-icons";
 import { doc, setDoc } from "firebase/firestore"; // ADDED THIS
 import { MotiView } from "moti";
+import BackgroundBubbles from "../components/BackgroundBubbles";
 import { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import {
-    auth, // ADDED THIS
-    createUserWithEmailAndPassword,
-    db,
-    sendEmailVerification,
+  auth, // ADDED THIS
+  createUserWithEmailAndPassword,
+  db,
+  sendEmailVerification,
 } from "../../firebaseConfig";
 import { COLORS, RADIUS, SHADOW, SPACING } from "../theme/colors";
 
@@ -32,11 +33,24 @@ export default function SignUp({ navigation }) {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [authKey, setAuthKey] = useState("");
+  const [showAuthKey, setShowAuthKey] = useState(false);
+  const [focusedField, setFocusedField] = useState(null);
 
   const handleSignUp = async () => {
     const targetEmail = email.trim();
-    if (!targetEmail || !password || !confirmPassword) {
-      Alert.alert("Missing Fields", "Please fill in all fields.");
+    if (!targetEmail || !password || !confirmPassword || !authKey) {
+      Alert.alert(
+        "Missing Fields",
+        "Please fill in all fields including the authorization key.",
+      );
+      return;
+    }
+    if (authKey !== "PERI_DEV_2026") {
+      Alert.alert(
+        "Invalid Authorization Key",
+        "Registration is restricted to authorized PERI researchers and admins.",
+      );
       return;
     }
     if (password !== confirmPassword) {
@@ -67,7 +81,7 @@ export default function SignUp({ navigation }) {
       // This ensures every user has a role record indexed by their UID
       await setDoc(doc(db, "users", userCredential.user.uid), {
         email: targetEmail,
-        role: "user", // Default role
+        role: "researcher",
         createdAt: new Date().toISOString(),
       });
 
@@ -95,9 +109,7 @@ export default function SignUp({ navigation }) {
       style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={styles.blob1} />
-      <View style={styles.blob2} />
-      <View style={styles.blob3} />
+      <BackgroundBubbles />
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -125,54 +137,127 @@ export default function SignUp({ navigation }) {
           <Text style={styles.subtitle}>
             Join ReColor to track your colour perception
           </Text>
-          <View style={styles.inputRow}>
-            <Ionicons name="mail-outline" size={18} color={COLORS.textLight} />
-            <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-          </View>
-          <View style={styles.inputRow}>
-            <Ionicons name="key-outline" size={18} color={COLORS.textLight} />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPass}
-            />
-            <TouchableOpacity onPress={() => setShowPass(!showPass)}>
+          {/* EMAIL FIELD */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.fieldLabel}>Clinical Email Address</Text>
+            <View style={[
+              styles.inputRow,
+              focusedField === "email" && { borderColor: COLORS.primary }
+            ]}>
               <Ionicons
-                name={showPass ? "eye-off-outline" : "eye-outline"}
+                name="mail-outline"
                 size={18}
-                color={COLORS.textLight}
+                color={focusedField === "email" ? COLORS.primary : COLORS.textLight}
               />
-            </TouchableOpacity>
+              <TextInput
+                style={styles.input}
+                placeholder="researcher@peri.org"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                onFocus={() => setFocusedField("email")}
+                onBlur={() => setFocusedField(null)}
+              />
+            </View>
+            <Text style={styles.fieldHelper}>Your registered institutional or clinical email.</Text>
           </View>
-          <View style={styles.inputRow}>
-            <Ionicons
-              name="shield-checkmark-outline"
-              size={18}
-              color={COLORS.textLight}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm password"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirm}
-            />
-            <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
+
+          {/* PASSWORD FIELD */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.fieldLabel}>Security Password</Text>
+            <View style={[
+              styles.inputRow,
+              focusedField === "password" && { borderColor: COLORS.primary }
+            ]}>
               <Ionicons
-                name={showConfirm ? "eye-off-outline" : "eye-outline"}
+                name="key-outline"
                 size={18}
-                color={COLORS.textLight}
+                color={focusedField === "password" ? COLORS.primary : COLORS.textLight}
               />
-            </TouchableOpacity>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPass}
+                onFocus={() => setFocusedField("password")}
+                onBlur={() => setFocusedField(null)}
+              />
+              <TouchableOpacity onPress={() => setShowPass(!showPass)}>
+                <Ionicons
+                  name={showPass ? "eye-off-outline" : "eye-outline"}
+                  size={18}
+                  color={focusedField === "password" ? COLORS.primary : COLORS.textLight}
+                />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.fieldHelper}>6-14 characters with uppercase, lowercase, number & symbol.</Text>
+          </View>
+
+          {/* CONFIRM PASSWORD FIELD */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.fieldLabel}>Confirm Password</Text>
+            <View style={[
+              styles.inputRow,
+              focusedField === "confirmPassword" && { borderColor: COLORS.primary }
+            ]}>
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={18}
+                color={focusedField === "confirmPassword" ? COLORS.primary : COLORS.textLight}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Re-enter password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirm}
+                onFocus={() => setFocusedField("confirmPassword")}
+                onBlur={() => setFocusedField(null)}
+              />
+              <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
+                <Ionicons
+                  name={showConfirm ? "eye-off-outline" : "eye-outline"}
+                  size={18}
+                  color={focusedField === "confirmPassword" ? COLORS.primary : COLORS.textLight}
+                />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.fieldHelper}>Must match the security password entered above.</Text>
+          </View>
+
+          {/* AUTHORIZATION KEY FIELD */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.fieldLabel}>PERI Authorization Key</Text>
+            <View style={[
+              styles.inputRow,
+              focusedField === "authKey" && { borderColor: COLORS.primary }
+            ]}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={18}
+                color={focusedField === "authKey" ? COLORS.primary : COLORS.textLight}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter clinical passcode"
+                value={authKey}
+                onChangeText={setAuthKey}
+                secureTextEntry={!showAuthKey}
+                autoCapitalize="none"
+                onFocus={() => setFocusedField("authKey")}
+                onBlur={() => setFocusedField(null)}
+              />
+              <TouchableOpacity onPress={() => setShowAuthKey(!showAuthKey)}>
+                <Ionicons
+                  name={showAuthKey ? "eye-off-outline" : "eye-outline"}
+                  size={18}
+                  color={focusedField === "authKey" ? COLORS.primary : COLORS.textLight}
+                />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.fieldHelper}>Secret passcode issued to assigned researchers and admins.</Text>
           </View>
           <TouchableOpacity
             style={styles.signUpBtn}
@@ -190,9 +275,9 @@ export default function SignUp({ navigation }) {
             onPress={() => navigation.goBack()}
           >
             <Text style={styles.loginLinkText}>
-              Already have an account?{" "}
+              Not PERI Researcher/Admin?{" "}
               <Text style={{ color: COLORS.primary, fontWeight: "700" }}>
-                Log In
+                Go Back
               </Text>
             </Text>
           </TouchableOpacity>
@@ -207,36 +292,6 @@ export default function SignUp({ navigation }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background },
-  blob1: {
-    position: "absolute",
-    top: -60,
-    left: -60,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: "#FFCDD2",
-    opacity: 0.45,
-  },
-  blob2: {
-    position: "absolute",
-    bottom: -80,
-    right: -60,
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: "#BBDEFB",
-    opacity: 0.4,
-  },
-  blob3: {
-    position: "absolute",
-    top: "40%",
-    right: -40,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: "#E1BEE7",
-    opacity: 0.35,
-  },
   scroll: {
     flexGrow: 1,
     justifyContent: "center",
@@ -264,6 +319,24 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: SPACING.lg,
   },
+  inputGroup: {
+    marginBottom: SPACING.md,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: COLORS.text,
+    marginBottom: 6,
+    letterSpacing: 0.3,
+  },
+  fieldHelper: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: COLORS.textLight,
+    marginTop: 4,
+    opacity: 0.7,
+    lineHeight: 14,
+  },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -272,7 +345,6 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.md,
     paddingVertical: 12,
-    marginBottom: SPACING.sm,
     backgroundColor: COLORS.background,
     gap: SPACING.sm,
   },

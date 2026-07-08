@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   collection,
   limit,
@@ -104,12 +105,28 @@ const ActionCard = ({
   );
 };
 
+const getStatusColors = (profile) => {
+  const p = profile ? profile.toLowerCase() : "";
+  if (p.includes("normal")) {
+    return { text: "#166534", bg: "#F0FDF4", dot: "#22C55E" }; // Green (emerald/success)
+  }
+  if (p.includes("prot")) {
+    return { text: "#991B1B", bg: "#FEF2F2", dot: "#EF4444" }; // Red (protan)
+  }
+  if (p.includes("deut")) {
+    return { text: "#15803D", bg: "#F0FDF4", dot: "#22C55E" }; // Green (deutan)
+  }
+  if (p.includes("trit")) {
+    return { text: "#0D47A1", bg: "#E3F2FD", dot: "#3B82F6" }; // Blue (tritan)
+  }
+  return { text: "#64748B", bg: "#F1F5F9", dot: "#94A3B8" }; // Slate/Grey (unscreened/unknown)
+};
+
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [visionProfile, setVisionProfile] = useState("Unscreened");
   const userName = (auth.currentUser?.email || "Guest").split("@")[0];
 
-  // LOGO PULSE ANIMATION
   const logoScale = useSharedValue(1);
   const glowOpacity = useSharedValue(0.2);
 
@@ -136,21 +153,45 @@ export default function HomeScreen({ navigation }) {
 
   const animatedLogoStyle = useAnimatedStyle(() => ({
     transform: [{ scale: logoScale.value }],
-    shadowOpacity: glowOpacity.value,
+  }));
+
+  const animatedGlowStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: logoScale.value * 1.15 }],
+    opacity: glowOpacity.value * 0.4,
   }));
 
   useEffect(() => {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user) {
+      AsyncStorage.getItem("@recolor_latest_diagnosis")
+        .then((latestDiag) => {
+          if (latestDiag) {
+            setVisionProfile(latestDiag);
+          } else {
+            setVisionProfile("Unscreened");
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to read latest diagnosis:", err);
+          setVisionProfile("Unscreened");
+        });
+      return;
+    }
     const q = query(
       collection(db, "users", user.uid, "history"),
       orderBy("date", "desc"),
       limit(1),
     );
-    return onSnapshot(q, (snap) => {
-      if (!snap.empty)
-        setVisionProfile(snap.docs[0].data().diagnosis || "Normal Vision");
-    });
+    return onSnapshot(
+      q,
+      (snap) => {
+        if (!snap.empty)
+          setVisionProfile(snap.docs[0].data().diagnosis || "Normal Vision");
+      },
+      (err) => {
+        console.error("HomeScreen latest diagnosis fetch error:", err);
+      }
+    );
   }, []);
 
   return (
@@ -170,7 +211,7 @@ export default function HomeScreen({ navigation }) {
       <ScrollView
         contentContainerStyle={[
           styles.scrollBody,
-          { paddingBottom: insets.bottom + SPACING.xl },
+          { paddingBottom: insets.bottom + 80 },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -181,17 +222,49 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.headerText}>
             <Text style={styles.greeting}>Good day, {userName}</Text>
             <Text style={styles.mainTitle}>Welcome to{"\n"}ReColor</Text>
-            <View style={styles.profileBadge}>
-              <View style={styles.pulseDot} />
-              <Text style={styles.profileText}>Status: {visionProfile}</Text>
-            </View>
+            {(() => {
+              const statusColors = getStatusColors(visionProfile);
+              return (
+                <View
+                  style={[
+                    styles.profileBadge,
+                    {
+                      backgroundColor: statusColors.bg,
+                      borderColor: statusColors.text + "20",
+                      borderWidth: 1,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[styles.pulseDot, { backgroundColor: statusColors.dot }]}
+                  />
+                  <Text style={[styles.profileText, { color: statusColors.text }]}>
+                    Status: {visionProfile}
+                  </Text>
+                </View>
+              );
+            })()}
           </View>
 
-          <Animated.Image
-            entering={FadeInRight.delay(300).springify()}
-            source={require("../../assets/icon.png")}
-            style={[styles.heroLogo, animatedLogoStyle]}
-          />
+          {(() => {
+            const statusColors = getStatusColors(visionProfile);
+            return (
+              <View style={styles.logoContainer}>
+                <Animated.View
+                  style={[
+                    styles.logoGlow,
+                    { backgroundColor: statusColors.dot },
+                    animatedGlowStyle,
+                  ]}
+                />
+                <Animated.Image
+                  entering={FadeInRight.delay(300).springify()}
+                  source={require("../../assets/icon.png")}
+                  style={[styles.heroLogo, animatedLogoStyle]}
+                />
+              </View>
+            );
+          })()}
         </Animated.View>
 
         <View style={styles.section}>
@@ -208,7 +281,7 @@ export default function HomeScreen({ navigation }) {
           <ActionCard
             isDominant
             title="Cameras and Simulation"
-            desc="Apply adaptive enhancement filters via live camera processing."
+            desc="Apply adaptive color filters to enhance perception and simulate vision types."
             icon="camera-outline"
             color="#9C27B0"
             onPress={() => navigation.navigate("CameraEnhance")}
@@ -239,7 +312,7 @@ export default function HomeScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  scrollBody: { paddingHorizontal: SPACING.lg },
+  scrollBody: { paddingHorizontal: SPACING.lg, paddingBottom: 100 },
   disclaimer: {
     flexDirection: "row",
     alignItems: "center",
@@ -265,6 +338,25 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xl,
   },
   headerText: { flex: 1 },
+  logoContainer: {
+    width: 110,
+    height: 110,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  logoGlow: {
+    position: "absolute",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  heroLogo: {
+    width: 78,
+    height: 78,
+    resizeMode: "contain",
+    zIndex: 2,
+  },
   greeting: {
     fontSize: 14,
     fontWeight: "600",
@@ -297,14 +389,6 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   profileText: { fontSize: 12, fontWeight: "700", color: COLORS.text },
-  heroLogo: {
-    width: 135,
-    height: 135,
-    resizeMode: "contain",
-    ...SHADOW.lg,
-    shadowColor: COLORS.primary,
-    shadowRadius: 15,
-  },
   section: { marginBottom: SPACING.xl },
   sectionLabel: {
     fontSize: 11,

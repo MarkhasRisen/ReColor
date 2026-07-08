@@ -10,8 +10,11 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.recolor.app",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "ReColor needs camera access for CVD simulation"
+        "NSCameraUsageDescription": "ReColor needs camera access to simulate and enhance color perception.",
+        "NSPhotoLibraryUsageDescription": "ReColor needs photo library access to enhance and simulate color blindness on saved images."
       }
     },
     "android": {
@@ -24,6 +27,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.recolor.app",
+      "versionCode": 8,
       "permissions": [
         "android.permission.CAMERA"
       ]
