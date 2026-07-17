@@ -126,7 +126,7 @@ export default function ProfileScreen({ navigation }) {
 
         {/* CLINICAL STATUS MODULE */}
         <View style={styles.moduleCard}>
-          <Text style={styles.moduleHeader}>DIAGNOSTIC SUMMARY</Text>
+          <Text style={styles.moduleHeader}>SCREENING SUMMARY</Text>
           <ActionRow
             icon="shield-checkmark-outline"
             title="Vision Profile"

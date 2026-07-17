@@ -269,7 +269,7 @@ function InstructionSlide({ item, currentIndex, onNext, onPrev, isFinal, onBegin
             <Text style={styles.widgetText}>
               {brightness >= 0.8
                 ? "Luminosity is optimal. Your display contrast is high enough for accurate testing."
-                : "Your screen is too dim. Dim screens can distort diagnostic results."}
+                : "Your screen is too dim. Dim screens can distort screening results."}
             </Text>
             {brightness < 0.8 && (
               <TouchableOpacity style={styles.boostBtn} onPress={boostBrightness}>

@@ -145,7 +145,7 @@ export default function TestScreen({ route, navigation }) {
           setStage(2);
           setIndex(index + 1);
 
-          Speech.speak("Stage 2: Diagnostic plates", {
+          Speech.speak("Stage 2: Classification plates", {
             rate: 1.1,
             pitch: 1.0,
           });
@@ -263,7 +263,7 @@ export default function TestScreen({ route, navigation }) {
 
   const stageMaxPlates = stage === 1 ? stage1Length : queue.length;
   const progress = ((index + 1) / stageMaxPlates) * 100;
-  const stageLabel = stage === 1 ? `Screening` : `Diagnostic`;
+  const stageLabel = stage === 1 ? `Screening` : `Classification`;
   const timerColor =
     timeLeft <= 1
       ? COLORS.danger

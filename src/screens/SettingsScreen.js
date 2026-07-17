@@ -343,7 +343,7 @@ export default function SettingsScreen({ navigation }) {
 
           {/* CLINICAL DATA */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>DIAGNOSTIC STATUS</Text>
+            <Text style={styles.sectionTitle}>SCREENING STATUS</Text>
             <View style={styles.card}>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Total Assessments</Text>

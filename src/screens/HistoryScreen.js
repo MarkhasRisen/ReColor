@@ -218,7 +218,7 @@ export default function HistoryScreen({ navigation }) {
           ]}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.sectionLabel}>RECENT DIAGNOSTICS</Text>
+          <Text style={styles.sectionLabel}>RECENT SCREENINGS</Text>
           {historyData.map((item, index) => {
             const colors = getDiagnosisColors(item.type);
             const sevColors = getSeverityColors(item.severity);

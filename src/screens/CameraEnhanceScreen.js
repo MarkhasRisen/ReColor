@@ -265,7 +265,7 @@ function CameraEnhanceScreenInner({ navigation }) {
   const showInfo = () => {
     Alert.alert(
       "How to use Enhancement",
-      "BEFORE CAPTURE:\nFrame your subject and tap the shutter button.\n\nAFTER CAPTURE:\nYour diagnosed filter is automatically applied. You can change the filter type or adjust the intensity slider to enhance color distinguishability.",
+      "BEFORE CAPTURE:\nFrame your subject and tap the shutter button.\n\nAFTER CAPTURE:\nYour recommended filter is automatically applied. You can change the filter type or adjust the intensity slider to enhance color distinguishability.",
     );
   };
 

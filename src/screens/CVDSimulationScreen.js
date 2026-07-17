@@ -213,7 +213,7 @@ function CVDSimulationScreenInner({ navigation, route }) {
     } else {
       Alert.alert(
         "How to use Simulation",
-        "BEFORE CAPTURE:\nFrame your subject and tap the shutter button.\n\nAFTER CAPTURE:\nYour diagnosed condition is simulated automatically. You can select other types to see how different color vision deficiencies perceive the image.",
+        "BEFORE CAPTURE:\nFrame your subject and tap the shutter button.\n\nAFTER CAPTURE:\nYour screening result is simulated automatically. You can select other types to see how different color vision deficiencies perceive the image.",
       );
     }
   };

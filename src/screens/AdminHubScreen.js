@@ -115,7 +115,7 @@ export default function AdminHubScreen({ route, navigation }) {
               {recordCount.toLocaleString()}
             </Text>
             <Text style={styles.statsSub}>
-              Anonymized diagnostic records synced
+              Anonymized screening records synced
             </Text>
           </Card>
         </MotiView>

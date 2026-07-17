@@ -362,7 +362,7 @@ export default function ArticleScreen({ navigation, route }) {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.listLabel}>LATEST DIAGNOSTIC GUIDES</Text>
+        <Text style={styles.listLabel}>LATEST SCREENING GUIDES</Text>
         {ARTICLES.map((article) => (
           <ArticleCard
             key={article.id}
