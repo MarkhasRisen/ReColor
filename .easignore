@@ -1,23 +1,35 @@
-# Python / ML training environment — must not be uploaded to EAS
-
+# Python / ML training environment
 venv/
-**pycache**/
-\*.pyc
+.venv/
+__pycache__/
+*.pyc
 
-# Training notebooks and algo folder (not needed for the app build)
-
+# ML notebooks and algo folder (models used by app are in assets/)
 algo/
 
-# Generated native folders (EAS generates these itself)
-
+# Generated native folders & dependencies (EAS handles these)
 /ios
 /android
+android/
+ios/
 node_modules/
 .expo/
 .git/
-android/
-ios/
+.claude/
+.vscode/
 build/
 dist/
-_.xml
-_.log
+
+# Documentation, evaluation reports, design references, and screenshots
+design_refs/
+evaluation/
+assets/screenshots/
+*.pdf
+*.docx
+~$*.docx
+*.xml
+*.log
+folder_structure.txt
+clean_tree.txt
+repomix-output.xml
+
